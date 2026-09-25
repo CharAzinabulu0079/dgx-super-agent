@@ -1,0 +1,25 @@
+{
+  "name": "dgx-super-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DGX Super Agent v0.1 — SuperAgent plugins over DeepSeek Harness (single core)",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "test": "node --test --test-reporter=spec \"superagent/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "smoke:dsh": "node scripts/smoke-dsh.ts",
+    "sa": "node superagent/cli/src/main.ts"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.1.7-rc.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "typescript": "^5.9.0"
+  }
+}

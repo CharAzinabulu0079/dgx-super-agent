@@ -1,0 +1,19 @@
+{
+  "name": "DeepSeek Harness (DSH)",
+  "repository": "https://github.com/deepseek-ai/deepseek-harness",
+  "license": "MIT",
+  "release": "dsh-v0.1.7-rc.2",
+  "commit": "477b4f420553e8a52c2fbccc464d7561b239c443",
+  "commitShort": "477b4f4",
+  "status": "Developer Preview / Pre-release",
+  "npm": {
+    "package": "@deepseek-ai/dsh",
+    "version": "0.1.7-rc.2",
+    "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.7-rc.2.tgz",
+    "distTag": "next"
+  },
+  "consumption": "exact-pinned npm runtime (root package.json) + optional source checkout via scripts/fetch-dsh-source.sh",
+  "coreModifications": 0,
+  "verifiedAt": "2026-09-25",
+  "verification": "git ls-remote: refs/tags/dsh-v0.1.7-rc.2 == refs/heads/master == 477b4f4 at freeze time; npm @deepseek-ai/dsh@0.1.7-rc.2 `dsh --version` prints 0.1.7-rc.2"
+}

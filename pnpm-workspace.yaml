@@ -1,0 +1,23 @@
+packages:
+  - superagent/contracts
+  - superagent/plugins/*
+  - superagent/testkit
+  - superagent/cli
+  - superagent/server
+  - superagent/ui
+  - superagent/dsh-bundle
+  - examples/*
+
+# pnpm 11 blocks dependency install scripts unless reviewed here.
+# Mirrors the DSH 0.1.7-rc.2 upstream allowlist for the runtime closure.
+allowBuilds:
+  esbuild: true
+  node-pty: true
+  koffi: true
+  # restores exec bit on node-pty's macOS spawn helper (upstream-reviewed)
+  '@deepseek-ai/dsh-subprocess-local': true
+  '@google/genai': false
+  protobufjs: false
+  node-addon-require-builtin: false
+  msgpackr-extract: false
+  electron-winstaller: false

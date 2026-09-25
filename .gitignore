@@ -141,3 +141,25 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# ---- DGX Super Agent (Foundation Freeze §17) ----
+models/
+data/
+sessions/
+artifacts/
+cache/
+*.gguf
+*.safetensors
+*.ckpt
+*.bin
+*.mp4
+*.wav
+*.mp3
+# optional pinned DSH source checkout (runtime comes from npm)
+upstream/deepseek-harness/
+# runtime state & scratch
+.superagent/runtime/
+.dsh-home/
+test-results/
+playwright-report/
+superagent/**/lib/
