@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T20:23:44.596Z",
-  "commit": "16d0622",
+  "generatedAt": "2026-09-25T20:27:38.794Z",
+  "commit": "59c2cd3",
   "layers": [
     "foundation",
     "capability",
@@ -17,8 +17,7 @@
       "layer": "foundation",
       "root": "superagent/contracts",
       "status": [
-        "protected",
-        "changing"
+        "protected"
       ],
       "files": 5,
       "declared": true,
@@ -89,7 +88,7 @@
       "layer": "capability",
       "root": "superagent/plugins/project-state",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 4,
       "declared": true,
@@ -296,7 +295,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/chief-worker",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 13,
       "declared": true,
@@ -453,7 +452,7 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 11,
       "declared": true,
@@ -1087,43 +1086,15 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "DECISIONS.md",
-      "REDTEAM_REPORT.md",
-      "package.json",
-      "scripts/redteam-report.ts",
-      "superagent/contracts/src/types.ts",
-      "superagent/evals/redteam/redteam-dsh.integration.test.ts",
-      "superagent/evals/redteam/redteam.test.ts",
-      "superagent/plugins/chief-worker/src/dsh-executor.ts",
-      "superagent/plugins/chief-worker/src/dsh-process.ts",
-      "superagent/plugins/chief-worker/src/engine.ts",
-      "superagent/plugins/chief-worker/src/executor.ts",
-      "superagent/plugins/project-state/src/store.ts"
+      "ARCHITECTURE.md",
+      "CURRENT_STATE.md",
+      "NEXT_STEPS.md",
+      "README.md",
+      "SETUP_DGX.md"
     ],
-    "modules": [
-      "chief-worker",
-      "contracts",
-      "evals",
-      "project-state"
-    ],
-    "impacted": [
-      "architecture-observatory",
-      "cli",
-      "dsh-bundle",
-      "learning",
-      "loop-policy",
-      "model-policy",
-      "server",
-      "verifier"
-    ],
-    "gates": [
-      "architecture",
-      "e2e-ui",
-      "evals",
-      "smoke-dsh",
-      "typecheck",
-      "unit"
-    ]
+    "modules": [],
+    "impacted": [],
+    "gates": []
   },
   "services": [
     {
@@ -1201,6 +1172,6 @@
     "files": 129,
     "modules": 15,
     "edges": 51,
-    "scanMs": 585
+    "scanMs": 628
   }
 }
