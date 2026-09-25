@@ -12,6 +12,8 @@ export interface AttemptFeedback {
   readonly failingGates: ReadonlyArray<{ gateId: string; status: string; summary: string; outputTail: string }>
   readonly workerClaim: Receipt['workerClaim']
   readonly claimOverruled: boolean
+  /** Integrity findings (tampering with verification assets/environment). */
+  readonly integrity?: readonly string[]
 }
 
 export interface WorkerRunInput {

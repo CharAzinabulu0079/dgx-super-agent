@@ -52,10 +52,27 @@ export interface Project {
   /** Absolute path of the project working tree. */
   readonly root: string
   readonly createdAt: IsoTime
-  /** Default gates applied to tasks that name none. */
+  /** Default gates applied to tasks that name none (human-defined; part of the registry). */
   readonly defaultGates: readonly GateSpec[]
   /** Module ids that Workers may not change without a Human Gate. */
   readonly protectedModules: readonly string[]
+  /**
+   * Gate Registry: the only gate definitions a model-originated task may reference (by id).
+   * Human-edited through the privileged API/CLI; stored outside the worktree.
+   */
+  readonly gateRegistry?: readonly GateSpec[]
+  /** Verification-integrity policy; defaults apply when absent. */
+  readonly verification?: VerificationPolicy
+}
+
+/** What counts as a verification asset and what the Worker environment may not change. */
+export interface VerificationPolicy {
+  /** Globs of verification assets (tests, gate scripts, runner configs). Worker edits ⇒ integrity FAIL. */
+  readonly protectedPaths: readonly string[]
+  /** Ignored dependency/environment roots whose modification without a lockfile change ⇒ FAIL. */
+  readonly envRoots: readonly string[]
+  /** Lockfiles whose change legitimizes environment-root changes (surfaced, not failed). */
+  readonly lockfiles: readonly string[]
 }
 
 export type GoalStatus = 'active' | 'paused' | 'blocked' | 'complete' | 'failed'
@@ -103,6 +120,10 @@ export interface Attempt {
   readonly receiptId?: ReceiptId
   readonly verdict?: Verdict
   readonly failureSignature?: string
+  /** Git snapshot commit of the full working tree before the Worker ran. */
+  readonly baseSnapshot?: string
+  /** Snapshot after the Worker ran (what was verified). */
+  readonly afterSnapshot?: string
 }
 
 export interface Task {
@@ -122,10 +143,35 @@ export interface Task {
   readonly humanGateId?: HumanGateId
   /** Pending steer text for the next attempt (user "Steer"). */
   readonly steer?: string
+  /** Human-granted permissions for this task (never set by model tools). */
+  readonly grants?: TaskGrants
+  /** Pre-attempt gate run on the untouched tree: which named tests exist (anti-suppression). */
+  readonly baseline?: TaskBaseline
   /** Strategy chosen by the loop policy for the next attempt. */
   readonly nextStrategy?: RetryStrategy
   /** Set by Stop; the engine halts at the next checkpoint. */
   readonly stopRequested?: boolean
+}
+
+export interface TaskGrants {
+  /** Allow changes to verification assets; a PASS still requires human review of them. */
+  readonly mayModifyVerification?: boolean
+  /** Exact actions a human approved after the pre-tool guard blocked them. */
+  readonly approvedActions?: readonly ApprovedAction[]
+}
+
+export interface ApprovedAction {
+  /** Stable fingerprint of tool name + normalized arguments. */
+  readonly fingerprint: string
+  readonly summary: string
+  readonly approvedAt: IsoTime
+}
+
+export interface TaskBaseline {
+  readonly takenAt: IsoTime
+  readonly snapshot?: string
+  /** gateId → test identities observed (all outcomes) and their status. */
+  readonly gates: Record<string, { readonly status: GateStatus; readonly tests: readonly string[] }>
 }
 
 // ---------------------------------------------------------------- worker
@@ -186,6 +232,12 @@ export interface GateSpec {
   /** A non-required gate reports but cannot fail the verdict. */
   readonly required: boolean
   readonly parser?: GateParser
+  /** Files this gate depends on (scripts, configs); treated as protected verification assets. */
+  readonly assets?: readonly string[]
+  /** With a parser: fewer executed tests ⇒ FAIL. Zero tests always FAILs. */
+  readonly minTests?: number
+  /** Extra environment for the gate process (the rest is an allowlist, not inherited). */
+  readonly env?: Readonly<Record<string, string>>
 }
 
 export type GateStatus = 'pass' | 'fail' | 'error' | 'skipped'
@@ -199,6 +251,8 @@ export interface GateResult {
   readonly summary: string
   /** Last lines of output, for Worker feedback and humans. */
   readonly outputTail: string
+  /** Test identities with outcome, when the parser can extract them. */
+  readonly tests?: ReadonlyArray<{ readonly name: string; readonly ok: boolean }>
   /** Normalized failure identity used by the loop breaker; absent on pass. */
   readonly failureSignature?: string
   readonly details?: Record<string, unknown>
@@ -223,7 +277,32 @@ export interface Receipt {
   readonly changedFiles: readonly string[]
   readonly changedModules: readonly string[]
   readonly impactedModules: readonly string[]
+  /** Verification-integrity findings for this attempt. */
+  readonly integrity?: IntegrityReport
   readonly createdAt: IsoTime
+}
+
+export type IntegrityFindingKind =
+  | 'verification-asset-modified'
+  | 'package-scripts-modified'
+  | 'environment-modified'
+  | 'dependencies-changed'
+  | 'head-moved'
+  | 'baseline-test-missing'
+  | 'not-a-git-repository'
+
+export interface IntegrityFinding {
+  readonly kind: IntegrityFindingKind
+  /** `block` fails the verdict; `review` requires a human even on PASS; `info` is surfaced only. */
+  readonly severity: 'block' | 'review' | 'info'
+  readonly paths: readonly string[]
+  readonly detail: string
+}
+
+export interface IntegrityReport {
+  readonly baseSnapshot?: string
+  readonly afterSnapshot?: string
+  readonly findings: readonly IntegrityFinding[]
 }
 
 // ---------------------------------------------------------------- human gate
@@ -239,6 +318,8 @@ export type HumanGateReason =
   | 'repeated-failure'
   | 'protected-module'
   | 'worker-requested'
+  | 'verification-change'
+  | 'dangerous-action'
 
 export type HumanGateStatus = 'open' | 'approved' | 'rejected'
 

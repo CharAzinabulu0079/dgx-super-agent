@@ -16,7 +16,7 @@ export interface LoopInput {
   readonly task: Task
   /** Completed attempts including the one just verified (with verdict + signature). */
   readonly attempts: readonly Attempt[]
-  readonly receipt: Pick<Receipt, 'verdict' | 'reason' | 'changedModules'>
+  readonly receipt: Pick<Receipt, 'verdict' | 'reason' | 'changedModules' | 'integrity'>
   readonly lastReport?: WorkerReport
   readonly protectedModules: readonly string[]
 }
@@ -51,6 +51,10 @@ export function decideNext(input: LoopInput): LoopDecision {
   // gates say nothing about product direction or irreversible operations.
   if (lastReport?.human_required) {
     return { action: 'human_gate', reason: 'worker-requested', detail: lastReport.blocker ?? lastReport.summary ?? 'worker requested a human decision' }
+  }
+  const review = (receipt.integrity?.findings ?? []).filter(f => f.severity === 'review')
+  if (receipt.verdict === 'PASS' && review.length) {
+    return { action: 'human_gate', reason: 'verification-change', detail: `PASS depends on changed verification assets (human-granted): ${review.map(f => f.detail).join('; ')}` }
   }
   if (receipt.verdict === 'PASS') return { action: 'pass', reason: receipt.reason }
   if (attempts.length >= task.policy.maxAttempts) {

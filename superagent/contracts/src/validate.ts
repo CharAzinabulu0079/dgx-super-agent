@@ -90,6 +90,9 @@ export function parseGateSpec(value: unknown, path = 'gate'): GateSpec {
     timeoutMs: o.timeoutMs === undefined ? undefined : posInt(o.timeoutMs, `${path}.timeoutMs`),
     required: o.required !== false,
     parser: o.parser === undefined ? undefined : oneOf(o.parser, ['exit-code', 'node-test', 'playwright-json'] as const, `${path}.parser`),
+    assets: o.assets === undefined ? undefined : strList(o.assets, `${path}.assets`),
+    minTests: o.minTests === undefined ? undefined : posInt(o.minTests, `${path}.minTests`),
+    env: o.env === undefined ? undefined : Object.fromEntries(Object.entries(obj(o.env, `${path}.env`)).map(([k, v]) => [k, str(v, `${path}.env.${k}`)])),
   }
 }
 

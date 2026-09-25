@@ -28,6 +28,7 @@ export function buildWorkerPrompt(input: Omit<WorkerRunInput, 'report' | 'signal
     lines.push('', '## Previous attempts (independent verifier results)')
     for (const f of shown) {
       lines.push(`### Attempt ${f.attempt} — ${f.verdict}: ${f.reason}${f.claimOverruled ? ' (the Worker claimed PASS; the gates disagreed)' : ''}`)
+      for (const finding of f.integrity ?? []) lines.push(`- INTEGRITY ${finding}. Revert those changes: verification assets and the environment are not yours to change.`)
       for (const g of f.failingGates) {
         lines.push(`- ${g.gateId}: ${g.status} — ${g.summary}`)
         if (g.outputTail) lines.push('```', g.outputTail.split('\n').slice(strategy === 'fresh-context' ? -15 : -40).join('\n'), '```')

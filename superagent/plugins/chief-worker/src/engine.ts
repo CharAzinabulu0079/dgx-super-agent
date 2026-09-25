@@ -9,11 +9,12 @@
 import type { Attempt, GateSpec, HumanGate, Project, Receipt, RetryStrategy, Task, WorkerClaim, WorkerReport } from '@superagent/contracts'
 import { TERMINAL_TASK_STATES, now, parseWorkerReport } from '@superagent/contracts'
 import type { StateStore } from '@superagent/project-state'
-import { receiptSignature, type Verifier } from '@superagent/verifier'
+import { checkIntegrity, createMarker, headOf, isGitWorkTree, receiptSignature, snapshotCommit, changedBetween, type Verifier } from '@superagent/verifier'
 import { availableStrategies, decideNext, type LoopDecision } from '@superagent/loop-policy'
 import { modelForStrategy } from '@superagent/model-policy'
 import type { AttemptFeedback, WorkerExecutor } from './executor.ts'
-import { diffSnapshots, snapshotTree } from './git.ts'
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 
 /** Optional Architecture Observatory hooks (Phase C). */
 export interface ArchitectureHooks {
@@ -105,6 +106,16 @@ export class LoopEngine {
       let task = this.store.requireTask(projectId, taskId)
       if (TERMINAL_TASK_STATES.includes(task.state) || task.state === 'human_gate') return { task, receipts }
       if (task.stopRequested) return { task: this.store.updateTask(projectId, taskId, { state: 'stopped' }), receipts }
+      const git = isGitWorkTree(project.root)
+      if (!task.baseline) {
+        // Task-level baseline: the tree before any Worker touched it, plus the named tests
+        // that exist. Integrity and anti-suppression compare every attempt against it.
+        const snapshot = git ? snapshotCommit(project.root, `${taskId}/baseline`) : undefined
+        const baseline = await this.verifier.baseline(task, project.root, this.gatesFor(project, task), snapshot)
+        task = this.store.updateTask(projectId, taskId, { baseline })
+      }
+      const markerDir = join(this.store.home, 'runtime', 'markers')
+      mkdirSync(markerDir, { recursive: true })
 
       for (;;) {
         const strategy: RetryStrategy = task.nextStrategy ?? availableStrategies(task)[0] ?? 'retry-with-feedback'
@@ -115,7 +126,11 @@ export class LoopEngine {
         const steer = task.steer
         task = this.store.updateTask(projectId, taskId, { state: 'executing', attempts: [...task.attempts, attempt], steer: undefined })
 
-        const before = snapshotTree(project.root)
+        const headBefore = git ? headOf(project.root) : undefined
+        const baseSnapshot = git ? snapshotCommit(project.root, `${taskId}/${n}-base`) : undefined
+        const marker = createMarker(markerDir)
+        task = this.closeAttempt(task, { baseSnapshot })
+        task = this.store.updateTask(projectId, taskId, { attempts: task.attempts })
         const previous = task.attempts.at(-2)
         const previousSessionId = previous ? this.store.getWorker(projectId, previous.workerId)?.sessionId : undefined
         this.store.updateWorker(projectId, worker.id, { status: 'running' })
@@ -145,7 +160,8 @@ export class LoopEngine {
         const reports = this.store.readReports(projectId, worker.id)
         const lastReport = reports.at(-1)
         const claim = workerClaim(reports)
-        const changedFiles = diffSnapshots(before, snapshotTree(project.root), project.root)
+        const afterSnapshot = git ? snapshotCommit(project.root, `${taskId}/${n}-after`) : undefined
+        const changedFiles = baseSnapshot && afterSnapshot ? changedBetween(project.root, baseSnapshot, afterSnapshot) : []
         const reportedModules = [...new Set(reports.flatMap(r => r.changed_modules))]
         const detectedModules = this.architecture?.modulesForFiles(project, changedFiles) ?? []
         const changedModules = [...new Set([...detectedModules, ...reportedModules])].sort()
@@ -153,9 +169,15 @@ export class LoopEngine {
 
         task = this.store.updateTask(projectId, taskId, { state: 'verifying' })
         const gates = this.gatesFor(project, task)
+        // Protected assets are judged against the task baseline, not this attempt's start,
+        // so tampering in one attempt cannot become the "clean" base of the next.
+        const integrity = checkIntegrity({
+          root: project.root, baseSnapshot: task.baseline?.snapshot, afterSnapshot, headBefore, marker,
+          gates, policy: project.verification, grants: task.grants,
+        })
         const draft = await this.verifier.verify({
           task, projectRoot: project.root, attempt: n, gates, workerClaim: claim, model, strategy,
-          changedFiles, changedModules, impactedModules, signal: controller.signal,
+          changedFiles, changedModules, impactedModules, integrity, baseline: task.baseline, signal: controller.signal,
         })
         // Gates are the authority even when the Worker process crashed or timed out.
         const receipt = this.store.createReceipt(draft)
@@ -166,7 +188,7 @@ export class LoopEngine {
         await this.architecture?.refresh?.(project)
 
         task = this.closeAttempt(this.store.requireTask(projectId, taskId), {
-          endedAt: now(), receiptId: receipt.id, verdict: receipt.verdict, failureSignature: receiptSignature(receipt),
+          endedAt: now(), receiptId: receipt.id, verdict: receipt.verdict, failureSignature: receiptSignature(receipt), afterSnapshot,
         })
         task = this.store.updateTask(projectId, taskId, { attempts: task.attempts })
 
@@ -224,7 +246,9 @@ export class LoopEngine {
     if (task.state !== 'human_gate' || task.humanGateId !== gateId) return task
     if (decision === 'rejected') return this.store.updateTask(projectId, task.id, { state: 'failed' })
     const last = task.attempts.at(-1)
-    if (gate.reason === 'protected-module' && last?.verdict === 'PASS') return this.store.updateTask(projectId, task.id, { state: 'passed' })
+    if ((gate.reason === 'protected-module' || gate.reason === 'verification-change') && last?.verdict === 'PASS') {
+      return this.store.updateTask(projectId, task.id, { state: 'passed', grants: { ...task.grants, mayModifyVerification: gate.reason === 'verification-change' ? true : task.grants?.mayModifyVerification } })
+    }
     return this.store.updateTask(projectId, task.id, {
       state: 'pending',
       steer: resolution || undefined,
@@ -274,6 +298,7 @@ export class LoopEngine {
         return {
           attempt: a.n, strategy: a.strategy, verdict: r.verdict, reason: r.reason, workerClaim: r.workerClaim, claimOverruled: r.claimOverruled,
           failingGates: r.gateResults.filter(g => g.status !== 'pass').map(g => ({ gateId: g.gateId, status: g.status, summary: g.summary, outputTail: g.outputTail })),
+          integrity: (r.integrity?.findings ?? []).filter(f => f.severity !== 'info').map(f => `${f.severity}: ${f.detail}`),
         }
       })
   }

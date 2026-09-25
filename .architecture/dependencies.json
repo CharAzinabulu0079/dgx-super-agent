@@ -90,11 +90,12 @@
     {
       "from": "chief-worker",
       "to": "project-state",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/chief-worker/src/engine.ts → @superagent/project-state",
+        "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts → @superagent/project-state",
         "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/project-state",
         "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/project-state"
       ]
@@ -102,11 +103,12 @@
     {
       "from": "chief-worker",
       "to": "testkit",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/chief-worker/src/dsh-process.ts → @superagent/testkit",
+        "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts → @superagent/testkit",
         "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/testkit",
         "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/testkit"
       ]
@@ -114,11 +116,12 @@
     {
       "from": "chief-worker",
       "to": "verifier",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/chief-worker/src/engine.ts → @superagent/verifier",
+        "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts → @superagent/verifier",
         "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/verifier",
         "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/verifier"
       ]
@@ -484,12 +487,13 @@
     {
       "from": "verifier",
       "to": "contracts",
-      "weight": 4,
+      "weight": 5,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/verifier/src/command.ts → @superagent/contracts",
         "superagent/plugins/verifier/src/hygiene.ts → @superagent/contracts",
+        "superagent/plugins/verifier/src/integrity.ts → @superagent/contracts",
         "superagent/plugins/verifier/src/verifier.ts → @superagent/contracts",
         "superagent/plugins/verifier/test/verifier.test.ts → @superagent/contracts"
       ]

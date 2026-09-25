@@ -12,6 +12,34 @@ import { parseGateSpec } from '@superagent/contracts'
 import { resolveTaskPolicy, formatModel } from '@superagent/model-policy'
 import type { LoopEngine } from './engine.ts'
 
+/** Who is creating a task. Only a human may define new gate commands (Gate Registry rule). */
+export type Actor = 'human' | 'agent'
+
+export class GateRegistryError extends Error {}
+
+/** Registry = human-defined project gates (`gateRegistry` ∪ `defaultGates`), by id. */
+export function gateRegistry(project: Project): Map<string, GateSpec> {
+  return new Map([...project.defaultGates, ...(project.gateRegistry ?? [])].map(g => [g.id, g]))
+}
+
+/**
+ * Resolve task gates. Agents (Chief model tools) may only reference registry ids;
+ * an arbitrary model-written shell command never becomes a trusted gate.
+ */
+export function resolveGates(project: Project, gates: readonly unknown[], actor: Actor): GateSpec[] {
+  const registry = gateRegistry(project)
+  return gates.map((g, i) => {
+    const ref = typeof g === 'string' ? g : (g !== null && typeof g === 'object' && Object.keys(g).length === 1 && typeof (g as { id?: unknown }).id === 'string') ? (g as { id: string }).id : undefined
+    if (ref !== undefined) {
+      const spec = registry.get(ref)
+      if (!spec) throw new GateRegistryError(`gate "${ref}" is not in the project gate registry (${[...registry.keys()].join(', ') || 'empty'})`)
+      return spec
+    }
+    if (actor !== 'human') throw new GateRegistryError(`gates[${i}]: agents may only reference registry gate ids; inline gate definitions require a human`)
+    return parseGateSpec(g, `gates[${i}]`)
+  })
+}
+
 export interface TaskInput {
   readonly title: string
   readonly instructions: string
@@ -39,10 +67,10 @@ export class Chief {
     return this.store.createGoal(projectId, objective)
   }
 
-  addTask(projectId: string, goalId: string, input: TaskInput): Task {
+  addTask(projectId: string, goalId: string, input: TaskInput, actor: Actor = 'human'): Task {
     const project = this.store.requireProject(projectId)
     if (!this.store.getGoal(projectId, goalId)) throw new Error(`goal ${goalId} not found`)
-    const gates: GateSpec[] = (input.gates ?? []).map((g, i) => parseGateSpec(g, `gates[${i}]`))
+    const gates: GateSpec[] = resolveGates(project, input.gates ?? [], actor)
     return this.store.createTask({
       projectId, goalId,
       title: input.title,

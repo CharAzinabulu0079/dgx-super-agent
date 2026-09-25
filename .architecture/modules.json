@@ -84,7 +84,7 @@
     "description": "Independent gates and receipts; Worker claims never PASS",
     "protected": true,
     "declared": true,
-    "files": 7,
+    "files": 8,
     "gates": [
       "unit"
     ],
@@ -211,6 +211,7 @@
       "ADR-0004"
     ],
     "tests": [
+      "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts",
       "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts",
       "superagent/plugins/chief-worker/test/loop.test.ts"
     ],

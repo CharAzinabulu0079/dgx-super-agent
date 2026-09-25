@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T17:20:54.697Z",
-  "commit": "a39dc21",
+  "generatedAt": "2026-09-25T19:51:31.363Z",
+  "commit": "3f11676",
   "layers": [
     "foundation",
     "capability",
@@ -17,7 +17,8 @@
       "layer": "foundation",
       "root": "superagent/contracts",
       "status": [
-        "protected"
+        "protected",
+        "changing"
       ],
       "files": 5,
       "declared": true,
@@ -125,9 +126,10 @@
       "layer": "capability",
       "root": "superagent/plugins/verifier",
       "status": [
-        "protected"
+        "protected",
+        "changing"
       ],
-      "files": 7,
+      "files": 8,
       "declared": true,
       "protected": true,
       "dependsOn": [
@@ -161,7 +163,7 @@
       "layer": "capability",
       "root": "superagent/plugins/loop-policy",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 4,
       "declared": true,
@@ -288,7 +290,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/chief-worker",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 11,
       "declared": true,
@@ -316,6 +318,7 @@
         "ADR-0004"
       ],
       "tests": [
+        "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts",
         "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts",
         "superagent/plugins/chief-worker/test/loop.test.ts"
       ],
@@ -583,11 +586,12 @@
     {
       "from": "chief-worker",
       "to": "project-state",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/chief-worker/src/engine.ts → @superagent/project-state",
+        "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts → @superagent/project-state",
         "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/project-state",
         "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/project-state"
       ]
@@ -595,11 +599,12 @@
     {
       "from": "chief-worker",
       "to": "testkit",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/chief-worker/src/dsh-process.ts → @superagent/testkit",
+        "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts → @superagent/testkit",
         "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/testkit",
         "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/testkit"
       ]
@@ -607,11 +612,12 @@
     {
       "from": "chief-worker",
       "to": "verifier",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/chief-worker/src/engine.ts → @superagent/verifier",
+        "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts → @superagent/verifier",
         "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/verifier",
         "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/verifier"
       ]
@@ -977,12 +983,13 @@
     {
       "from": "verifier",
       "to": "contracts",
-      "weight": 4,
+      "weight": 5,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/verifier/src/command.ts → @superagent/contracts",
         "superagent/plugins/verifier/src/hygiene.ts → @superagent/contracts",
+        "superagent/plugins/verifier/src/integrity.ts → @superagent/contracts",
         "superagent/plugins/verifier/src/verifier.ts → @superagent/contracts",
         "superagent/plugins/verifier/test/verifier.test.ts → @superagent/contracts"
       ]
@@ -1002,11 +1009,48 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "CURRENT_STATE.md"
+      "DECISIONS.md",
+      "pnpm-lock.yaml",
+      "superagent/contracts/src/types.ts",
+      "superagent/contracts/src/validate.ts",
+      "superagent/plugins/chief-worker/src/chief.ts",
+      "superagent/plugins/chief-worker/src/engine.ts",
+      "superagent/plugins/chief-worker/src/executor.ts",
+      "superagent/plugins/chief-worker/src/git.ts",
+      "superagent/plugins/chief-worker/src/index.ts",
+      "superagent/plugins/chief-worker/src/prompt.ts",
+      "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts",
+      "superagent/plugins/loop-policy/src/policy.ts",
+      "superagent/plugins/verifier/package.json",
+      "superagent/plugins/verifier/src/command.ts",
+      "superagent/plugins/verifier/src/index.ts",
+      "superagent/plugins/verifier/src/integrity.ts",
+      "superagent/plugins/verifier/src/verifier.ts"
     ],
-    "modules": [],
-    "impacted": [],
-    "gates": []
+    "modules": [
+      "chief-worker",
+      "contracts",
+      "loop-policy",
+      "verifier"
+    ],
+    "impacted": [
+      "architecture-observatory",
+      "cli",
+      "dsh-bundle",
+      "evals",
+      "learning",
+      "model-policy",
+      "project-state",
+      "server"
+    ],
+    "gates": [
+      "architecture",
+      "e2e-ui",
+      "evals",
+      "smoke-dsh",
+      "typecheck",
+      "unit"
+    ]
   },
   "services": [
     {
@@ -1081,9 +1125,9 @@
     }
   ],
   "stats": {
-    "files": 110,
+    "files": 112,
     "modules": 15,
     "edges": 47,
-    "scanMs": 576
+    "scanMs": 574
   }
 }
