@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T20:27:38.794Z",
-  "commit": "59c2cd3",
+  "generatedAt": "2026-09-25T20:31:19.575Z",
+  "commit": "46536ed",
   "layers": [
     "foundation",
     "capability",
@@ -1086,11 +1086,8 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "ARCHITECTURE.md",
       "CURRENT_STATE.md",
-      "NEXT_STEPS.md",
-      "README.md",
-      "SETUP_DGX.md"
+      "REDTEAM_REPORT.md"
     ],
     "modules": [],
     "impacted": [],
