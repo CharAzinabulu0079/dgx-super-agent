@@ -31,6 +31,8 @@ export interface WorkerRunInput {
   readonly steer?: string
   /** Human-approved project memory (promoted Learning items). */
   readonly memory?: readonly string[]
+  /** Promoted (or, during replay, candidate) skills/procedures. */
+  readonly skills?: ReadonlyArray<{ readonly name: string; readonly body: string }>
   /** Pre-tool policy the Worker's tool calls are judged by (enforced inside DSH by the bundle guard). */
   readonly toolPolicy?: ToolPolicy
   /** SuperAgent state home, so out-of-process Workers can report into the store. */

@@ -9,11 +9,11 @@
   "dependencies": {
     "@superagent/contracts": "workspace:*",
     "@superagent/project-state": "workspace:*",
-    "@superagent/verifier": "workspace:*"
+    "@superagent/verifier": "workspace:*",
+    "@superagent/chief-worker": "workspace:*"
   },
   "devDependencies": {
     "@superagent/testkit": "workspace:*",
-    "@superagent/chief-worker": "workspace:*",
     "@superagent/server": "workspace:*"
   }
 }

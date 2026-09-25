@@ -12,6 +12,7 @@
     "@superagent/architecture-observatory": "workspace:*",
     "@superagent/server": "workspace:*",
     "@superagent/testkit": "workspace:*",
-    "@playwright/test": "1.56.1"
+    "@playwright/test": "1.56.1",
+    "@superagent/learning": "workspace:*"
   }
 }

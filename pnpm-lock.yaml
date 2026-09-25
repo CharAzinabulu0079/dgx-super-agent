@@ -95,6 +95,9 @@ importers:
       '@superagent/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@superagent/learning':
+        specifier: workspace:*
+        version: link:../plugins/learning
       '@superagent/project-state':
         specifier: workspace:*
         version: link:../plugins/project-state
@@ -168,6 +171,9 @@ importers:
 
   superagent/plugins/learning:
     dependencies:
+      '@superagent/chief-worker':
+        specifier: workspace:*
+        version: link:../chief-worker
       '@superagent/contracts':
         specifier: workspace:*
         version: link:../../contracts
@@ -178,9 +184,6 @@ importers:
         specifier: workspace:*
         version: link:../verifier
     devDependencies:
-      '@superagent/chief-worker':
-        specifier: workspace:*
-        version: link:../chief-worker
       '@superagent/server':
         specifier: workspace:*
         version: link:../../server

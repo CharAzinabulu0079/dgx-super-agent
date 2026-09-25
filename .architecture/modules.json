@@ -176,11 +176,11 @@
       "superagent/plugins/learning/**"
     ],
     "packageName": "@superagent/learning",
-    "layer": "capability",
-    "description": "Memory/Skill candidates → eval → promote",
+    "layer": "orchestration",
+    "description": "Reflection (rules + DSH LLM) → candidates → fresh-replay eval → compare → governed promotion",
     "protected": false,
     "declared": true,
-    "files": 4,
+    "files": 7,
     "gates": [
       "unit"
     ],
@@ -200,7 +200,7 @@
     ],
     "packageName": "@superagent/chief-worker",
     "layer": "orchestration",
-    "description": "LoopEngine, Chief, Worker executors (DSH headless)",
+    "description": "LoopEngine, Chief, Worker executors, pre-tool policy wiring, Chief auto-wake",
     "protected": false,
     "declared": true,
     "files": 13,
@@ -319,7 +319,7 @@
     "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
     "protected": false,
     "declared": true,
-    "files": 8,
+    "files": 9,
     "gates": [
       "evals"
     ],
@@ -329,6 +329,7 @@
       "superagent/evals/test/chief-autowake.integration.test.ts",
       "superagent/evals/test/chief-tools.integration.test.ts",
       "superagent/evals/test/dsh-browser-worker.integration.test.ts",
+      "superagent/evals/test/learning-replay.integration.test.ts",
       "superagent/evals/test/model-route.integration.test.ts",
       "superagent/evals/test/pre-tool-guard.integration.test.ts",
       "superagent/evals/test/ui.e2e.test.ts"

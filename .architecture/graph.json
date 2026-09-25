@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T20:03:50.488Z",
-  "commit": "c109a58",
+  "generatedAt": "2026-09-25T20:09:40.119Z",
+  "commit": "8f59338",
   "layers": [
     "foundation",
     "capability",
@@ -88,7 +88,7 @@
       "layer": "capability",
       "root": "superagent/plugins/project-state",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 4,
       "declared": true,
@@ -125,8 +125,7 @@
       "layer": "capability",
       "root": "superagent/plugins/verifier",
       "status": [
-        "protected",
-        "changing"
+        "protected"
       ],
       "files": 8,
       "declared": true,
@@ -162,7 +161,7 @@
       "layer": "capability",
       "root": "superagent/plugins/loop-policy",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 7,
       "declared": true,
@@ -255,12 +254,12 @@
     {
       "id": "learning",
       "label": "learning",
-      "layer": "capability",
+      "layer": "orchestration",
       "root": "superagent/plugins/learning",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 4,
+      "files": 7,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -272,6 +271,7 @@
         "verifier"
       ],
       "usedBy": [
+        "evals",
         "server"
       ],
       "gates": [
@@ -282,7 +282,7 @@
         "superagent/plugins/learning/test/learning.test.ts"
       ],
       "entry": "superagent/plugins/learning/src/index.ts",
-      "description": "Memory/Skill candidates → eval → promote",
+      "description": "Reflection (rules + DSH LLM) → candidates → fresh-replay eval → compare → governed promotion",
       "drift": []
     },
     {
@@ -325,7 +325,7 @@
         "superagent/plugins/chief-worker/test/loop.test.ts"
       ],
       "entry": "superagent/plugins/chief-worker/src/index.ts",
-      "description": "LoopEngine, Chief, Worker executors (DSH headless)",
+      "description": "LoopEngine, Chief, Worker executors, pre-tool policy wiring, Chief auto-wake",
       "drift": []
     },
     {
@@ -450,11 +450,12 @@
       "status": [
         "changing"
       ],
-      "files": 8,
+      "files": 9,
       "declared": true,
       "protected": false,
       "dependsOn": [
         "chief-worker",
+        "learning",
         "project-state",
         "server",
         "testkit",
@@ -470,6 +471,7 @@
         "superagent/evals/test/chief-autowake.integration.test.ts",
         "superagent/evals/test/chief-tools.integration.test.ts",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts",
+        "superagent/evals/test/learning-replay.integration.test.ts",
         "superagent/evals/test/model-route.integration.test.ts",
         "superagent/evals/test/pre-tool-guard.integration.test.ts",
         "superagent/evals/test/ui.e2e.test.ts"
@@ -736,7 +738,7 @@
     {
       "from": "evals",
       "to": "chief-worker",
-      "weight": 7,
+      "weight": 8,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -744,7 +746,17 @@
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/chief-worker",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/chief-worker"
+        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/chief-worker"
+      ]
+    },
+    {
+      "from": "evals",
+      "to": "learning",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/learning"
       ]
     },
     {
@@ -763,21 +775,21 @@
     {
       "from": "evals",
       "to": "server",
-      "weight": 5,
+      "weight": 6,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/server",
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/server",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server",
-        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/server",
-        "superagent/evals/test/ui.e2e.test.ts → @superagent/server"
+        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/server",
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/server"
       ]
     },
     {
       "from": "evals",
       "to": "testkit",
-      "weight": 7,
+      "weight": 8,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -785,7 +797,7 @@
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/testkit",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/testkit"
+        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/testkit"
       ]
     },
     {
@@ -804,31 +816,37 @@
     {
       "from": "learning",
       "to": "chief-worker",
-      "weight": 1,
+      "weight": 3,
       "typeOnly": false,
-      "testOnly": true,
+      "testOnly": false,
       "evidence": [
+        "superagent/plugins/learning/src/reflector.ts → @superagent/chief-worker",
+        "superagent/plugins/learning/src/replay.ts → @superagent/chief-worker",
         "superagent/plugins/learning/test/learning.test.ts → @superagent/chief-worker"
       ]
     },
     {
       "from": "learning",
       "to": "contracts",
-      "weight": 1,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/plugins/learning/src/learning.ts → @superagent/contracts"
+        "superagent/plugins/learning/src/evolution.ts → @superagent/contracts",
+        "superagent/plugins/learning/src/learning.ts → @superagent/contracts",
+        "superagent/plugins/learning/src/replay.ts → @superagent/contracts"
       ]
     },
     {
       "from": "learning",
       "to": "project-state",
-      "weight": 1,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/plugins/learning/src/learning.ts → @superagent/project-state"
+        "superagent/plugins/learning/src/learning.ts → @superagent/project-state",
+        "superagent/plugins/learning/src/reflector.ts → @superagent/project-state",
+        "superagent/plugins/learning/src/replay.ts → @superagent/project-state"
       ]
     },
     {
@@ -854,11 +872,12 @@
     {
       "from": "learning",
       "to": "verifier",
-      "weight": 1,
+      "weight": 2,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/plugins/learning/src/learning.ts → @superagent/verifier"
+        "superagent/plugins/learning/src/learning.ts → @superagent/verifier",
+        "superagent/plugins/learning/src/replay.ts → @superagent/verifier"
       ]
     },
     {
@@ -1038,32 +1057,32 @@
     "base": "HEAD",
     "files": [
       "DECISIONS.md",
+      "pnpm-lock.yaml",
       "superagent/cli/src/main.ts",
-      "superagent/evals/test/chief-autowake.integration.test.ts",
-      "superagent/plugins/chief-worker/src/chief-wake.ts",
-      "superagent/plugins/chief-worker/src/dsh-process.ts",
-      "superagent/plugins/chief-worker/src/index.ts",
-      "superagent/plugins/chief-worker/test/chief-wake.test.ts",
-      "superagent/plugins/loop-policy/src/index.ts",
-      "superagent/plugins/loop-policy/src/wake-policy.ts",
-      "superagent/plugins/project-state/src/store.ts",
-      "superagent/plugins/verifier/src/verifier.ts",
-      "superagent/server/src/dsh-setup.ts",
-      "superagent/server/src/http.ts"
+      "superagent/evals/package.json",
+      "superagent/evals/test/learning-replay.integration.test.ts",
+      "superagent/plugins/chief-worker/src/engine.ts",
+      "superagent/plugins/chief-worker/src/executor.ts",
+      "superagent/plugins/chief-worker/src/prompt.ts",
+      "superagent/plugins/learning/package.json",
+      "superagent/plugins/learning/src/evolution.ts",
+      "superagent/plugins/learning/src/index.ts",
+      "superagent/plugins/learning/src/learning.ts",
+      "superagent/plugins/learning/src/reflector.ts",
+      "superagent/plugins/learning/src/replay.ts",
+      "superagent/plugins/learning/test/learning.test.ts",
+      "superagent/server/src/http.ts",
+      "superagent/server/src/runtime.ts"
     ],
     "modules": [
       "chief-worker",
       "cli",
       "evals",
-      "loop-policy",
-      "project-state",
-      "server",
-      "verifier"
+      "learning",
+      "server"
     ],
     "impacted": [
       "architecture-observatory",
-      "dsh-bundle",
-      "learning",
       "model-policy"
     ],
     "gates": [
@@ -1147,9 +1166,9 @@
     }
   ],
   "stats": {
-    "files": 119,
+    "files": 123,
     "modules": 15,
-    "edges": 48,
-    "scanMs": 551
+    "edges": 49,
+    "scanMs": 554
   }
 }

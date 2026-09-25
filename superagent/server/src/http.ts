@@ -204,7 +204,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   route('POST', '/api/learning/:cid/evaluate', ({ params }) => runtime.learning.evaluate(params.cid!))
   route('POST', '/api/learning/:cid/decide', ({ params, body }) => {
     if (typeof body?.approved !== 'boolean') throw new HttpError(400, 'approved (boolean) is required')
-    return runtime.learning.decideMemory(params.cid!, body.approved, String(body.note ?? ''))
+    return runtime.learning.decide(params.cid!, body.approved, String(body.note ?? ''))
   }, 'human')
 
   // ---------------------------------------------------------------- architecture

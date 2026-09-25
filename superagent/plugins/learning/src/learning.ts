@@ -1,59 +1,42 @@
 /**
- * Memory / Skill Learning v1 (Freeze §10). Hermes-style ideas, no second core.
+ * Learning v2 (Directive §4.D/§4.E) on the evolution contract:
  *
- *   Execution trace → Reflect/Extract → Candidate → Replay/Eval → PASS? → Promote | Archive
+ *   Execution trace → Reflect (rules + LLM) → Candidate
+ *     → Eval (fresh replay: baseline arm vs candidate arm) → Compare
+ *     → Promote (per-kind governance) | Reject (archived with reason)
  *
- * Four stores stay separate: Memory (facts/preferences/lessons), Skill (repeatable
- * procedures), Architecture (.architecture/), ADR (DECISIONS.md). Invariants:
- *   - a Skill is promoted only after its eval gates PASS on the recorded evidence;
- *   - a Memory item is promoted only by an explicit human approval;
- *   - nothing an Agent "feels" is good becomes formal knowledge directly.
+ * Memory, Skill, Architecture and ADRs stay separate stores (Freeze §10.1). Nothing a
+ * model proposes becomes active knowledge without evidence and/or a human.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { newId, now, type GateSpec, type GateResult } from '@superagent/contracts'
+import { newId, now } from '@superagent/contracts'
 import type { StateStore } from '@superagent/project-state'
 import type { Verifier } from '@superagent/verifier'
+import { compareArms, mayPromote, type ArmResult, type Candidate, type CandidateStatus, type EvalRecord, type Evidence, type EvolutionKind } from './evolution.ts'
+import { replayArm, type ReplayOptions } from './replay.ts'
+import type { ProposedCandidate } from './reflector.ts'
 
-export type CandidateKind = 'skill' | 'memory'
-export type CandidateStatus = 'candidate' | 'evaluating' | 'promoted' | 'archived'
+export type { Candidate, CandidateStatus, Evidence }
 
-export interface Evidence {
-  readonly projectId: string
-  readonly taskId: string
-  readonly receiptIds: readonly string[]
-  readonly failureSignatures: readonly string[]
-}
-
-export interface Candidate {
-  readonly id: string
-  readonly kind: CandidateKind
-  /** Skill name (kebab) or memory key. */
-  readonly name: string
-  readonly description: string
-  /** Skill: markdown procedure. Memory: the fact/preference/lesson text. */
-  readonly body: string
-  readonly scope: 'project' | 'global'
-  readonly evidence: Evidence
-  /** Skill replay/eval gates, run against the evidence project. */
-  readonly evalGates: readonly GateSpec[]
-  readonly status: CandidateStatus
-  readonly createdAt: string
-  readonly updatedAt: string
-  readonly evalResults?: readonly GateResult[]
-  readonly decision?: string
-}
+type Draft = Omit<Candidate, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'evals'>
 
 export interface Extractor {
   /** Propose candidates from one finished task's trace. Must not promote. */
-  extract(input: { store: StateStore; projectId: string; taskId: string }): Array<Omit<Candidate, 'id' | 'status' | 'createdAt' | 'updatedAt'>>
+  extract(input: { store: StateStore; projectId: string; taskId: string }): Draft[] | Promise<Draft[]>
+}
+
+function evidenceOf(store: StateStore, projectId: string, taskId: string): Evidence | undefined {
+  const task = store.requireTask(projectId, taskId)
+  const receipts = store.listReceipts(projectId, taskId).sort((a, b) => a.attempt - b.attempt)
+  if (!receipts.length) return undefined
+  const signatures = [...new Set(receipts.flatMap(r => r.gateResults.filter(g => g.failureSignature).map(g => g.failureSignature!)))]
+  return { projectId, taskId, receiptIds: receipts.map(r => r.id), failureSignatures: signatures, snapshot: task.baseline?.snapshot }
 }
 
 /**
- * Deterministic v0.1 extractor: a task that PASSed after failing attempts yields
- * (a) a Memory "lesson" linking the failure signature to what fixed it, and
- * (b) a Skill candidate "reproduce-and-fix" whose eval is the task's own gates.
- * An LLM reflector (DSH session) can implement the same interface later.
+ * Deterministic extractor: a task that PASSed after failing attempts yields a Memory
+ * lesson and a Skill candidate describing what finally worked.
  */
 export const traceExtractor: Extractor = {
   extract({ store, projectId, taskId }) {
@@ -62,27 +45,25 @@ export const traceExtractor: Extractor = {
     const receipts = store.listReceipts(projectId, taskId).sort((a, b) => a.attempt - b.attempt)
     const failed = receipts.filter(r => r.verdict === 'FAIL')
     const passed = receipts.find(r => r.verdict === 'PASS')
-    if (!failed.length || !passed) return []
+    const evidence = evidenceOf(store, projectId, taskId)
+    if (!failed.length || !passed || !evidence) return []
     const project = store.requireProject(projectId)
     const lastWorker = task.attempts.at(-1)?.workerId
-    const fixSummary = lastWorker ? (store.readReports(projectId, lastWorker).at(-1)?.summary ?? '') : ''
-    const signatures = [...new Set(failed.flatMap(r => r.gateResults.filter(g => g.failureSignature).map(g => g.failureSignature!)))]
+    const fixSummary = lastWorker ? (store.readReports(projectId, lastWorker).filter(r => r.kind !== 'progress').at(-1)?.summary ?? '') : ''
     const failingGates = [...new Set(failed.flatMap(r => r.gateResults.filter(g => g.status !== 'pass').map(g => `${g.gateId}: ${g.summary}`)))]
-    const evidence: Evidence = { projectId, taskId, receiptIds: receipts.map(r => r.id), failureSignatures: signatures }
     const gates = task.gates.length ? task.gates : project.defaultGates
     const slug = task.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'task'
     return [
       {
-        kind: 'memory', name: `lesson-${slug}`, scope: 'project', evidence, evalGates: [],
+        kind: 'memory', name: `lesson-${slug}`, scope: 'project', evidence, source: 'trace-rule',
         description: `Lesson from "${task.title}" (${failed.length} failed attempt(s) before PASS)`,
         body: `When ${failingGates.join('; ')} — the fix that passed independent verification was: ${fixSummary || `changes to ${passed.changedFiles.join(', ')}`}. Strategy that worked: ${task.attempts.at(-1)?.strategy}.`,
       },
       {
-        kind: 'skill', name: `fix-${slug}`, scope: 'project', evidence, evalGates: gates,
+        kind: 'skill', name: `fix-${slug}`, scope: 'project', evidence, source: 'trace-rule',
         description: `Procedure that turned "${task.title}" green`,
         body: [
-          `# fix-${slug}`, '', `Use when: ${failingGates.join('; ')}`, '',
-          '## Procedure',
+          `Use when: ${failingGates.join('; ')}`,
           `1. Reproduce with the gates: ${gates.map(g => `\`${g.command ?? g.kind}\``).join(', ')}.`,
           `2. Focus on: ${passed.changedModules.join(', ') || passed.changedFiles.join(', ')}.`,
           `3. Known fix: ${fixSummary || 'see evidence receipts'}.`,
@@ -93,6 +74,20 @@ export const traceExtractor: Extractor = {
   },
 }
 
+/** Adapts an LLM reflector (e.g. DshReflector) to the Extractor interface. */
+export function llmExtractor(reflector: { propose(store: StateStore, projectId: string, taskId: string): Promise<ProposedCandidate[]> }): Extractor {
+  return {
+    async extract({ store, projectId, taskId }) {
+      const evidence = evidenceOf(store, projectId, taskId)
+      if (!evidence) return []
+      const proposals = await reflector.propose(store, projectId, taskId)
+      return proposals.map(p => ({ ...p, scope: 'project' as const, evidence, source: 'llm-reflection' as const }))
+    },
+  }
+}
+
+const DIRS = { candidate: 'candidates', evaluating: 'candidates', promoted: 'promoted', rejected: 'archived', archived: 'archived' } as const
+
 export class LearningStore {
   readonly root: string
   constructor(home: string) {
@@ -100,25 +95,24 @@ export class LearningStore {
     for (const d of ['candidates', 'promoted', 'archived']) mkdirSync(join(this.root, d), { recursive: true })
   }
 
-  private path(status: 'candidates' | 'promoted' | 'archived', id: string): string { return join(this.root, status, `${id}.json`) }
+  private path(dir: string, id: string): string { return join(this.root, dir, `${id}.json`) }
 
   private write(c: Candidate): Candidate {
-    const dir = c.status === 'promoted' ? 'promoted' : c.status === 'archived' ? 'archived' : 'candidates'
-    const tmp = `${this.path(dir, c.id)}.tmp`
-    writeFileSync(tmp, `${JSON.stringify(c, null, 2)}\n`)
-    renameSync(tmp, this.path(dir, c.id))
+    const file = this.path(DIRS[c.status], c.id)
+    writeFileSync(`${file}.tmp`, `${JSON.stringify(c, null, 2)}\n`)
+    renameSync(`${file}.tmp`, file)
     return c
   }
 
-  add(input: Omit<Candidate, 'id' | 'status' | 'createdAt' | 'updatedAt'>): Candidate {
-    const existing = this.list().find(c => c.name === input.name && c.status !== 'archived' && c.evidence.taskId === input.evidence.taskId)
+  add(input: Draft): Candidate {
+    const existing = this.list().find(c => c.kind === input.kind && c.name === input.name && c.evidence.taskId === input.evidence.taskId && c.status !== 'rejected' && c.status !== 'archived')
     if (existing) return existing
     const t = now()
-    return this.write({ ...input, id: newId(input.kind === 'skill' ? 'skc' : 'mem'), status: 'candidate', createdAt: t, updatedAt: t })
+    return this.write({ ...input, id: newId(input.kind === 'memory' ? 'mem' : 'cand'), status: 'candidate', createdAt: t, updatedAt: t, evals: [] })
   }
 
   get(id: string): Candidate | undefined {
-    for (const d of ['candidates', 'promoted', 'archived'] as const) {
+    for (const d of ['candidates', 'promoted', 'archived']) {
       if (existsSync(this.path(d, id))) return JSON.parse(readFileSync(this.path(d, id), 'utf8')) as Candidate
     }
     return undefined
@@ -126,20 +120,26 @@ export class LearningStore {
 
   list(status?: CandidateStatus): Candidate[] {
     const out: Candidate[] = []
-    for (const d of ['candidates', 'promoted', 'archived'] as const) {
-      for (const f of readdirSync(join(this.root, d))) if (f.endsWith('.json')) out.push(JSON.parse(readFileSync(join(this.root, d, f), 'utf8')) as Candidate)
+    for (const d of ['candidates', 'promoted', 'archived']) {
+      for (const f of readdirSync(join(this.root, d))) if (f.endsWith('.json')) {
+        const c = JSON.parse(readFileSync(join(this.root, d, f), 'utf8')) as Candidate
+        out.push({ ...c, evals: c.evals ?? [] })
+      }
     }
     return (status ? out.filter(c => c.status === status) : out).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
   }
 
-  /** Move a candidate to a new status, removing it from its previous directory. */
   transition(c: Candidate, change: Partial<Candidate>): Candidate {
-    const before = c.status === 'promoted' ? 'promoted' : c.status === 'archived' ? 'archived' : 'candidates'
     const next = this.write({ ...c, ...change, updatedAt: now() })
-    const after = next.status === 'promoted' ? 'promoted' : next.status === 'archived' ? 'archived' : 'candidates'
-    if (before !== after && existsSync(this.path(before, c.id))) rmSync(this.path(before, c.id))
+    if (DIRS[c.status] !== DIRS[next.status] && existsSync(this.path(DIRS[c.status], c.id))) rmSync(this.path(DIRS[c.status], c.id))
     return next
   }
+}
+
+export interface LearningOptions {
+  readonly extractors?: readonly Extractor[]
+  /** Fresh-replay evaluation; without it nothing evidence-governed can be promoted (fail closed). */
+  readonly replay?: ReplayOptions
 }
 
 export class LearningService {
@@ -147,73 +147,121 @@ export class LearningService {
   readonly verifier: Verifier
   readonly learning: LearningStore
   readonly extractors: readonly Extractor[]
+  replay?: ReplayOptions
 
-  constructor(store: StateStore, verifier: Verifier, extractors: readonly Extractor[] = [traceExtractor]) {
+  constructor(store: StateStore, verifier: Verifier, options: LearningOptions | readonly Extractor[] = {}) {
+    const o: LearningOptions = Array.isArray(options) ? { extractors: options as readonly Extractor[] } : options as LearningOptions
     this.store = store
     this.verifier = verifier
     this.learning = new LearningStore(store.home)
-    this.extractors = extractors
+    this.extractors = o.extractors ?? [traceExtractor]
+    this.replay = o.replay
   }
 
-  /** Reflect on a finished task; returns the new candidates (never promoted). */
-  reflect(projectId: string, taskId: string): Candidate[] {
+  /** Reflect on a finished task; returns the new candidates (never promoted). Extractor errors are recorded, not fatal. */
+  async reflect(projectId: string, taskId: string): Promise<Candidate[]> {
     const out: Candidate[] = []
     for (const ex of this.extractors) {
-      for (const draft of ex.extract({ store: this.store, projectId, taskId })) {
+      let drafts: Draft[] = []
+      try {
+        drafts = await ex.extract({ store: this.store, projectId, taskId })
+      } catch (error) {
+        this.store.emitTyped('learning/archived', projectId, { reason: `reflection failed: ${String((error as Error).message ?? error)}` }, { taskId })
+        continue
+      }
+      for (const draft of drafts) {
         const c = this.learning.add(draft)
         out.push(c)
-        this.store.emitTyped('learning/candidate', projectId, { candidateId: c.id, kind: c.kind, name: c.name }, { taskId })
+        this.store.emitTyped('learning/candidate', projectId, { candidateId: c.id, kind: c.kind, name: c.name, source: c.source }, { taskId })
       }
     }
     return out
   }
 
   /**
-   * Replay/Eval a Skill candidate: run its gates on the evidence project.
-   * PASS → promoted (and materialized as SKILL.md); FAIL/no gates → archived.
+   * Evaluate a candidate by fresh replay (baseline arm vs candidate arm), compare, and
+   * promote or reject according to its kind's governance.
    */
   async evaluate(candidateId: string): Promise<Candidate> {
-    const c = this.learning.get(candidateId)
-    if (!c) throw new Error(`candidate ${candidateId} not found`)
-    if (c.kind !== 'skill') throw new Error('memory candidates are promoted by human approval, not eval')
+    let c = this.require(candidateId)
+    if (c.kind === 'memory') throw new Error('memory candidates are promoted by human approval, not eval')
     if (c.status !== 'candidate') throw new Error(`candidate ${candidateId} is ${c.status}`)
-    const project = this.store.requireProject(c.evidence.projectId)
-    const task = this.store.requireTask(c.evidence.projectId, c.evidence.taskId)
-    const results: GateResult[] = []
-    for (const g of c.evalGates) results.push(await this.verifier.runGate(g, { projectRoot: project.root, task, changedFiles: [] }))
-    const pass = results.length > 0 && results.filter(r => r.required).every(r => r.status === 'pass') && results.some(r => r.required)
-    if (!pass) {
-      const archived = this.learning.transition(c, { status: 'archived', evalResults: results, decision: results.length ? 'eval failed' : 'no eval gates' })
-      this.store.emitTyped('learning/archived', project.id, { candidateId: c.id, reason: archived.decision })
-      return archived
+    if (!this.replay) {
+      const record: EvalRecord = { at: now(), method: 'none', fresh: false, heldOutGates: false, arms: [], notes: 'no replay executor configured; cannot produce evidence' }
+      return this.learning.transition(c, { evals: [...c.evals, record], comparison: { improved: false, reason: record.notes! }, decision: 'awaiting replay capability' })
     }
-    const promoted = this.learning.transition(c, { status: 'promoted', evalResults: results, decision: 'eval passed' })
-    this.materializeSkill(promoted)
-    this.store.emitTyped('learning/promoted', project.id, { candidateId: c.id, kind: 'skill', name: c.name })
-    return promoted
+    c = this.learning.transition(c, { status: 'evaluating' })
+    const arms: ArmResult[] = []
+    try {
+      for (const arm of ['baseline', 'candidate'] as const) arms.push(await replayArm({ store: this.store, candidate: c, arm }, this.replay))
+    } catch (error) {
+      return this.reject(c, [], `replay failed: ${String((error as Error).message ?? error)}`)
+    }
+    const record: EvalRecord = { at: now(), method: 'fresh-replay', fresh: true, heldOutGates: true, arms }
+    const comparison = compareArms(arms)
+    c = this.learning.transition(c, { status: 'candidate', evals: [...c.evals, record], comparison })
+    const gate = mayPromote(c, false)
+    if (gate.ok) return this.promote(c, gate.reason)
+    if (!comparison.improved) return this.reject(c, arms, comparison.reason)
+    // Evidence present but a human must also approve (policy/config kinds).
+    return this.learning.transition(c, { decision: gate.reason })
   }
 
-  /** Human decision on a Memory candidate (Freeze §10.2: no self-promotion). */
-  decideMemory(candidateId: string, approved: boolean, note = ''): Candidate {
-    const c = this.learning.get(candidateId)
-    if (!c) throw new Error(`candidate ${candidateId} not found`)
-    if (c.kind !== 'memory') throw new Error('skills are promoted only through evaluate()')
+  /** Human decision on a candidate. Memory: human-only. Policy/config: needs evidence too. Skills cannot be human-forced. */
+  decide(candidateId: string, approved: boolean, note = ''): Candidate {
+    const c = this.require(candidateId)
     if (c.status !== 'candidate') throw new Error(`candidate ${candidateId} is ${c.status}`)
-    const next = this.learning.transition(c, { status: approved ? 'promoted' : 'archived', decision: `human: ${approved ? 'approved' : 'rejected'}${note ? ` — ${note}` : ''}` })
-    this.store.emitTyped(approved ? 'learning/promoted' : 'learning/archived', c.evidence.projectId, { candidateId: c.id, kind: 'memory', name: c.name })
+    if (!approved) return this.reject(c, [], `human: rejected${note ? ` — ${note}` : ''}`)
+    const gate = mayPromote(c, true)
+    if (!gate.ok) throw new Error(`cannot promote: ${gate.reason}`)
+    return this.promote(c, `human: approved${note ? ` — ${note}` : ''}; ${gate.reason}`)
+  }
+
+  /** @deprecated v1 name; kept for callers. Memory only. */
+  decideMemory(candidateId: string, approved: boolean, note = ''): Candidate {
+    const c = this.require(candidateId)
+    if (c.kind !== 'memory') throw new Error('skills are promoted only through evaluate()')
+    return this.decide(candidateId, approved, note)
+  }
+
+  private require(id: string): Candidate {
+    const c = this.learning.get(id)
+    if (!c) throw new Error(`candidate ${id} not found`)
+    return c
+  }
+
+  private reject(c: Candidate, _arms: readonly ArmResult[], reason: string): Candidate {
+    const next = this.learning.transition(c, { status: 'rejected', decision: reason })
+    this.store.emitTyped('learning/archived', c.evidence.projectId, { candidateId: c.id, kind: c.kind, name: c.name, reason })
     return next
   }
 
-  /** Promoted skills as DSH/Claude-style skill folders: `<home>/skills/<name>/SKILL.md`. */
-  private materializeSkill(c: Candidate): void {
-    const dir = join(this.store.home, 'skills', c.name)
-    mkdirSync(dir, { recursive: true })
-    writeFileSync(join(dir, 'SKILL.md'), `---\nname: ${c.name}\ndescription: ${JSON.stringify(c.description)}\n---\n\n${c.body}\n\n<!-- promoted from ${c.id}; evidence ${c.evidence.receiptIds.join(', ')} -->\n`)
+  private promote(c: Candidate, reason: string): Candidate {
+    const next = this.learning.transition(c, { status: 'promoted', decision: reason })
+    this.apply(next)
+    this.store.emitTyped('learning/promoted', c.evidence.projectId, { candidateId: c.id, kind: c.kind, name: c.name, reason })
+    return next
   }
 
-  /** Skills relevant to a project (for `.architecture/skills.json`). */
-  projectSkills(projectId: string): Array<{ name: string; description: string; candidateId: string }> {
-    return this.learning.list('promoted').filter(c => c.kind === 'skill' && (c.scope === 'global' || c.evidence.projectId === projectId)).map(c => ({ name: c.name, description: c.description, candidateId: c.id }))
+  /** Kind-specific appliers: the only code that writes active knowledge. */
+  private apply(c: Candidate): void {
+    const dirFor: Partial<Record<EvolutionKind, string>> = { skill: 'skills', workflow: 'workflows', prompt: 'prompts', 'routing-policy': 'policies', 'verifier-policy': 'policies', 'plugin-config': 'plugin-config' }
+    const dir = dirFor[c.kind]
+    if (!dir) return // memory lives in the promoted store and is read by memoryFor()
+    if (c.kind === 'skill') {
+      mkdirSync(join(this.store.home, 'skills', c.name), { recursive: true })
+      writeFileSync(join(this.store.home, 'skills', c.name, 'SKILL.md'), `---\nname: ${c.name}\ndescription: ${JSON.stringify(c.description)}\n---\n\n${c.body}\n\n<!-- promoted from ${c.id}: ${c.decision ?? ''} -->\n`)
+      return
+    }
+    mkdirSync(join(this.store.home, dir), { recursive: true })
+    writeFileSync(join(this.store.home, dir, `${c.name}.${c.kind.endsWith('policy') || c.kind === 'plugin-config' ? 'json' : 'md'}`), c.body)
+  }
+
+  /** Promoted skills relevant to a project (Workers + `.architecture/skills.json`). */
+  projectSkills(projectId: string): Array<{ name: string; description: string; candidateId: string; body: string }> {
+    return this.learning.list('promoted')
+      .filter(c => (c.kind === 'skill' || c.kind === 'workflow' || c.kind === 'prompt') && (c.scope === 'global' || c.evidence.projectId === projectId))
+      .map(c => ({ name: c.name, description: c.description, candidateId: c.id, body: c.body }))
   }
 
   /** Promoted memory for prompt context (project + global). */

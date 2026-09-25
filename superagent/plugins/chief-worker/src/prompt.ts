@@ -38,6 +38,7 @@ export function buildWorkerPrompt(input: Omit<WorkerRunInput, 'report' | 'signal
   }
   if (steer) lines.push('', '## Direction from the human', steer)
   if (input.memory?.length) lines.push('', '## Project memory (human-approved lessons)', ...input.memory.map(m => `- ${m}`))
+  for (const skill of input.skills ?? []) lines.push('', `## Skill: ${skill.name}`, skill.body)
   lines.push(
     '',
     '## Protocol',

@@ -38,6 +38,8 @@ export interface EngineOptions {
   readonly onChiefWake?: (wake: ChiefWake) => void | Promise<void>
   /** Promoted memory for a project, injected into Worker prompts. */
   readonly memory?: (projectId: string) => readonly string[]
+  /** Promoted skills for a project, injected into Worker prompts. */
+  readonly skills?: (projectId: string) => ReadonlyArray<{ name: string; body: string }>
   /** SuperAgent API origins a Worker must not call directly (pre-tool guard). */
   readonly apiOrigins?: readonly string[]
 }
@@ -63,6 +65,7 @@ export class LoopEngine {
   readonly architecture?: ArchitectureHooks
   private readonly onChiefWake?: EngineOptions['onChiefWake']
   private readonly memory?: EngineOptions['memory']
+  private readonly skills?: EngineOptions['skills']
   private apiOrigins: readonly string[]
   private readonly running = new Map<string, AbortController>()
 
@@ -73,6 +76,7 @@ export class LoopEngine {
     this.architecture = options.architecture
     this.onChiefWake = options.onChiefWake
     this.memory = options.memory
+    this.skills = options.skills
     this.apiOrigins = options.apiOrigins ?? []
   }
 
@@ -179,6 +183,7 @@ export class LoopEngine {
           previousSessionId: strategy === 'retry-with-feedback' ? previousSessionId : undefined,
           steer,
           memory: this.memory?.(projectId),
+          skills: this.skills?.(projectId),
           toolPolicy: this.toolPolicyFor(project, task),
           stateHome: this.store.home,
           report: partial => {

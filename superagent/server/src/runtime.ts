@@ -62,9 +62,10 @@ export function createRuntime(options: RuntimeOptions = {}): SuperAgentRuntime {
     executor: options.executor ?? new DshHeadlessExecutor({ patches: options.workerPatches }),
     architecture: hooks,
     memory: projectId => learning.memoryFor(projectId),
+    skills: projectId => learning.projectSkills(projectId).map(s => ({ name: s.name, body: s.body })),
     onChiefWake: wake => {
       // Reflect → candidates only; promotion needs eval (skills) or a human (memory).
-      if (wake.reason === 'task-passed' && wake.taskId) learning.reflect(wake.projectId, wake.taskId)
+      if (wake.reason === 'task-passed' && wake.taskId) void learning.reflect(wake.projectId, wake.taskId)
       return options.onChiefWake?.(wake)
     },
   })

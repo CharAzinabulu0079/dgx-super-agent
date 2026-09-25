@@ -235,7 +235,7 @@
     {
       "from": "evals",
       "to": "chief-worker",
-      "weight": 7,
+      "weight": 8,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -243,7 +243,17 @@
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/chief-worker",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/chief-worker"
+        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/chief-worker"
+      ]
+    },
+    {
+      "from": "evals",
+      "to": "learning",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/learning"
       ]
     },
     {
@@ -262,21 +272,21 @@
     {
       "from": "evals",
       "to": "server",
-      "weight": 5,
+      "weight": 6,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/server",
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/server",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server",
-        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/server",
-        "superagent/evals/test/ui.e2e.test.ts → @superagent/server"
+        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/server",
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/server"
       ]
     },
     {
       "from": "evals",
       "to": "testkit",
-      "weight": 7,
+      "weight": 8,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -284,7 +294,7 @@
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/testkit",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/testkit"
+        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/testkit"
       ]
     },
     {
@@ -303,31 +313,37 @@
     {
       "from": "learning",
       "to": "chief-worker",
-      "weight": 1,
+      "weight": 3,
       "typeOnly": false,
-      "testOnly": true,
+      "testOnly": false,
       "evidence": [
+        "superagent/plugins/learning/src/reflector.ts → @superagent/chief-worker",
+        "superagent/plugins/learning/src/replay.ts → @superagent/chief-worker",
         "superagent/plugins/learning/test/learning.test.ts → @superagent/chief-worker"
       ]
     },
     {
       "from": "learning",
       "to": "contracts",
-      "weight": 1,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/plugins/learning/src/learning.ts → @superagent/contracts"
+        "superagent/plugins/learning/src/evolution.ts → @superagent/contracts",
+        "superagent/plugins/learning/src/learning.ts → @superagent/contracts",
+        "superagent/plugins/learning/src/replay.ts → @superagent/contracts"
       ]
     },
     {
       "from": "learning",
       "to": "project-state",
-      "weight": 1,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/plugins/learning/src/learning.ts → @superagent/project-state"
+        "superagent/plugins/learning/src/learning.ts → @superagent/project-state",
+        "superagent/plugins/learning/src/reflector.ts → @superagent/project-state",
+        "superagent/plugins/learning/src/replay.ts → @superagent/project-state"
       ]
     },
     {
@@ -353,11 +369,12 @@
     {
       "from": "learning",
       "to": "verifier",
-      "weight": 1,
+      "weight": 2,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/plugins/learning/src/learning.ts → @superagent/verifier"
+        "superagent/plugins/learning/src/learning.ts → @superagent/verifier",
+        "superagent/plugins/learning/src/replay.ts → @superagent/verifier"
       ]
     },
     {

@@ -124,12 +124,13 @@
       "paths": [
         "superagent/plugins/learning/**"
       ],
-      "layer": "capability",
-      "description": "Memory/Skill candidates \u2192 eval \u2192 promote",
+      "layer": "orchestration",
+      "description": "Reflection (rules + DSH LLM) \u2192 candidates \u2192 fresh-replay eval \u2192 compare \u2192 governed promotion",
       "dependsOn": [
         "contracts",
         "project-state",
-        "verifier"
+        "verifier",
+        "chief-worker"
       ],
       "gates": [
         "unit"
@@ -141,7 +142,7 @@
         "superagent/plugins/chief-worker/**"
       ],
       "layer": "orchestration",
-      "description": "LoopEngine, Chief, Worker executors (DSH headless)",
+      "description": "LoopEngine, Chief, Worker executors, pre-tool policy wiring, Chief auto-wake",
       "dependsOn": [
         "contracts",
         "project-state",

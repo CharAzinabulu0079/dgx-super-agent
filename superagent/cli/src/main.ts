@@ -169,7 +169,7 @@ async function main(argv: string[]): Promise<number> {
         return 0
       }
       if (sub === 'eval') { const c = await rt.learning.evaluate(rest[0]!); console.log(`${c.id} → ${c.status} (${c.decision})`); return c.status === 'promoted' ? 0 : 2 }
-      if (sub === 'approve' || sub === 'reject') { const c = rt.learning.decideMemory(rest[0]!, sub === 'approve', rest.slice(1).join(' ')); console.log(`${c.id} → ${c.status}`); return 0 }
+      if (sub === 'approve' || sub === 'reject') { const c = rt.learning.decide(rest[0]!, sub === 'approve', rest.slice(1).join(' ')); console.log(`${c.id} → ${c.status}`); return 0 }
       break
     }
     case 'recover': console.log(`${engine.recoverInterrupted(sub!).length} task(s) recovered`); return 0
