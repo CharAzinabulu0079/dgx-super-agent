@@ -10,7 +10,7 @@ import { parseGateSpec, type GateSpec } from '@superagent/contracts'
 import { effectiveModels, formatModel, loadGlobalPolicy, parseModelSpec, parsePolicyLayer, saveGlobalPolicy } from '@superagent/model-policy'
 import { scanHygiene } from '@superagent/verifier'
 import { Observatory } from '@superagent/architecture-observatory'
-import { BROWSER_PATCH, CHIEF_PROFILE, createRuntime, registerHeldOut, setupDshProfiles, startServer } from '@superagent/server'
+import { BROWSER_PATCH, CHIEF_PROFILE, createRuntime, narrate, registerHeldOut, setupDshProfiles, startServer } from '@superagent/server'
 import { defaultHome } from '@superagent/project-state'
 import { REPO_ROOT } from '@superagent/testkit'
 
@@ -26,6 +26,9 @@ const HELP = `sa — DGX Super Agent CLI
                                                 hidden acceptance tests: copied into $SUPERAGENT_HOME/heldout,
                                                 mounted only into a verification copy, never visible to Workers
   sa status <project>
+  sa do <project|path> "<what you want>" [--review] [--no-run]
+                                                plan the request into tasks (Chief planner), then run them until
+                                                independent checks pass; a path registers the project first
   sa goal <project> "<objective>"
   sa task add <project> <goal> --title T --instructions I [--model provider/model] [--escalation provider/model] [--gate 'id=command'...]
   sa run <project> <goal>                      run the goal's tasks through the loop (DSH Workers)
@@ -62,7 +65,7 @@ async function main(argv: string[]): Promise<number> {
       'worker-patch': { type: 'string', multiple: true },
       gate: { type: 'string', multiple: true }, protect: { type: 'string', multiple: true },
       title: { type: 'string' }, instructions: { type: 'string' }, model: { type: 'string' }, escalation: { type: 'string' },
-      check: { type: 'boolean' }, mount: { type: 'string' }, command: { type: 'string' }, help: { type: 'boolean', short: 'h' }, project: { type: 'string' }, reflect: { type: 'boolean' },
+      check: { type: 'boolean' }, review: { type: 'boolean' }, 'no-run': { type: 'boolean' }, mount: { type: 'string' }, command: { type: 'string' }, help: { type: 'boolean', short: 'h' }, project: { type: 'string' }, reflect: { type: 'boolean' },
     },
   })
   const [cmd, sub, ...rest] = positionals
@@ -132,8 +135,8 @@ async function main(argv: string[]): Promise<number> {
         runtime: rt, port: Number(values.port ?? 7788), host: values.host,
         uiDir: join(REPO_ROOT, 'superagent/ui/dist'), watch: !values['no-watch'],
         chiefWake: !values['no-chief'] && existsSync(join(dshHome, 'profiles', 'superagent-chief-cli', 'package.json')),
+        resumeGoals: true,
       })
-      for (const p of store.listProjects()) engine.recoverInterrupted(p.id)
       // Agent token for the Chief launcher (0600, outside any worktree). The human token
       // is printed once and kept only in this process's memory.
       mkdirSync(join(store.home, 'secrets'), { recursive: true, mode: 0o700 })
@@ -162,6 +165,32 @@ async function main(argv: string[]): Promise<number> {
       const p = registerHeldOut(store, pid, { gateId, from, mountAt: values.mount, command: values.command })
       console.log(`held-out gate ${gateId} registered on ${p.id}: ${p.defaultGates.map(g => g.id + (g.heldOut ? ' (held-out)' : '')).join(', ')}`)
       return 0
+    }
+    case 'do': {
+      const request = rest.join(' ').trim()
+      if (!sub || !request) throw new Error('usage: sa do <project|path> "<what you want>"')
+      let pid = sub
+      if (!store.getProject(sub)) {
+        const root = resolve(sub)
+        if (!existsSync(root)) throw new Error(`no project or directory named ${sub}`)
+        const existing = store.listProjects().find(p => p.root === root)
+        pid = existing?.id ?? (await rt.addProject({ name: root.split('/').at(-1)!, root })).id
+        if (!existing) console.log(`Registered ${root} as project ${pid} (checks: ${store.requireProject(pid).defaultGates.map(g => g.id).join(', ')})`)
+      }
+      const titles = new Map<string, string>()
+      const unsubscribe = store.subscribe(e => {
+        if (e.projectId !== pid) return
+        if (e.type === 'task/created') titles.set(e.taskId!, String(e.data.title))
+        const line = narrate(e, id => titles.get(id))
+        if (line) console.log(`${{ good: '✔', bad: '✖', attention: '!', info: '·' }[line.tone]} ${line.text}`)
+      })
+      const planned = await chief.planGoal(pid, request, { planner: rt.planner, review: values.review, architecture: rt.architectureSummary(store.requireProject(pid)) })
+      if (values['no-run']) { unsubscribe(); console.log(`goal ${planned.goal.id} planned; run with: sa run ${pid} ${planned.goal.id}`); return 0 }
+      engine.recoverInterrupted(pid)
+      const r = await chief.runGoal(pid, planned.goal.id)
+      unsubscribe()
+      console.log(`\n${chief.statusReport(pid)}`)
+      return r.goal.status === 'complete' ? 0 : 2
     }
     case 'status': console.log(chief.statusReport(sub!)); return 0
     case 'goal': console.log(JSON.stringify(chief.createGoal(sub!, rest.join(' ')), null, 2)); return 0

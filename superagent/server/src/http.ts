@@ -15,6 +15,7 @@ import type { AddressInfo } from 'node:net'
 import { parseGateSpec, type Project, type SuperAgentEvent } from '@superagent/contracts'
 import { effectiveModels, loadGlobalPolicy, parseModelSpec, parsePolicyLayer, roleModel, saveGlobalPolicy } from '@superagent/model-policy'
 import type { SuperAgentRuntime } from './runtime.ts'
+import { narrate } from './narrate.ts'
 import { ChiefDriver, DshChiefChannel, GateRegistryError, WakeMonitor, type ChiefChannel } from '@superagent/chief-worker'
 
 export interface ServerOptions {
@@ -41,6 +42,8 @@ export interface ServerOptions {
   /** Watch registered project trees and rescan architecture on change. */
   readonly watch?: boolean
   readonly watchDebounceMs?: number
+  /** Recover interrupted tasks and resume requested goal runs on start (`sa serve`). */
+  readonly resumeGoals?: boolean
 }
 
 export interface RunningServer {
@@ -100,7 +103,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     if (!p) throw new HttpError(404, `project ${pid} not found`)
     return p
   }
-  const runningGoals = new Set<string>()
+  const goals = runtime.goals
   let chiefDriver: ChiefDriver | undefined
 
   // ---------------------------------------------------------------- projects
@@ -126,7 +129,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       humanGates: store.listHumanGates(p.id),
       report: chief.statusReport(p.id),
       models: effectiveModels(loadGlobalPolicy(store.home), p.policy),
-      runningGoals: [...runningGoals].filter(k => k.startsWith(`${p.id}/`)).map(k => k.split('/')[1]),
+      runningGoals: goals.running(p.id) ? [goals.running(p.id)] : [],
     }
   })
 
@@ -149,15 +152,21 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   })
   route('POST', '/api/projects/:pid/goals/:gid/run', ({ params }) => {
     const p = project(params.pid!)
-    const key = `${p.id}/${params.gid}`
-    if (runningGoals.has(key)) throw new HttpError(409, 'goal already running')
-    // One goal per project tree at a time: concurrent Workers would mix their changes.
-    if ([...runningGoals].some(k => k.startsWith(`${p.id}/`))) throw new HttpError(409, 'another goal of this project is running')
-    runningGoals.add(key)
-    void chief.runGoal(p.id, params.gid!)
-      .catch(error => store.emitTyped('goal/updated', p.id, { error: String(error) }, { goalId: params.gid }))
-      .finally(() => runningGoals.delete(key))
-    return { started: true }
+    // One goal per project tree at a time (concurrent Workers would mix their changes);
+    // a second request is queued durably and starts when the current goal ends.
+    const r = goals.start(p.id, params.gid!)
+    if (!r.started && !r.queued) throw new HttpError(409, 'goal already running')
+    return r
+  })
+  // "Describe what you want": the Chief plans the request into tasks (registry gates
+  // only), creates the goal and starts (or queues) it.
+  route('POST', '/api/projects/:pid/requests', async ({ params, body }) => {
+    const p = project(params.pid!)
+    if (typeof body?.request !== 'string' || !body.request.trim()) throw new HttpError(400, 'request is required')
+    if (body.request.length > 20_000) throw new HttpError(413, 'request too long')
+    const planned = await chief.planGoal(p.id, body.request.trim(), { planner: runtime.planner, review: body.review === true, architecture: runtime.architectureSummary(p) })
+    const run = body.run === false ? { started: false, queued: false } : goals.start(p.id, planned.goal.id)
+    return { ...planned, run }
   })
   route('POST', '/api/projects/:pid/tasks/:tid/stop', ({ params }) => engine.stop(project(params.pid!).id, params.tid!))
   route('POST', '/api/projects/:pid/tasks/:tid/steer', ({ params, body }) => {
@@ -182,7 +191,13 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     if (decision !== 'approved' && decision !== 'rejected') throw new HttpError(400, 'decision must be approved|rejected')
     const p = project(params.pid!)
     const task = engine.resolveHumanGate(p.id, params.hid!, decision, String(body?.resolution ?? ''))
-    return { gate: store.getHumanGate(p.id, params.hid!), task: task ?? null }
+    // An approval unblocks the goal: pick it back up without a separate "Start".
+    let resumed = false
+    if (task && decision === 'approved' && (task.state === 'pending' || task.state === 'passed')) {
+      const goal = store.getGoal(p.id, task.goalId)
+      if (goal?.status === 'blocked') resumed = goals.start(p.id, goal.id).started
+    }
+    return { gate: store.getHumanGate(p.id, params.hid!), task: task ?? null, resumed }
   }, 'human')
   // ---------------------------------------------------------------- model policy (Directive §4.F)
   route('GET', '/api/policy', () => ({ global: loadGlobalPolicy(store.home), effective: effectiveModels(loadGlobalPolicy(store.home)) }))
@@ -212,6 +227,12 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       session: store.getMeta(p.id, 'chief-session') ?? null,
       recent: wakes.slice(0, 20),
     }
+  })
+  route('GET', '/api/projects/:pid/activity', ({ params, query }) => {
+    const p = project(params.pid!)
+    const titles = new Map(store.listTasks(p.id).map(t => [t.id, t.title]))
+    const limit = Math.min(Number(query.get('limit') ?? 100), 500)
+    return store.readEvents(p.id, 0, 5_000).map(e => narrate(e, id => titles.get(id))).filter(Boolean).slice(-limit)
   })
   route('GET', '/api/projects/:pid/receipts', ({ params, query }) => store.listReceipts(project(params.pid!).id, query.get('task') ?? undefined))
   route('GET', '/api/projects/:pid/workers/:wid/reports', ({ params }) => store.readReports(project(params.pid!).id, params.wid!))
@@ -343,6 +364,10 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       statusReport: id => chief.statusReport(id),
     })
     chiefDriver.start(cfg.intervalMs ?? 2_000)
+  }
+  if (options.resumeGoals) {
+    for (const p of store.listProjects()) engine.recoverInterrupted(p.id)
+    goals.resumeAll()
   }
   return {
     url,

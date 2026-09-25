@@ -21,6 +21,10 @@ export interface LoopInput {
   readonly protectedModules: readonly string[]
   /** Tool calls the pre-tool guard blocked during this attempt. */
   readonly blockedActions?: readonly BlockedAction[]
+  /** Reviewer verdict on this attempt (only produced after gates PASS). */
+  readonly review?: { readonly approve: boolean; readonly comments: string; readonly unavailable?: boolean }
+  /** Consecutive reviewer rejections ending with this attempt. */
+  readonly reviewRejections?: number
 }
 
 /** Strategies usable under this policy (escalate-model requires an escalation model). */
@@ -63,6 +67,15 @@ export function decideNext(input: LoopInput): LoopDecision {
   const review = (receipt.integrity?.findings ?? []).filter(f => f.severity === 'review')
   if (receipt.verdict === 'PASS' && review.length) {
     return { action: 'human_gate', reason: 'verification-change', detail: `PASS depends on changed verification assets (human-granted): ${review.map(f => f.detail).join('; ')}` }
+  }
+  // The reviewer can block a PASS, never create one. Persistent disagreement with
+  // green gates is a human call, not an endless loop.
+  if (receipt.verdict === 'PASS' && input.review && !input.review.approve) {
+    const n = input.reviewRejections ?? 1
+    if (input.review.unavailable || attempts.length >= task.policy.maxAttempts || n >= task.policy.maxSameFailure) {
+      return { action: 'human_gate', reason: 'review-disagreement', detail: `gates pass but the reviewer rejected ${n}×: ${input.review.comments.slice(0, 500)}` }
+    }
+    return { action: 'retry', strategy: last.strategy, switched: false, reason: `gates pass; reviewer requested changes: ${input.review.comments.slice(0, 300)}` }
   }
   if (receipt.verdict === 'PASS') return { action: 'pass', reason: receipt.reason }
   if (attempts.length >= task.policy.maxAttempts) {

@@ -204,7 +204,7 @@
     "description": "LoopEngine, Chief, Worker executors, pre-tool policy wiring, Chief auto-wake",
     "protected": false,
     "declared": true,
-    "files": 13,
+    "files": 15,
     "gates": [
       "unit",
       "smoke-dsh"
@@ -214,6 +214,7 @@
     ],
     "tests": [
       "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts",
+      "superagent/plugins/chief-worker/test/advisor.test.ts",
       "superagent/plugins/chief-worker/test/chief-wake.test.ts",
       "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts",
       "superagent/plugins/chief-worker/test/loop.test.ts"
@@ -233,7 +234,7 @@
     "description": "Headless HTTP/SSE Realtime API",
     "protected": false,
     "declared": true,
-    "files": 8,
+    "files": 11,
     "gates": [
       "unit",
       "e2e-ui"
@@ -241,6 +242,7 @@
     "adrs": [],
     "tests": [
       "superagent/server/test/project-setup.test.ts",
+      "superagent/server/test/requests.test.ts",
       "superagent/server/test/server.test.ts"
     ],
     "entry": "superagent/server/src/index.ts",
@@ -321,7 +323,7 @@
     "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
     "protected": false,
     "declared": true,
-    "files": 11,
+    "files": 12,
     "gates": [
       "evals"
     ],
@@ -331,6 +333,7 @@
       "superagent/evals/redteam/redteam.test.ts",
       "superagent/evals/test/browser-e2e-gate.test.ts",
       "superagent/evals/test/chief-autowake.integration.test.ts",
+      "superagent/evals/test/chief-planner.integration.test.ts",
       "superagent/evals/test/chief-tools.integration.test.ts",
       "superagent/evals/test/dsh-browser-worker.integration.test.ts",
       "superagent/evals/test/learning-replay.integration.test.ts",

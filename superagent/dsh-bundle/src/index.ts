@@ -10,7 +10,8 @@
  *
  * Human Gates are deliberately NOT resolvable from a model tool (Freeze §6.3).
  *
- * Tools are role-scoped by SUPERAGENT_ROLE (`worker` | `chief`, default `chief`).
+ * Tools are role-scoped by SUPERAGENT_ROLE (`worker` | `chief` | `planner`/`reviewer`, default `chief`);
+ * planner/reviewer sessions are read-only advisors (read tools only, no SuperAgent tools).
  * Every session also gets the SuperAgent pre-tool guard (`ctx.tools.guard`), a
  * monotonic deny DSH evaluates after `tools/pre-execute` and before the tool runs,
  * including nested PTC/workflow/subagent dispatches.
@@ -55,7 +56,8 @@ export function apply(ctx: Context, config: Config = {}): void {
     workerId: process.env.SUPERAGENT_WORKER_ID,
   }
 
-  const role = process.env.SUPERAGENT_ROLE === 'worker' ? 'worker' : 'chief'
+  const envRole = process.env.SUPERAGENT_ROLE
+  const role = envRole === 'worker' ? 'worker' : envRole === 'planner' || envRole === 'reviewer' || envRole === 'advisor' ? 'advisor' : 'chief'
   const isWorker = role === 'worker' && !!(worker.home && worker.projectId && worker.taskId && worker.workerId)
   const store = worker.home ? new StateStore(worker.home) : undefined
 

@@ -24,12 +24,16 @@ export function buildWorkerPrompt(input: Omit<WorkerRunInput, 'report' | 'signal
     if (g.heldOut) lines.push(`- ${g.id} (${g.kind}, held-out): additional acceptance tests you cannot see run against your final tree. Implement the task fully and generally; do not special-case inputs.`)
     else lines.push(`- ${g.id} (${g.kind})${g.command ? `: \`${g.command}\`${g.cwd ? ` in ${g.cwd}` : ''}` : ''}`)
   }
-  const failures = feedback.filter(f => f.verdict === 'FAIL')
+  const failures = feedback.filter(f => f.verdict === 'FAIL' || f.review !== undefined)
   if (failures.length) {
     // fresh-context attempts get only the latest failure, condensed.
     const shown = strategy === 'fresh-context' ? failures.slice(-1) : failures.slice(-3)
     lines.push('', '## Previous attempts (independent verifier results)')
     for (const f of shown) {
+      if (f.verdict === 'PASS' && f.review !== undefined) {
+        lines.push(`### Attempt ${f.attempt} — gates passed, but the reviewer requested changes`, f.review)
+        continue
+      }
       lines.push(`### Attempt ${f.attempt} — ${f.verdict}: ${f.reason}${f.claimOverruled ? ' (the Worker claimed PASS; the gates disagreed)' : ''}`)
       for (const finding of f.integrity ?? []) lines.push(`- INTEGRITY ${finding}. Revert those changes: verification assets and the environment are not yours to change.`)
       for (const g of f.failingGates) {

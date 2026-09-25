@@ -15,7 +15,8 @@ import picomatch from 'picomatch'
 import type { HumanGateReason } from '@superagent/contracts'
 
 export interface ToolPolicy {
-  readonly role: 'worker' | 'chief'
+  /** `advisor` = planner/reviewer sessions: read tools only, never a Human Gate (nothing to approve). */
+  readonly role: 'worker' | 'chief' | 'advisor'
   /** Project root (Worker cwd). Paths are judged relative to it. */
   readonly projectRoot?: string
   /** Globs (project-relative) of verification assets. */
@@ -149,6 +150,9 @@ const ARBITRARY_CODE = /(^|__)browser_run_code_unsafe$|(^|__)browser_evaluate$/
 export function decideToolCall(policy: ToolPolicy, tool: string, args: Record<string, unknown>): ToolDecision {
   const fingerprint = actionFingerprint(tool, args)
   let verdict: { category: HumanGateReason; rule: string } | undefined
+  if (policy.role === 'advisor' && !READ_TOOLS.has(tool)) {
+    return { allow: false, category: 'permission-expansion', rule: 'read-only advisor session (planner/reviewer)', summary: `${tool}`, fingerprint }
+  }
   if (SHELL_TOOLS.has(tool)) {
     const command = typeof args.command === 'string' ? args.command : JSON.stringify(args)
     verdict = judgeShell(policy, command)

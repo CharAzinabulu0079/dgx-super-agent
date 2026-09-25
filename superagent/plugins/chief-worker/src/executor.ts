@@ -15,6 +15,8 @@ export interface AttemptFeedback {
   readonly claimOverruled: boolean
   /** Integrity findings (tampering with verification assets/environment). */
   readonly integrity?: readonly string[]
+  /** Reviewer's requested changes when gates passed but the review did not. */
+  readonly review?: string
 }
 
 export interface WorkerRunInput {

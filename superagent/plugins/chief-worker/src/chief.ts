@@ -11,6 +11,7 @@ import type { Goal, GateSpec, Project, Task, TaskScope } from '@superagent/contr
 import { parseGateSpec } from '@superagent/contracts'
 import { formatModel, livePolicy, loadGlobalPolicy, resolveTaskPolicy } from '@superagent/model-policy'
 import type { LoopEngine } from './engine.ts'
+import { DeterministicPlanner, type Plan, type Planner } from './advisor.ts'
 
 /** Who is creating a task. Only a human may define new gate commands (Gate Registry rule). */
 export type Actor = 'human' | 'agent'
@@ -47,6 +48,22 @@ export interface TaskInput {
   readonly gates?: readonly unknown[]
   /** Untrusted policy fragment, e.g. `{ model: { worker: { provider, model } } }`. */
   readonly policy?: unknown
+  /** Require reviewer approval after the gates pass. */
+  readonly review?: boolean
+}
+
+export interface PlanGoalOptions {
+  readonly planner?: Planner
+  /** Review every task regardless of what the plan says. */
+  readonly review?: boolean
+  readonly architecture?: string
+  readonly signal?: AbortSignal
+}
+
+export interface PlannedGoal {
+  readonly goal: Goal
+  readonly tasks: readonly Task[]
+  readonly plan: Plan
 }
 
 export interface GoalRunResult {
@@ -80,7 +97,34 @@ export class Chief {
       gates,
       policy,
       pinnedModels: Object.keys(pinned).length ? pinned : undefined,
+      review: input.review === true ? true : undefined,
     })
+  }
+
+  /**
+   * "Describe what you want": plan the request into tasks and create the goal.
+   * The plan is model output, so its tasks are added as `agent` (registry gate ids
+   * only). A planner that fails or returns an invalid plan falls back to the
+   * deterministic single-task plan, and the fallback is recorded on the goal.
+   */
+  async planGoal(projectId: string, request: string, options: PlanGoalOptions = {}): Promise<PlannedGoal> {
+    const project = this.store.requireProject(projectId)
+    if (!request.trim()) throw new Error('request is empty')
+    const input = { project, request, gates: [...gateRegistry(project).values()], architecture: options.architecture, signal: options.signal }
+    let plan: Plan
+    try {
+      plan = await (options.planner ?? new DeterministicPlanner()).plan(input)
+    } catch (error) {
+      const fallback = await new DeterministicPlanner().plan(input)
+      plan = { ...fallback, note: `planner ${options.planner?.name ?? '?'} failed (${String((error as Error).message ?? error).slice(0, 300)}); using a single task` }
+    }
+    const goal = this.store.createGoal(projectId, plan.objective)
+    this.store.updateGoal(projectId, goal.id, { request })
+    this.store.emitTyped('request/submitted', projectId, { request: request.slice(0, 2_000), planner: plan.planner, note: plan.note, tasks: plan.tasks.map(t => t.title) }, { goalId: goal.id })
+    const tasks = plan.tasks.map(t => this.addTask(projectId, goal.id, {
+      title: t.title, instructions: t.instructions, scope: { paths: [...t.paths], modules: [...t.modules] }, gates: [...t.gates], review: options.review || t.review,
+    }, 'agent'))
+    return { goal: this.store.getGoal(projectId, goal.id)!, tasks, plan }
   }
 
   /**

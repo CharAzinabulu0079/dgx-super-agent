@@ -16,6 +16,7 @@ import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { livePolicy, modelForStrategy } from '@superagent/model-policy'
 import type { AttemptFeedback, WorkerExecutor } from './executor.ts'
+import type { Reviewer } from './advisor.ts'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -42,6 +43,8 @@ export interface EngineOptions {
   readonly skills?: (projectId: string) => ReadonlyArray<{ name: string; body: string }>
   /** SuperAgent API origins a Worker must not call directly (pre-tool guard). */
   readonly apiOrigins?: readonly string[]
+  /** Reviews tasks with `review: true` after their gates pass (can block, never pass). */
+  readonly reviewer?: Reviewer
 }
 
 export interface ChiefWake {
@@ -67,6 +70,7 @@ export class LoopEngine {
   private readonly memory?: EngineOptions['memory']
   private readonly skills?: EngineOptions['skills']
   private apiOrigins: readonly string[]
+  reviewer?: Reviewer
   private readonly running = new Map<string, AbortController>()
 
   constructor(options: EngineOptions) {
@@ -78,6 +82,7 @@ export class LoopEngine {
     this.memory = options.memory
     this.skills = options.skills
     this.apiOrigins = options.apiOrigins ?? []
+    this.reviewer = options.reviewer
   }
 
   /**
@@ -260,7 +265,15 @@ export class LoopEngine {
         task = this.store.updateTask(projectId, taskId, { attempts: task.attempts })
 
         const blockedActions = this.store.readBlockedActions(projectId, worker.id)
-        const decision = decideNext({ task, attempts: task.attempts, receipt, lastReport, protectedModules: this.protectedModules(project, task).ids, blockedActions })
+        let review: { approve: boolean; comments: string; unavailable: boolean } | undefined
+        if (receipt.verdict === 'PASS' && task.review && !blockedActions.length) {
+          review = await this.runReview(project, task, receipt, afterSnapshot, controller.signal)
+          task = this.store.requireTask(projectId, taskId)
+        }
+        const decision = decideNext({
+          task, attempts: task.attempts, receipt, lastReport, protectedModules: this.protectedModules(project, task).ids, blockedActions,
+          review, reviewRejections: trailingRejections(task),
+        })
         this.store.emitTyped('loop/decision', projectId, { attempt: n, decision, workerExit: output.exit }, { taskId, goalId: task.goalId })
 
         const outcome = await this.apply(project, task, decision, receipts)
@@ -325,7 +338,7 @@ export class LoopEngine {
         policy: { ...task.policy, maxAttempts: task.attempts.length + task.policy.maxAttempts },
       })
     }
-    if ((gate.reason === 'protected-module' || gate.reason === 'verification-change') && last?.verdict === 'PASS') {
+    if ((gate.reason === 'protected-module' || gate.reason === 'verification-change' || gate.reason === 'review-disagreement') && last?.verdict === 'PASS') {
       return this.store.updateTask(projectId, task.id, { state: 'passed', grants: { ...task.grants, mayModifyVerification: gate.reason === 'verification-change' ? true : task.grants?.mayModifyVerification } })
     }
     return this.store.updateTask(projectId, task.id, {
@@ -386,12 +399,48 @@ export class LoopEngine {
     return { ...task, attempts: [...attempts, { ...last, ...change }] }
   }
 
+  /**
+   * Ask the reviewer about a green attempt. A reviewer that is missing or fails yields a
+   * rejection routed to a human (never a silent approval): the task asked for review.
+   */
+  private async runReview(project: Project, task: Task, receipt: Receipt, afterSnapshot: string | undefined, signal: AbortSignal): Promise<{ approve: boolean; comments: string; unavailable: boolean }> {
+    let verdict: { approve: boolean; comments: string; reviewer: string }
+    let failed = false
+    if (!this.reviewer) {
+      verdict = { approve: false, comments: 'review requested but no reviewer is configured', reviewer: 'none' }
+    } else {
+      const base = task.baseline?.snapshot
+      let diff = ''
+      if (base && afterSnapshot) {
+        try {
+          diff = execFileSync('git', ['diff', '--no-color', base, afterSnapshot], { cwd: project.root, maxBuffer: 64 * 1024 * 1024 }).toString('utf8')
+        } catch (noDiff) {
+          void noDiff
+        }
+      }
+      if (diff.length > 60_000) diff = `${diff.slice(0, 60_000)}\n… (diff truncated at 60k characters)`
+      try {
+        verdict = await this.reviewer.review({ project, task, receipt, diff, signal })
+      } catch (error) {
+        failed = true
+        verdict = { approve: false, comments: `reviewer failed: ${String((error as Error).message ?? error).slice(0, 300)}`, reviewer: this.reviewer.name }
+      }
+    }
+    const record = { attempt: receipt.attempt, approve: verdict.approve, comments: verdict.comments, reviewer: verdict.reviewer, at: now() }
+    this.store.updateTask(project.id, task.id, { reviews: [...(task.reviews ?? []), record] })
+    this.store.emitTyped('review/completed', project.id, { attempt: receipt.attempt, approve: verdict.approve, comments: verdict.comments.slice(0, 500), reviewer: verdict.reviewer }, { taskId: task.id, goalId: task.goalId })
+    // An unconfigured or crashed reviewer reaches a human right away instead of burning attempts.
+    return { approve: verdict.approve, comments: verdict.comments, unavailable: !this.reviewer || failed }
+  }
+
   private feedbackFor(projectId: string, task: Task): AttemptFeedback[] {
     return task.attempts
       .filter(a => a.receiptId)
       .map(a => {
         const r = this.store.getReceipt(projectId, a.receiptId!)!
+        const rejected = r.verdict === 'PASS' ? (task.reviews ?? []).find(x => x.attempt === a.n && !x.approve) : undefined
         return {
+          review: rejected?.comments,
           attempt: a.n, strategy: a.strategy, verdict: r.verdict, reason: r.reason, workerClaim: r.workerClaim, claimOverruled: r.claimOverruled,
           failingGates: r.gateResults.filter(g => g.status !== 'pass').map(g => g.heldOut ? heldOutFeedback(g) : ({ gateId: g.gateId, status: g.status, summary: g.summary, outputTail: g.outputTail })),
           integrity: (r.integrity?.findings ?? []).filter(f => f.severity !== 'info').map(f => `${f.severity}: ${f.detail}`),
@@ -423,4 +472,14 @@ export function heldOutFeedback(g: GateResult): { gateId: string; status: string
     summary: `held-out tests (hidden from you): ${g.summary}${failing.length ? `; failing behaviours: ${failing.slice(0, 10).join('; ')}` : ''}`,
     outputTail: '',
   }
+}
+
+/** Consecutive reviewer rejections at the end of the task's review history. */
+export function trailingRejections(task: Task): number {
+  let n = 0
+  for (const r of [...(task.reviews ?? [])].reverse()) {
+    if (r.approve) break
+    n++
+  }
+  return n
 }

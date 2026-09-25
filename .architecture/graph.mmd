@@ -12,16 +12,16 @@ flowchart LR
   end
   subgraph layer_orchestration["orchestration"]
     learning["learning<br/><small>7 files</small>"]
-    chief_worker["chief-worker<br/><small>13 files</small>"]
+    chief_worker["chief-worker<br/><small>15 files</small>"]
   end
   subgraph layer_interface["interface"]
-    server["server<br/><small>8 files</small>"]
+    server["server<br/><small>11 files</small>"]
     cli["cli<br/><small>2 files</small>"]
     ui["ui<br/><small>13 files</small>"]
     dsh_bundle["dsh-bundle<br/><small>5 files</small>"]
   end
   subgraph layer_verification["verification"]
-    evals["evals<br/><small>11 files</small>"]
+    evals["evals<br/><small>12 files</small>"]
   end
   sample_webapp["sample-webapp<br/><small>7 files</small>"]
   architecture_observatory --> contracts
@@ -62,11 +62,11 @@ flowchart LR
   classDef worker_active fill:#e3f2fd,stroke:#1565c0
   classDef gate_failed fill:#ffebee,stroke:#c62828
   classDef protected stroke:#6a1b9a,stroke-width:3px
-  class contracts changing
+  class contracts stable
   class testkit stable
   class project_state stable
-  class verifier changing
-  class loop_policy stable
+  class verifier stable
+  class loop_policy changing
   class model_policy stable
   class architecture_observatory stable
   class learning stable
@@ -74,6 +74,6 @@ flowchart LR
   class server changing
   class cli changing
   class ui stable
-  class dsh_bundle stable
+  class dsh_bundle changing
   class evals changing
   class sample_webapp stable

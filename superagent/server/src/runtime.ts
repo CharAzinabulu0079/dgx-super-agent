@@ -6,7 +6,8 @@ import { join } from 'node:path'
 import type { Project } from '@superagent/contracts'
 import { StateStore, defaultHome } from '@superagent/project-state'
 import { Verifier } from '@superagent/verifier'
-import { Chief, DshHeadlessExecutor, LoopEngine, type ChiefWake, type WorkerExecutor } from '@superagent/chief-worker'
+import { Chief, DshHeadlessExecutor, DshPlanner, DshReviewer, LoopEngine, type ChiefWake, type Planner, type Reviewer, type WorkerExecutor } from '@superagent/chief-worker'
+import { GoalRunner } from './goal-runner.ts'
 import { Observatory, driftGateRunner, observatoryHooks, type RuntimeInputs } from '@superagent/architecture-observatory'
 import { DshReflector, LearningService, llmExtractor, traceExtractor } from '@superagent/learning'
 import { roleModel } from '@superagent/model-policy'
@@ -20,6 +21,14 @@ export interface RuntimeOptions {
   readonly onChiefWake?: (wake: ChiefWake) => void
   /** Also reflect with an LLM (DSH session, policy role `reviewer`) after each passed task. Costs one model call per task. */
   readonly llmReflection?: boolean
+  /** Chief planning for requests (default: read-only DSH session, policy role `planner`). */
+  readonly planner?: Planner
+  /** Reviewer for tasks with `review: true` (default: read-only DSH session, policy role `reviewer`). */
+  readonly reviewer?: Reviewer
+  /** DSH profile for planner/reviewer sessions (default `superagent-chief-cli`). */
+  readonly advisorProfile?: string
+  /** Extra environment for planner/reviewer sessions (e.g. model endpoint). */
+  readonly advisorEnv?: Record<string, string>
 }
 
 export interface SuperAgentRuntime {
@@ -29,7 +38,11 @@ export interface SuperAgentRuntime {
   readonly engine: LoopEngine
   readonly chief: Chief
   readonly learning: LearningService
+  readonly planner: Planner
+  readonly goals: GoalRunner
   runtimeInputs(project: Project): RuntimeInputs
+  /** Compact module overview for the planner (from the last architecture scan). */
+  architectureSummary(project: Project): string | undefined
   /** Register a project and take its first architecture snapshot. */
   addProject(input: { name: string; root: string; defaultGates?: Project['defaultGates']; protectedModules?: string[] }): Promise<Project>
   scanArchitecture(project: Project): Promise<void>
@@ -69,8 +82,11 @@ export function createRuntime(options: RuntimeOptions = {}): SuperAgentRuntime {
     },
   })
 
+  const advisor = { stateHome: store.home, profile: options.advisorProfile, env: options.advisorEnv }
+  const planner = options.planner ?? new DshPlanner({ ...advisor, model: pid => roleModel(store.home, store.getProject(pid), 'planner') })
+  const reviewer = options.reviewer ?? new DshReviewer({ ...advisor, model: pid => roleModel(store.home, store.getProject(pid), 'reviewer') })
   const engine = new LoopEngine({
-    store, verifier,
+    store, verifier, reviewer,
     executor: options.executor ?? new DshHeadlessExecutor({ patches: options.workerPatches }),
     architecture: hooks,
     memory: projectId => learning.memoryFor(projectId),
@@ -84,7 +100,14 @@ export function createRuntime(options: RuntimeOptions = {}): SuperAgentRuntime {
   const chief = new Chief(engine)
 
   return {
-    store, verifier, observatory, engine, chief, learning, runtimeInputs,
+    store, verifier, observatory, engine, chief, learning, runtimeInputs, planner,
+    goals: new GoalRunner(store, chief),
+    architectureSummary(project) {
+      const g = observatory.withRuntime(project.root, runtimeInputs(project))
+      if (!g) return undefined
+      const lines = g.nodes.slice(0, 40).map(m => `- ${m.id}${m.layer ? ` [${m.layer}]` : ''}${m.protected ? ' (protected)' : ''}: ${m.root} (${m.files} files)${m.dependsOn.length ? ` → ${m.dependsOn.join(', ')}` : ''}`)
+      return [`${g.nodes.length} modules${g.nodes.length > 40 ? ' (first 40)' : ''}; see .architecture/graph.json`, ...lines].join('\n')
+    },
     async addProject(input) {
       // No gates given → propose defaults from the repository (tests, E2E, architecture).
       const project = store.createProject({ ...input, defaultGates: input.defaultGates?.length ? input.defaultGates : detectGates(input.root) })
