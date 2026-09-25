@@ -174,8 +174,9 @@ export class StateStore {
   listGoals(pid: ProjectId): Goal[] { return this.list(pid, 'goals') }
 
   updateGoal(pid: ProjectId, id: GoalId, change: Partial<Goal>): Goal {
+    const from = this.getGoal(pid, id)?.status
     const goal = this.patch<Goal>('goals', pid, id, change)
-    this.appendEvent({ type: 'goal/updated', projectId: pid, goalId: id, data: { status: goal.status, blocker: goal.blocker ?? null } })
+    this.appendEvent({ type: 'goal/updated', projectId: pid, goalId: id, data: { from: from ?? null, status: goal.status, blocker: goal.blocker ?? null, runRequested: goal.runRequested ?? false } })
     return goal
   }
 

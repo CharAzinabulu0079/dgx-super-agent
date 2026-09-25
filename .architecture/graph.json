@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T21:18:29.396Z",
-  "commit": "4e63cba",
+  "generatedAt": "2026-09-25T21:20:43.474Z",
+  "commit": "8b7b634",
   "layers": [
     "foundation",
     "capability",
@@ -88,7 +88,7 @@
       "layer": "capability",
       "root": "superagent/plugins/project-state",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 4,
       "declared": true,
@@ -164,7 +164,7 @@
       "layer": "capability",
       "root": "superagent/plugins/loop-policy",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 7,
       "declared": true,
@@ -297,7 +297,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/chief-worker",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 15,
       "declared": true,
@@ -381,7 +381,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 2,
       "declared": true,
@@ -410,7 +410,7 @@
       "layer": "interface",
       "root": "superagent/ui",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 13,
       "declared": true,
@@ -431,7 +431,7 @@
       "layer": "interface",
       "root": "superagent/dsh-bundle",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 5,
       "declared": true,
@@ -1115,36 +1115,24 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "scripts/redteam-report.ts",
-      "superagent/cli/src/main.ts",
-      "superagent/dsh-bundle/src/index.ts",
-      "superagent/evals/test/chief-planner.integration.test.ts",
-      "superagent/plugins/chief-worker/src/advisor.ts",
-      "superagent/plugins/chief-worker/src/chief.ts",
-      "superagent/plugins/chief-worker/src/engine.ts",
-      "superagent/plugins/chief-worker/src/executor.ts",
-      "superagent/plugins/chief-worker/src/index.ts",
-      "superagent/plugins/chief-worker/src/prompt.ts",
-      "superagent/plugins/chief-worker/test/advisor.test.ts",
-      "superagent/plugins/loop-policy/src/policy.ts",
-      "superagent/plugins/loop-policy/src/tool-policy.ts",
-      "superagent/server/src/goal-runner.ts",
-      "superagent/server/src/http.ts",
-      "superagent/server/src/index.ts",
+      "superagent/evals/test/ui.e2e.test.ts",
+      "superagent/plugins/project-state/src/store.ts",
       "superagent/server/src/narrate.ts",
-      "superagent/server/src/runtime.ts",
-      "superagent/server/test/requests.test.ts"
+      "superagent/ui/src/App.tsx",
+      "superagent/ui/src/api.ts",
+      "superagent/ui/src/styles.css"
     ],
     "modules": [
-      "chief-worker",
-      "cli",
-      "dsh-bundle",
       "evals",
-      "loop-policy",
-      "server"
+      "project-state",
+      "server",
+      "ui"
     ],
     "impacted": [
       "architecture-observatory",
+      "chief-worker",
+      "cli",
+      "dsh-bundle",
       "learning",
       "model-policy"
     ],
@@ -1232,6 +1220,6 @@
     "files": 139,
     "modules": 15,
     "edges": 52,
-    "scanMs": 667
+    "scanMs": 678
   }
 }

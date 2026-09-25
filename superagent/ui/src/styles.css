@@ -53,3 +53,14 @@ table.tasks th, table.tasks td { text-align: left; border-bottom: 1px solid var(
 .health .badge.warn { background: #f59e0b; color: #111; }
 details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 .state.promoted { background: #16a34a; } .state.rejected, .state.archived { background: #475569; } .state.candidate, .state.evaluating { background: #2563eb; }
+
+.ask textarea { width: 100%; font-size: 1rem; box-sizing: border-box; }
+.ask-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: .5rem; }
+.ask-row button { margin-left: auto; }
+.activity { list-style: none; padding: 0; margin: 0; max-height: 18rem; overflow: auto; }
+.activity li { padding: .2rem 0; border-bottom: 1px solid var(--border, #8882); }
+.activity time { opacity: .6; font-size: .85em; margin-right: .4rem; }
+.activity .tone-good { color: var(--good, #2e8b57); }
+.activity .tone-bad { color: var(--bad, #c0392b); }
+.activity .tone-attention { color: var(--warn, #b8860b); font-weight: 600; }
+.badge { margin-left: .4rem; }

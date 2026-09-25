@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from '@playwright/test'
-import { ScriptedExecutor } from '@superagent/chief-worker'
+import { ScriptedExecutor, ScriptedReviewer, parsePlan } from '@superagent/chief-worker'
 import { createRuntime, startServer } from '@superagent/server'
 import { calcProject, tempDir, FIXED_CALC, NODE_TEST_GATE, REPO_ROOT } from '@superagent/testkit'
 
@@ -115,6 +115,45 @@ test('UI: projects, goal, tasks with model selection, live loop, human gate, arc
     const inspector = page.getByTestId('node-inspector')
     await inspector.waitFor()
     assert.match(await inspector.textContent() ?? '', /Location.*Depends on.*Used by.*Tests/s)
+    assert.deepEqual(consoleErrors, [])
+  } finally {
+    await browser.close()
+    await server.close()
+  }
+})
+
+test('UI one-box: describe a change → planned, built, checked, narrated', { timeout: 180_000 }, async () => {
+  if (!existsSync(join(UI_DIR, 'index.html'))) execFileSync('npx', ['vite', 'build'], { cwd: join(REPO_ROOT, 'superagent/ui'), stdio: 'pipe' })
+  const root = calcProject()
+  const runtime = createRuntime({
+    home: tempDir('sa-home-'),
+    planner: { name: 'fake', plan: async i => parsePlan({ objective: 'Correct addition', tasks: [{ title: 'fix add()', instructions: i.request, review: true }] }, i.gates, 'fake') },
+    reviewer: new ScriptedReviewer(() => ({ approve: true, comments: 'looks right' })),
+    executor: new ScriptedExecutor(async input => {
+      await new Promise(r => setTimeout(r, 300))
+      writeFileSync(join(input.project.root, 'src/calc.js'), FIXED_CALC)
+    }),
+  })
+  const server = await startServer({ runtime, port: 0, uiDir: UI_DIR })
+  const browser = await chromium.launch({ executablePath: process.env.SUPERAGENT_CHROMIUM ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) })
+  const page = await browser.newPage()
+  const consoleErrors: string[] = []
+  page.on('pageerror', e => consoleErrors.push(String(e)))
+  try {
+    await page.goto(`${server.url}/?token=${server.humanToken}`)
+    await page.getByTestId('new-project-name').fill('Calc')
+    await page.getByTestId('new-project-root').fill(root)
+    await page.getByTestId('add-project').click()
+    await page.getByTestId('project-calc').click()
+    await page.getByTestId('ask').getByText('checks: unit, architecture').waitFor()
+    await page.getByTestId('ask-input').fill('adding two numbers gives the wrong answer — fix it')
+    await page.getByTestId('ask-review').check()
+    await page.getByTestId('ask-submit').click()
+    const activity = page.getByTestId('activity')
+    await activity.getByText('Planned your request into 1 task: fix add()').waitFor({ timeout: 30_000 })
+    await activity.getByText('the reviewer approved').waitFor({ timeout: 60_000 })
+    await activity.getByText('Goal complete — every task passed its checks').waitFor({ timeout: 60_000 })
+    await page.getByTestId('goal-status').filter({ hasText: 'complete' }).waitFor()
     assert.deepEqual(consoleErrors, [])
   } finally {
     await browser.close()

@@ -30,6 +30,7 @@ export function narrate(e: SuperAgentEvent, titleOf: (taskId: string) => string 
     case 'goal/created': return line('info', `New goal: ${d.objective}`)
     case 'goal/updated':
       if (d.error) return line('bad', `The run stopped unexpectedly: ${d.error}`)
+      if (d.from === d.status) return undefined // bookkeeping (queue flags), not a transition
       if (d.status === 'complete') return line('good', 'Goal complete — every task passed its checks')
       if (d.status === 'blocked') return line('attention', `Paused for your decision: ${d.blocker ?? ''}`)
       if (d.status === 'failed') return line('bad', `Goal failed: ${d.blocker ?? ''}`)

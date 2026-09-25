@@ -1,6 +1,6 @@
 /** SuperAgent minimal Web/PWA (Freeze §12.1): projects, goal, workers/loop, architecture, model selection, approve/stop/steer. */
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { api, eventStream, fmtModel, type ProjectDetail, type Project, type SAEvent, type Task } from './api.ts'
+import { api, eventStream, fmtModel, type ActivityLine, type ProjectDetail, type Project, type SAEvent, type Task } from './api.ts'
 import { ArchitectureView } from './ArchitectureView.tsx'
 import { HealthPanel, LearningPanel, PolicyPanel } from './Panels.tsx'
 
@@ -71,7 +71,7 @@ export function App() {
                 ))}
               </div>
             </header>
-            {tab === 'overview' && <><HealthPanel projectId={detail.project.id} refreshKey={archKey} /><Overview detail={detail} act={act} /></>}
+            {tab === 'overview' && <><Ask detail={detail} act={act} /><Activity projectId={detail.project.id} refreshKey={events.length} /><HealthPanel projectId={detail.project.id} refreshKey={archKey} /><Overview detail={detail} act={act} /></>}
             {tab === 'learning' && <LearningPanel projectId={detail.project.id} onError={setError} refreshKey={events.length} />}
             {tab === 'policy' && <PolicyPanel projectId={detail.project.id} onError={setError} />}
             {tab === 'workers' && <Workers detail={detail} />}
@@ -81,6 +81,48 @@ export function App() {
         )}
       </main>
     </div>
+  )
+}
+
+/** The one box: describe the change; the Chief plans it, Workers build it, checks decide. */
+function Ask({ detail, act }: { detail: ProjectDetail; act: (p: Promise<unknown>) => void }) {
+  const [request, setRequest] = useState('')
+  const [review, setReview] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const gates = detail.project.defaultGates ?? []
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    if (!request.trim() || busy) return
+    setBusy(true)
+    act(api('POST', `/api/projects/${detail.project.id}/requests`, { request, review }).then(() => setRequest('')).finally(() => setBusy(false)))
+  }
+  return (
+    <form className="card ask" onSubmit={submit} data-testid="ask">
+      <h3>What do you want?</h3>
+      <textarea placeholder="Describe the change in plain words, e.g. “the signup form should reject emails without an @”" value={request} onChange={e => setRequest(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e) }} data-testid="ask-input" rows={3} />
+      <div className="ask-row">
+        <label><input type="checkbox" checked={review} onChange={e => setReview(e.target.checked)} data-testid="ask-review" /> also have a reviewer check the change</label>
+        <span className="muted">checks: {gates.length ? gates.map(g => g.id + (g.heldOut ? ' (hidden)' : '')).join(', ') : 'none — add a test gate'}</span>
+        <button type="submit" disabled={busy || !request.trim()} data-testid="ask-submit">{busy ? 'Planning…' : 'Go'}</button>
+      </div>
+    </form>
+  )
+}
+
+function Activity({ projectId, refreshKey }: { projectId: string; refreshKey: number }) {
+  const [lines, setLines] = useState<ActivityLine[]>([])
+  useEffect(() => {
+    const t = window.setTimeout(() => { api<ActivityLine[]>('GET', `/api/projects/${projectId}/activity?limit=30`).then(setLines, () => {}) }, 200)
+    return () => window.clearTimeout(t)
+  }, [projectId, refreshKey])
+  if (!lines.length) return null
+  return (
+    <section className="card">
+      <h3>Activity</h3>
+      <ol className="activity" data-testid="activity">{[...lines].reverse().map(l => (
+        <li key={l.seq} className={`tone-${l.tone}`}><time>{new Date(l.ts).toLocaleTimeString()}</time> {l.text}</li>
+      ))}</ol>
+    </section>
   )
 }
 
@@ -119,7 +161,8 @@ function Overview({ detail, act }: { detail: ProjectDetail; act: (p: Promise<unk
         <h3>Goal</h3>
         {goal ? (
           <div data-testid="goal">
-            <p><strong>{goal.objective}</strong> <span className={`state ${goal.status}`} data-testid="goal-status">{goal.status}</span></p>
+            <p><strong>{goal.objective}</strong> <span className={`state ${goal.status}`} data-testid="goal-status">{goal.status}</span>{goal.runRequested && !running && <span className="badge" data-testid="goal-queued">queued</span>}</p>
+            {goal.request && goal.request !== goal.objective && <p className="muted">asked: {goal.request}</p>}
             {goal.blocker && <p className="muted">{goal.blocker}</p>}
             <button disabled={running || tasks.length === 0} onClick={() => act(api('POST', `/api/projects/${pid}/goals/${goal.id}/run`, {}))} data-testid="run-goal">{running ? 'Running…' : 'Start / continue'}</button>
           </div>
@@ -173,7 +216,7 @@ function TaskRow({ task, pid, act }: { task: Task; pid: string; act: (p: Promise
   const last = task.attempts.at(-1)
   return (
     <tr data-testid={`task-${task.id}`}>
-      <td>{task.title}{task.steer && <div className="muted">steer: {task.steer}</div>}</td>
+      <td>{task.title}{task.review && <span className="badge" title="reviewed after checks pass">review</span>}{task.steer && <div className="muted">steer: {task.steer}</div>}{task.reviews?.at(-1) && !task.reviews.at(-1)!.approve && <div className="muted">reviewer: {task.reviews.at(-1)!.comments}</div>}</td>
       <td><span className={`state ${task.state}`} data-testid="task-state">{task.state}</span></td>
       <td>{task.attempts.length}/{task.policy.maxAttempts}{last && <div className="muted">{last.strategy}</div>}</td>
       <td>

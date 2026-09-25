@@ -5,10 +5,11 @@ export interface Attempt { n: number; strategy: string; model: ModelRef; verdict
 export interface Task {
   id: string; goalId: string; title: string; instructions: string; state: string; running?: boolean
   attempts: Attempt[]; policy: { model: { worker: ModelRef; escalation?: ModelRef; reviewer?: ModelRef }; maxAttempts: number }
-  steer?: string; humanGateId?: string
+  steer?: string; humanGateId?: string; review?: boolean; reviews?: Array<{ attempt: number; approve: boolean; comments: string; reviewer: string }>
 }
-export interface Goal { id: string; objective: string; status: string; taskIds: string[]; blocker?: string; createdAt: string }
-export interface Project { id: string; name: string; root: string; goal?: Goal | null; openHumanGates?: number }
+export interface Goal { id: string; objective: string; status: string; taskIds: string[]; blocker?: string; createdAt: string; runRequested?: boolean; request?: string }
+export interface ActivityLine { seq: number; ts: string; taskId?: string; tone: 'info' | 'good' | 'bad' | 'attention'; text: string }
+export interface Project { id: string; name: string; root: string; goal?: Goal | null; openHumanGates?: number; defaultGates?: Array<{ id: string; kind: string; heldOut?: unknown }> }
 export interface WorkerReport { kind: string; current_state: string; progress: number; changed_modules: string[]; verification_result: string; summary: string; human_required: boolean; blocker: string | null; at?: string }
 export interface Worker { id: string; taskId: string; attempt: number; status: string; model: ModelRef; activeModules: string[]; lastReport?: WorkerReport; startedAt: string; executor: string }
 export interface HumanGate { id: string; taskId?: string; reason: string; detail: string; status: string; resolution?: string; actions?: Array<{ fingerprint: string; summary: string; category: string; rule: string }> }
