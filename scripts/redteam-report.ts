@@ -72,8 +72,9 @@ const md = [
   '## Residual risks (not closed by this suite)',
   '',
   '- Shell classification is pattern-based; novel obfuscation may pass the pre-tool guard. Integrity checks, the Landlock sandbox and API credentials remain independent layers.',
-  '- Semantic test-gaming (code that detects the test runner and behaves differently) is not structurally detectable; held-out tests the Worker never sees are the mitigation (NEXT_STEPS).',
-  '- Workers run as the same OS user: they can read files outside the workspace (e.g. the agent-token file, not the memory-only human token). Separate OS user/container per Worker on DGX closes this.',
+  '- Semantic test-gaming is mitigated by held-out gates (RT-18) only where a human registered hidden tests; code that detects *any* test runner and misbehaves only in production is still not structurally detectable.',
+  '- Workers (and planner/reviewer sessions) run as the same OS user: the guard forbids `SUPERAGENT_HOME`, but a shell trick the pattern guard misses could read the agent-token file or held-out tests (never the memory-only human token). Separate OS user/container per Worker on DGX closes this.',
+  '- The Reviewer is a model: it can miss defects (it can only block, so this costs quality, not integrity).',
   '- All model behaviour here is scripted; real-model runs on DGX should re-run this report with a live model for the DSH-backed rows.',
   '',
 ].join('\n')
