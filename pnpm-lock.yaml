@@ -32,6 +32,9 @@ importers:
       '@superagent/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@superagent/learning':
+        specifier: workspace:*
+        version: link:../plugins/learning
       '@superagent/model-policy':
         specifier: workspace:*
         version: link:../plugins/model-policy
@@ -172,6 +175,12 @@ importers:
         specifier: workspace:*
         version: link:../verifier
     devDependencies:
+      '@superagent/chief-worker':
+        specifier: workspace:*
+        version: link:../chief-worker
+      '@superagent/server':
+        specifier: workspace:*
+        version: link:../../server
       '@superagent/testkit':
         specifier: workspace:*
         version: link:../../testkit
@@ -192,6 +201,9 @@ importers:
         specifier: workspace:*
         version: link:../../contracts
     devDependencies:
+      '@superagent/chief-worker':
+        specifier: workspace:*
+        version: link:../chief-worker
       '@superagent/testkit':
         specifier: workspace:*
         version: link:../../testkit
@@ -227,6 +239,9 @@ importers:
       '@superagent/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@superagent/learning':
+        specifier: workspace:*
+        version: link:../plugins/learning
       '@superagent/loop-policy':
         specifier: workspace:*
         version: link:../plugins/loop-policy

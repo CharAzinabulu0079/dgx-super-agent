@@ -14,7 +14,8 @@
     "@superagent/model-policy": "workspace:*",
     "@superagent/chief-worker": "workspace:*",
     "@superagent/architecture-observatory": "workspace:*",
-    "@superagent/testkit": "workspace:*"
+    "@superagent/testkit": "workspace:*",
+    "@superagent/learning": "workspace:*"
   },
   "devDependencies": {
     "@superagent/testkit": "workspace:*"

@@ -132,12 +132,14 @@
     "description": "Manual per-task model selection",
     "protected": false,
     "declared": true,
-    "files": 3,
+    "files": 4,
     "gates": [
       "unit"
     ],
     "adrs": [],
-    "tests": [],
+    "tests": [
+      "superagent/plugins/model-policy/test/policy.test.ts"
+    ],
     "entry": "superagent/plugins/model-policy/src/index.ts",
     "externalDeps": []
   },
@@ -177,12 +179,15 @@
     "description": "Memory/Skill candidates → eval → promote",
     "protected": false,
     "declared": true,
-    "files": 1,
+    "files": 4,
     "gates": [
       "unit"
     ],
     "adrs": [],
-    "tests": [],
+    "tests": [
+      "superagent/plugins/learning/test/learning.test.ts"
+    ],
+    "entry": "superagent/plugins/learning/src/index.ts",
     "externalDeps": []
   },
   {

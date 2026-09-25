@@ -7,9 +7,9 @@ flowchart LR
     project_state["project-state<br/><small>4 files</small>"]
     verifier["verifier<br/><small>7 files</small>"]
     loop_policy["loop-policy<br/><small>4 files</small>"]
-    model_policy["model-policy<br/><small>3 files</small>"]
+    model_policy["model-policy<br/><small>4 files</small>"]
     architecture_observatory["architecture-observatory<br/><small>9 files</small>"]
-    learning["learning<br/><small>1 files</small>"]
+    learning["learning<br/><small>4 files</small>"]
   end
   subgraph layer_orchestration["orchestration"]
     chief_worker["chief-worker<br/><small>11 files</small>"]
@@ -40,12 +40,16 @@ flowchart LR
   cli --> verifier
   dsh_bundle --> contracts
   dsh_bundle --> project_state
+  learning --> contracts
+  learning --> project_state
+  learning --> verifier
   loop_policy --> contracts
   model_policy --> contracts
   project_state --> contracts
   server --> architecture_observatory
   server --> chief_worker
   server --> contracts
+  server --> learning
   server --> model_policy
   server --> project_state
   server --> testkit
@@ -57,17 +61,17 @@ flowchart LR
   classDef gate_failed fill:#ffebee,stroke:#c62828
   classDef protected stroke:#6a1b9a,stroke-width:3px
   class contracts stable
-  class testkit changing
+  class testkit stable
   class project_state stable
   class verifier stable
   class loop_policy stable
-  class model_policy stable
-  class architecture_observatory stable
-  class learning stable
+  class model_policy changing
+  class architecture_observatory changing
+  class learning changing
   class chief_worker changing
   class server changing
   class cli changing
-  class ui changing
-  class dsh_bundle changing
-  class evals changing
-  class sample_webapp changing
+  class ui stable
+  class dsh_bundle stable
+  class evals stable
+  class sample_webapp stable

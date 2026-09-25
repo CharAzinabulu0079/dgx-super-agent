@@ -7,6 +7,7 @@ import { StateStore, defaultHome } from '@superagent/project-state'
 import { Verifier } from '@superagent/verifier'
 import { Chief, DshHeadlessExecutor, LoopEngine, type ChiefWake, type WorkerExecutor } from '@superagent/chief-worker'
 import { Observatory, driftGateRunner, observatoryHooks, type RuntimeInputs } from '@superagent/architecture-observatory'
+import { LearningService } from '@superagent/learning'
 
 export interface RuntimeOptions {
   readonly home?: string
@@ -22,6 +23,7 @@ export interface SuperAgentRuntime {
   readonly observatory: Observatory
   readonly engine: LoopEngine
   readonly chief: Chief
+  readonly learning: LearningService
   runtimeInputs(project: Project): RuntimeInputs
   /** Register a project and take its first architecture snapshot. */
   addProject(input: { name: string; root: string; defaultGates?: Project['defaultGates']; protectedModules?: string[] }): Promise<Project>
@@ -45,8 +47,10 @@ export function createRuntime(options: RuntimeOptions = {}): SuperAgentRuntime {
     }
   }
 
+  const learning = new LearningService(store, verifier)
   const hooks = observatoryHooks(observatory, {
     runtime: runtimeInputs,
+    skills: project => learning.projectSkills(project.id),
     onUpdated: (project, summary) => {
       store.emitTyped('architecture/updated', project.id, summary)
       if (summary.errors > 0) store.emitTyped('architecture/drift', project.id, summary)
@@ -57,12 +61,17 @@ export function createRuntime(options: RuntimeOptions = {}): SuperAgentRuntime {
     store, verifier,
     executor: options.executor ?? new DshHeadlessExecutor({ patches: options.workerPatches }),
     architecture: hooks,
-    onChiefWake: options.onChiefWake,
+    memory: projectId => learning.memoryFor(projectId),
+    onChiefWake: wake => {
+      // Reflect → candidates only; promotion needs eval (skills) or a human (memory).
+      if (wake.reason === 'task-passed' && wake.taskId) learning.reflect(wake.projectId, wake.taskId)
+      return options.onChiefWake?.(wake)
+    },
   })
   const chief = new Chief(engine)
 
   return {
-    store, verifier, observatory, engine, chief, runtimeInputs,
+    store, verifier, observatory, engine, chief, learning, runtimeInputs,
     async addProject(input) {
       const project = store.createProject(input)
       await hooks.refresh(project)

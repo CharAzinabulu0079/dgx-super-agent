@@ -26,6 +26,8 @@ export interface WorkerRunInput {
   /** DSH session id of the previous attempt, for strategies that continue it. */
   readonly previousSessionId?: string
   readonly steer?: string
+  /** Human-approved project memory (promoted Learning items). */
+  readonly memory?: readonly string[]
   /** SuperAgent state home, so out-of-process Workers can report into the store. */
   readonly stateHome: string
   /** Record a structured report (in-process executors). */

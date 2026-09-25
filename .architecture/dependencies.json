@@ -271,6 +271,66 @@
       ]
     },
     {
+      "from": "learning",
+      "to": "chief-worker",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/learning/test/learning.test.ts → @superagent/chief-worker"
+      ]
+    },
+    {
+      "from": "learning",
+      "to": "contracts",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/learning/src/learning.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "learning",
+      "to": "project-state",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/learning/src/learning.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "learning",
+      "to": "server",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/learning/test/learning.test.ts → @superagent/server"
+      ]
+    },
+    {
+      "from": "learning",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/learning/test/learning.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "learning",
+      "to": "verifier",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/learning/src/learning.ts → @superagent/verifier"
+      ]
+    },
+    {
       "from": "loop-policy",
       "to": "contracts",
       "weight": 2,
@@ -283,12 +343,32 @@
     },
     {
       "from": "model-policy",
+      "to": "chief-worker",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/model-policy/test/policy.test.ts → @superagent/chief-worker"
+      ]
+    },
+    {
+      "from": "model-policy",
       "to": "contracts",
       "weight": 1,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/model-policy/src/policy.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "model-policy",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/model-policy/test/policy.test.ts → @superagent/testkit"
       ]
     },
     {
@@ -341,6 +421,16 @@
       "evidence": [
         "superagent/server/src/http.ts → @superagent/contracts",
         "superagent/server/src/runtime.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "learning",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/runtime.ts → @superagent/learning"
       ]
     },
     {

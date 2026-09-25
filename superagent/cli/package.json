@@ -10,7 +10,8 @@
     "@superagent/architecture-observatory": "workspace:*",
     "@superagent/server": "workspace:*",
     "@superagent/testkit": "workspace:*",
-    "@superagent/project-state": "workspace:*"
+    "@superagent/project-state": "workspace:*",
+    "@superagent/learning": "workspace:*"
   },
   "bin": {
     "sa": "src/main.ts"

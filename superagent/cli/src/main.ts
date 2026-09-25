@@ -27,6 +27,7 @@ const HELP = `sa — DGX Super Agent CLI
   sa run <project> <goal>                      run the goal's tasks through the loop (DSH Workers)
   sa stop <project> <task> | sa steer <project> <task> "<text>"
   sa decide <project> <humanGate> approve|reject ["note"]
+  sa learn list [project] | sa learn eval <candidate> | sa learn approve|reject <candidate> ["note"]
   sa recover <project>                          close attempts interrupted by a crash
   sa arch scan [root] [--check]                 regenerate .architecture/ (exit 1 on drift errors with --check)
   sa arch hook [root]                           install a git pre-commit hook that refreshes .architecture/
@@ -155,6 +156,15 @@ async function main(argv: string[]): Promise<number> {
       const t = engine.resolveHumanGate(sub!, hg!, decision === 'approve' ? 'approved' : 'rejected', note.join(' '))
       console.log(t ? `task ${t.id} → ${t.state}` : 'resolved')
       return 0
+    }
+    case 'learn': {
+      if (sub === 'list') {
+        for (const c of rt.learning.learning.list().filter(c => !rest[0] || c.evidence.projectId === rest[0])) console.log(`${c.id}\t${c.kind}\t${c.status}\t${c.name}\t${c.description}`)
+        return 0
+      }
+      if (sub === 'eval') { const c = await rt.learning.evaluate(rest[0]!); console.log(`${c.id} → ${c.status} (${c.decision})`); return c.status === 'promoted' ? 0 : 2 }
+      if (sub === 'approve' || sub === 'reject') { const c = rt.learning.decideMemory(rest[0]!, sub === 'approve', rest.slice(1).join(' ')); console.log(`${c.id} → ${c.status}`); return 0 }
+      break
     }
     case 'recover': console.log(`${engine.recoverInterrupted(sub!).length} task(s) recovered`); return 0
   }

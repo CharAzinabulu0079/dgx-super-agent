@@ -10,6 +10,8 @@ import { Observatory, resolverFromModules } from './observatory.ts'
 export interface ObservatoryHooksOptions {
   /** Supplies live worker/receipt state for the runtime overlay. */
   readonly runtime?: (project: Project) => RuntimeInputs | undefined
+  /** Promoted Skills relevant to the project (written to skills.json). */
+  readonly skills?: (project: Project) => readonly unknown[]
   readonly onUpdated?: (project: Project, summary: { modules: number; edges: number; drift: number; errors: number }) => void
 }
 
@@ -24,7 +26,7 @@ export function observatoryHooks(observatory: Observatory = new Observatory(), o
       return graph ? reverseClosure(modules, graph.edges) : []
     },
     async refresh(project: Project): Promise<void> {
-      const graph = await observatory.scan(project.root, { runtime: options.runtime?.(project) })
+      const graph = await observatory.scan(project.root, { runtime: options.runtime?.(project), skills: options.skills?.(project) })
       options.onUpdated?.(project, {
         modules: graph.stats.modules, edges: graph.stats.edges, drift: graph.drift.length,
         errors: graph.drift.filter(d => d.severity === 'error').length,

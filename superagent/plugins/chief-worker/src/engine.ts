@@ -32,6 +32,8 @@ export interface EngineOptions {
   readonly architecture?: ArchitectureHooks
   /** Called for events that should wake the (expensive) Chief model. */
   readonly onChiefWake?: (wake: ChiefWake) => void | Promise<void>
+  /** Promoted memory for a project, injected into Worker prompts. */
+  readonly memory?: (projectId: string) => readonly string[]
 }
 
 export interface ChiefWake {
@@ -54,6 +56,7 @@ export class LoopEngine {
   readonly executor: WorkerExecutor
   readonly architecture?: ArchitectureHooks
   private readonly onChiefWake?: EngineOptions['onChiefWake']
+  private readonly memory?: EngineOptions['memory']
   private readonly running = new Map<string, AbortController>()
 
   constructor(options: EngineOptions) {
@@ -62,6 +65,7 @@ export class LoopEngine {
     this.executor = options.executor
     this.architecture = options.architecture
     this.onChiefWake = options.onChiefWake
+    this.memory = options.memory
   }
 
   gatesFor(project: Project, task: Task): GateSpec[] {
@@ -120,6 +124,7 @@ export class LoopEngine {
           feedback: this.feedbackFor(projectId, task),
           previousSessionId: strategy === 'retry-with-feedback' ? previousSessionId : undefined,
           steer,
+          memory: this.memory?.(projectId),
           stateHome: this.store.home,
           report: partial => {
             const report = parseWorkerReport(partial, { task_id: taskId, model })

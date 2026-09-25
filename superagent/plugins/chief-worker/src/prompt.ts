@@ -36,6 +36,7 @@ export function buildWorkerPrompt(input: Omit<WorkerRunInput, 'report' | 'signal
     if (strategy === 'fresh-context') lines.push('Previous approaches failed repeatedly with the same error. Re-read the relevant code and try a different approach.')
   }
   if (steer) lines.push('', '## Direction from the human', steer)
+  if (input.memory?.length) lines.push('', '## Project memory (human-approved lessons)', ...input.memory.map(m => `- ${m}`))
   lines.push(
     '',
     '## Protocol',

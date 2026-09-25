@@ -134,6 +134,17 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   route('GET', '/api/projects/:pid/workers/:wid/reports', ({ params }) => store.readReports(project(params.pid!).id, params.wid!))
   route('GET', '/api/projects/:pid/events', ({ params, query }) => store.readEvents(project(params.pid!).id, Number(query.get('since') ?? 0), Number(query.get('limit') ?? 500)))
 
+  // ---------------------------------------------------------------- learning
+  route('GET', '/api/learning', ({ query }) => {
+    const pid = query.get('project')
+    return runtime.learning.learning.list().filter(c => !pid || c.evidence.projectId === pid)
+  })
+  route('POST', '/api/learning/:cid/evaluate', ({ params }) => runtime.learning.evaluate(params.cid!))
+  route('POST', '/api/learning/:cid/decide', ({ params, body }) => {
+    if (typeof body?.approved !== 'boolean') throw new HttpError(400, 'approved (boolean) is required')
+    return runtime.learning.decideMemory(params.cid!, body.approved, String(body.note ?? ''))
+  })
+
   // ---------------------------------------------------------------- architecture
   route('GET', '/api/projects/:pid/architecture', async ({ params }) => {
     const p = project(params.pid!)

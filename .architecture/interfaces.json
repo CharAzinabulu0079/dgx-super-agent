@@ -194,6 +194,20 @@
     ]
   },
   {
+    "module": "learning",
+    "entry": "superagent/plugins/learning/src/index.ts",
+    "exports": [
+      "Candidate",
+      "CandidateKind",
+      "CandidateStatus",
+      "Evidence",
+      "Extractor",
+      "LearningService",
+      "LearningStore",
+      "traceExtractor"
+    ]
+  },
+  {
     "module": "chief-worker",
     "entry": "superagent/plugins/chief-worker/src/index.ts",
     "exports": [
