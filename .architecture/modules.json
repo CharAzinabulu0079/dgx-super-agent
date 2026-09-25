@@ -109,12 +109,14 @@
     "description": "Retry / strategy switch / Human Gate decisions",
     "protected": false,
     "declared": true,
-    "files": 3,
+    "files": 4,
     "gates": [
       "unit"
     ],
     "adrs": [],
-    "tests": [],
+    "tests": [
+      "superagent/plugins/loop-policy/test/policy.test.ts"
+    ],
     "entry": "superagent/plugins/loop-policy/src/index.ts",
     "externalDeps": []
   },
@@ -217,17 +219,21 @@
     "paths": [
       "superagent/server/**"
     ],
+    "packageName": "@superagent/server",
     "layer": "interface",
     "description": "Headless HTTP/SSE Realtime API",
     "protected": false,
     "declared": true,
-    "files": 0,
+    "files": 5,
     "gates": [
       "unit",
       "e2e-ui"
     ],
     "adrs": [],
-    "tests": [],
+    "tests": [
+      "superagent/server/test/server.test.ts"
+    ],
+    "entry": "superagent/server/src/index.ts",
     "externalDeps": []
   },
   {
@@ -242,7 +248,7 @@
     "description": "`sa` command line",
     "protected": false,
     "declared": true,
-    "files": 1,
+    "files": 2,
     "gates": [
       "unit"
     ],

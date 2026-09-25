@@ -6,7 +6,7 @@ flowchart LR
   subgraph layer_capability["capability"]
     project_state["project-state<br/><small>4 files</small>"]
     verifier["verifier<br/><small>7 files</small>"]
-    loop_policy["loop-policy<br/><small>3 files</small>"]
+    loop_policy["loop-policy<br/><small>4 files</small>"]
     model_policy["model-policy<br/><small>3 files</small>"]
     architecture_observatory["architecture-observatory<br/><small>9 files</small>"]
     learning["learning<br/><small>1 files</small>"]
@@ -15,8 +15,8 @@ flowchart LR
     chief_worker["chief-worker<br/><small>11 files</small>"]
   end
   subgraph layer_interface["interface"]
-    server["server<br/><small>0 files</small>"]
-    cli["cli<br/><small>1 files</small>"]
+    server["server<br/><small>5 files</small>"]
+    cli["cli<br/><small>2 files</small>"]
     ui["ui<br/><small>0 files</small>"]
     dsh_bundle["dsh-bundle<br/><small>0 files</small>"]
   end
@@ -27,9 +27,21 @@ flowchart LR
   chief_worker --> project_state
   chief_worker --> testkit
   chief_worker --> verifier
+  cli --> architecture_observatory
+  cli --> contracts
+  cli --> model_policy
+  cli --> server
+  cli --> testkit
+  cli --> verifier
   loop_policy --> contracts
   model_policy --> contracts
   project_state --> contracts
+  server --> architecture_observatory
+  server --> chief_worker
+  server --> contracts
+  server --> model_policy
+  server --> project_state
+  server --> verifier
   verifier --> contracts
   classDef stable fill:#e8f5e9,stroke:#2e7d32
   classDef changing fill:#fff8e1,stroke:#f9a825
@@ -40,12 +52,12 @@ flowchart LR
   class testkit stable
   class project_state stable
   class verifier stable
-  class loop_policy stable
+  class loop_policy changing
   class model_policy stable
-  class architecture_observatory changing
+  class architecture_observatory stable
   class learning stable
   class chief_worker stable
-  class server stable
-  class cli stable
+  class server changing
+  class cli changing
   class ui stable
   class dsh_bundle stable

@@ -47,11 +47,12 @@ export function decideNext(input: LoopInput): LoopDecision {
   if (touchedProtected.length) {
     return { action: 'human_gate', reason: 'protected-module', detail: `attempt ${last.n} changed protected modules: ${touchedProtected.join(', ')}` }
   }
-  if (receipt.verdict === 'PASS') return { action: 'pass', reason: receipt.reason }
-
+  // A Worker's request for a human decision wins over a green verdict: passing
+  // gates say nothing about product direction or irreversible operations.
   if (lastReport?.human_required) {
     return { action: 'human_gate', reason: 'worker-requested', detail: lastReport.blocker ?? lastReport.summary ?? 'worker requested a human decision' }
   }
+  if (receipt.verdict === 'PASS') return { action: 'pass', reason: receipt.reason }
   if (attempts.length >= task.policy.maxAttempts) {
     return { action: 'human_gate', reason: 'repeated-failure', detail: `attempt budget exhausted (${attempts.length}/${task.policy.maxAttempts}); last: ${receipt.reason}` }
   }

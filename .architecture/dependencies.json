@@ -124,13 +124,74 @@
       ]
     },
     {
-      "from": "loop-policy",
+      "from": "cli",
+      "to": "architecture-observatory",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/architecture-observatory"
+      ]
+    },
+    {
+      "from": "cli",
       "to": "contracts",
       "weight": 1,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/plugins/loop-policy/src/policy.ts → @superagent/contracts"
+        "superagent/cli/src/main.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "cli",
+      "to": "model-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/model-policy"
+      ]
+    },
+    {
+      "from": "cli",
+      "to": "server",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/server"
+      ]
+    },
+    {
+      "from": "cli",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "cli",
+      "to": "verifier",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/verifier"
+      ]
+    },
+    {
+      "from": "loop-policy",
+      "to": "contracts",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/loop-policy/src/policy.ts → @superagent/contracts",
+        "superagent/plugins/loop-policy/test/policy.test.ts → @superagent/contracts"
       ]
     },
     {
@@ -161,6 +222,78 @@
       "testOnly": true,
       "evidence": [
         "superagent/plugins/project-state/test/store.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "architecture-observatory",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/runtime.ts → @superagent/architecture-observatory"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "chief-worker",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/runtime.ts → @superagent/chief-worker",
+        "superagent/server/test/server.test.ts → @superagent/chief-worker"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "contracts",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/http.ts → @superagent/contracts",
+        "superagent/server/src/runtime.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "model-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/http.ts → @superagent/model-policy"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "project-state",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/runtime.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/server/test/server.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "verifier",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/runtime.ts → @superagent/verifier"
       ]
     },
     {

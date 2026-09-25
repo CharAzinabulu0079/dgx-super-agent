@@ -1,5 +1,17 @@
 [
   {
+    "id": "cli:bin:sa",
+    "module": "cli",
+    "kind": "bin",
+    "detail": "src/main.ts"
+  },
+  {
+    "id": "server:http:superagent/server/src/http.ts",
+    "module": "server",
+    "kind": "http-server",
+    "detail": "superagent/server/src/http.ts"
+  },
+  {
     "id": "testkit:http:superagent/testkit/src/mock-llm.ts",
     "module": "testkit",
     "kind": "http-server",

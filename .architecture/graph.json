@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T16:49:25.859Z",
-  "commit": "dbb9553",
+  "generatedAt": "2026-09-25T16:53:12.185Z",
+  "commit": "b26bfe9",
   "layers": [
     "foundation",
     "capability",
@@ -25,9 +25,11 @@
       "usedBy": [
         "architecture-observatory",
         "chief-worker",
+        "cli",
         "loop-policy",
         "model-policy",
         "project-state",
+        "server",
         "verifier"
       ],
       "gates": [
@@ -57,7 +59,9 @@
       "usedBy": [
         "architecture-observatory",
         "chief-worker",
+        "cli",
         "project-state",
+        "server",
         "verifier"
       ],
       "gates": [
@@ -89,7 +93,8 @@
       ],
       "usedBy": [
         "architecture-observatory",
-        "chief-worker"
+        "chief-worker",
+        "server"
       ],
       "gates": [
         "unit"
@@ -121,7 +126,9 @@
       ],
       "usedBy": [
         "architecture-observatory",
-        "chief-worker"
+        "chief-worker",
+        "cli",
+        "server"
       ],
       "gates": [
         "unit"
@@ -142,9 +149,9 @@
       "layer": "capability",
       "root": "superagent/plugins/loop-policy",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 3,
+      "files": 4,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -157,7 +164,9 @@
         "unit"
       ],
       "adrs": [],
-      "tests": [],
+      "tests": [
+        "superagent/plugins/loop-policy/test/policy.test.ts"
+      ],
       "entry": "superagent/plugins/loop-policy/src/index.ts",
       "description": "Retry / strategy switch / Human Gate decisions",
       "drift": []
@@ -177,7 +186,9 @@
         "contracts"
       ],
       "usedBy": [
-        "chief-worker"
+        "chief-worker",
+        "cli",
+        "server"
       ],
       "gates": [
         "unit"
@@ -194,7 +205,7 @@
       "layer": "capability",
       "root": "superagent/plugins/architecture-observatory",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 9,
       "declared": true,
@@ -206,7 +217,10 @@
         "testkit",
         "verifier"
       ],
-      "usedBy": [],
+      "usedBy": [
+        "cli",
+        "server"
+      ],
       "gates": [
         "unit",
         "architecture"
@@ -260,7 +274,8 @@
         "verifier"
       ],
       "usedBy": [
-        "architecture-observatory"
+        "architecture-observatory",
+        "server"
       ],
       "gates": [
         "unit",
@@ -283,23 +298,34 @@
       "layer": "interface",
       "root": "superagent/server",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 0,
+      "files": 5,
       "declared": true,
       "protected": false,
-      "dependsOn": [],
-      "usedBy": [],
+      "dependsOn": [
+        "architecture-observatory",
+        "chief-worker",
+        "contracts",
+        "model-policy",
+        "project-state",
+        "testkit",
+        "verifier"
+      ],
+      "usedBy": [
+        "cli"
+      ],
       "gates": [
         "unit",
         "e2e-ui"
       ],
       "adrs": [],
-      "tests": [],
+      "tests": [
+        "superagent/server/test/server.test.ts"
+      ],
+      "entry": "superagent/server/src/index.ts",
       "description": "Headless HTTP/SSE Realtime API",
-      "drift": [
-        "missing-module"
-      ]
+      "drift": []
     },
     {
       "id": "cli",
@@ -307,12 +333,19 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 1,
+      "files": 2,
       "declared": true,
       "protected": false,
-      "dependsOn": [],
+      "dependsOn": [
+        "architecture-observatory",
+        "contracts",
+        "model-policy",
+        "server",
+        "testkit",
+        "verifier"
+      ],
       "usedBy": [],
       "gates": [
         "unit"
@@ -494,13 +527,74 @@
       ]
     },
     {
-      "from": "loop-policy",
+      "from": "cli",
+      "to": "architecture-observatory",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/architecture-observatory"
+      ]
+    },
+    {
+      "from": "cli",
       "to": "contracts",
       "weight": 1,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/plugins/loop-policy/src/policy.ts → @superagent/contracts"
+        "superagent/cli/src/main.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "cli",
+      "to": "model-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/model-policy"
+      ]
+    },
+    {
+      "from": "cli",
+      "to": "server",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/server"
+      ]
+    },
+    {
+      "from": "cli",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "cli",
+      "to": "verifier",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/verifier"
+      ]
+    },
+    {
+      "from": "loop-policy",
+      "to": "contracts",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/loop-policy/src/policy.ts → @superagent/contracts",
+        "superagent/plugins/loop-policy/test/policy.test.ts → @superagent/contracts"
       ]
     },
     {
@@ -534,6 +628,78 @@
       ]
     },
     {
+      "from": "server",
+      "to": "architecture-observatory",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/runtime.ts → @superagent/architecture-observatory"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "chief-worker",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/runtime.ts → @superagent/chief-worker",
+        "superagent/server/test/server.test.ts → @superagent/chief-worker"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "contracts",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/http.ts → @superagent/contracts",
+        "superagent/server/src/runtime.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "model-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/http.ts → @superagent/model-policy"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "project-state",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/runtime.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/server/test/server.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "verifier",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/runtime.ts → @superagent/verifier"
+      ]
+    },
+    {
       "from": "verifier",
       "to": "contracts",
       "weight": 4,
@@ -562,14 +728,6 @@
       "kind": "missing-module",
       "severity": "warn",
       "modules": [
-        "server"
-      ],
-      "detail": "declared module server matches no files"
-    },
-    {
-      "kind": "missing-module",
-      "severity": "warn",
-      "modules": [
         "ui"
       ],
       "detail": "declared module ui matches no files"
@@ -587,27 +745,45 @@
     "base": "HEAD",
     "files": [
       "pnpm-lock.yaml",
-      "scripts/arch-scan.ts",
-      "superagent/plugins/architecture-observatory/package.json",
-      "superagent/plugins/architecture-observatory/src/analysis.ts",
-      "superagent/plugins/architecture-observatory/src/discover.ts",
-      "superagent/plugins/architecture-observatory/src/hooks.ts",
-      "superagent/plugins/architecture-observatory/src/index.ts",
-      "superagent/plugins/architecture-observatory/src/observatory.ts",
-      "superagent/plugins/architecture-observatory/src/scan.ts",
-      "superagent/plugins/architecture-observatory/src/schema.ts",
-      "superagent/plugins/architecture-observatory/test/observatory.test.ts"
+      "superagent/cli/package.json",
+      "superagent/cli/src/main.ts",
+      "superagent/plugins/loop-policy/src/policy.ts",
+      "superagent/plugins/loop-policy/test/policy.test.ts",
+      "superagent/server/package.json",
+      "superagent/server/src/http.ts",
+      "superagent/server/src/index.ts",
+      "superagent/server/src/runtime.ts",
+      "superagent/server/test/server.test.ts"
     ],
     "modules": [
-      "architecture-observatory"
+      "cli",
+      "loop-policy",
+      "server"
     ],
-    "impacted": [],
+    "impacted": [
+      "architecture-observatory",
+      "chief-worker"
+    ],
     "gates": [
       "architecture",
+      "e2e-ui",
+      "smoke-dsh",
       "unit"
     ]
   },
   "services": [
+    {
+      "id": "cli:bin:sa",
+      "module": "cli",
+      "kind": "bin",
+      "detail": "src/main.ts"
+    },
+    {
+      "id": "server:http:superagent/server/src/http.ts",
+      "module": "server",
+      "kind": "http-server",
+      "detail": "superagent/server/src/http.ts"
+    },
     {
       "id": "testkit:http:superagent/testkit/src/mock-llm.ts",
       "module": "testkit",
@@ -638,9 +814,9 @@
     }
   ],
   "stats": {
-    "files": 62,
+    "files": 69,
     "modules": 13,
-    "edges": 17,
-    "scanMs": 422
+    "edges": 30,
+    "scanMs": 405
   }
 }

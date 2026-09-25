@@ -226,5 +226,17 @@
       "snapshotTree",
       "workerClaim"
     ]
+  },
+  {
+    "module": "server",
+    "entry": "superagent/server/src/index.ts",
+    "exports": [
+      "RunningServer",
+      "RuntimeOptions",
+      "ServerOptions",
+      "SuperAgentRuntime",
+      "createRuntime",
+      "startServer"
+    ]
   }
 ]

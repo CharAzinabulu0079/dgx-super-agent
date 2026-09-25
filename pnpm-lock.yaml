@@ -21,9 +21,24 @@ importers:
 
   superagent/cli:
     dependencies:
+      '@superagent/architecture-observatory':
+        specifier: workspace:*
+        version: link:../plugins/architecture-observatory
+      '@superagent/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@superagent/model-policy':
+        specifier: workspace:*
+        version: link:../plugins/model-policy
+      '@superagent/server':
+        specifier: workspace:*
+        version: link:../server
       '@superagent/testkit':
         specifier: workspace:*
         version: link:../testkit
+      '@superagent/verifier':
+        specifier: workspace:*
+        version: link:../plugins/verifier
 
   superagent/contracts: {}
 
@@ -140,6 +155,33 @@ importers:
       '@superagent/testkit':
         specifier: workspace:*
         version: link:../../testkit
+
+  superagent/server:
+    dependencies:
+      '@superagent/architecture-observatory':
+        specifier: workspace:*
+        version: link:../plugins/architecture-observatory
+      '@superagent/chief-worker':
+        specifier: workspace:*
+        version: link:../plugins/chief-worker
+      '@superagent/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@superagent/loop-policy':
+        specifier: workspace:*
+        version: link:../plugins/loop-policy
+      '@superagent/model-policy':
+        specifier: workspace:*
+        version: link:../plugins/model-policy
+      '@superagent/project-state':
+        specifier: workspace:*
+        version: link:../plugins/project-state
+      '@superagent/testkit':
+        specifier: workspace:*
+        version: link:../testkit
+      '@superagent/verifier':
+        specifier: workspace:*
+        version: link:../plugins/verifier
 
   superagent/testkit: {}
 

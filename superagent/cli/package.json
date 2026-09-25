@@ -3,5 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "dependencies": { "@superagent/testkit": "workspace:*" }
+  "dependencies": {
+    "@superagent/contracts": "workspace:*",
+    "@superagent/model-policy": "workspace:*",
+    "@superagent/verifier": "workspace:*",
+    "@superagent/architecture-observatory": "workspace:*",
+    "@superagent/server": "workspace:*",
+    "@superagent/testkit": "workspace:*"
+  },
+  "bin": {
+    "sa": "src/main.ts"
+  }
 }

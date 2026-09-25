@@ -3,14 +3,6 @@
     "kind": "missing-module",
     "severity": "warn",
     "modules": [
-      "server"
-    ],
-    "detail": "declared module server matches no files"
-  },
-  {
-    "kind": "missing-module",
-    "severity": "warn",
-    "modules": [
       "ui"
     ],
     "detail": "declared module ui matches no files"

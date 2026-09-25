@@ -1,0 +1,22 @@
+{
+  "name": "@superagent/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@superagent/contracts": "workspace:*",
+    "@superagent/project-state": "workspace:*",
+    "@superagent/verifier": "workspace:*",
+    "@superagent/loop-policy": "workspace:*",
+    "@superagent/model-policy": "workspace:*",
+    "@superagent/chief-worker": "workspace:*",
+    "@superagent/architecture-observatory": "workspace:*",
+    "@superagent/testkit": "workspace:*"
+  },
+  "devDependencies": {
+    "@superagent/testkit": "workspace:*"
+  }
+}
