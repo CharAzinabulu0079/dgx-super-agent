@@ -11,6 +11,8 @@
   },
   "devDependencies": {
     "@superagent/testkit": "workspace:*",
-    "@superagent/chief-worker": "workspace:*"
+    "@superagent/chief-worker": "workspace:*",
+    "@superagent/project-state": "workspace:*",
+    "@superagent/verifier": "workspace:*"
   }
 }

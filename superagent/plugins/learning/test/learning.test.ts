@@ -81,6 +81,7 @@ test('a skill that gets the Worker to tamper with tests is rejected (integrity),
 
 test('without a replay capability nothing evidence-governed is promoted (fail closed)', async () => {
   const { rt } = await passedAfterFailure()
+  rt.learning.replay = undefined // the runtime configures replay by default; simulate its absence
   const skill = rt.learning.learning.list().find(c => c.kind === 'skill')!
   const r = await rt.learning.evaluate(skill.id)
   assert.equal(r.status, 'candidate')

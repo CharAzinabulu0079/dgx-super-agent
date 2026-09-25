@@ -60,10 +60,10 @@
       "testOnly": false,
       "evidence": [
         "superagent/plugins/chief-worker/src/chief-wake.ts → @superagent/contracts",
-        "superagent/plugins/chief-worker/src/chief.ts → @superagent/contracts",
-        "superagent/plugins/chief-worker/src/chief.ts → @superagent/contracts",
-        "superagent/plugins/chief-worker/src/engine.ts → @superagent/contracts",
-        "superagent/plugins/chief-worker/src/engine.ts → @superagent/contracts"
+        "superagent/plugins/chief-worker/src/dsh-executor.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/executor.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/prompt.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/chief.ts → @superagent/contracts"
       ]
     },
     {
@@ -74,8 +74,8 @@
       "testOnly": false,
       "evidence": [
         "superagent/plugins/chief-worker/src/chief-wake.ts → @superagent/loop-policy",
-        "superagent/plugins/chief-worker/src/engine.ts → @superagent/loop-policy",
         "superagent/plugins/chief-worker/src/executor.ts → @superagent/loop-policy",
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/loop-policy",
         "superagent/plugins/chief-worker/test/chief-wake.test.ts → @superagent/loop-policy"
       ]
     },
@@ -325,12 +325,13 @@
     {
       "from": "learning",
       "to": "contracts",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/learning/src/evolution.ts → @superagent/contracts",
         "superagent/plugins/learning/src/learning.ts → @superagent/contracts",
+        "superagent/plugins/learning/src/reflector.ts → @superagent/contracts",
         "superagent/plugins/learning/src/replay.ts → @superagent/contracts"
       ]
     },
@@ -412,12 +413,32 @@
     },
     {
       "from": "model-policy",
+      "to": "project-state",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/model-policy/test/policy.test.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "model-policy",
       "to": "testkit",
       "weight": 1,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/plugins/model-policy/test/policy.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "model-policy",
+      "to": "verifier",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/model-policy/test/policy.test.ts → @superagent/verifier"
       ]
     },
     {
@@ -486,11 +507,12 @@
     {
       "from": "server",
       "to": "model-policy",
-      "weight": 1,
+      "weight": 2,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/server/src/http.ts → @superagent/model-policy"
+        "superagent/server/src/http.ts → @superagent/model-policy",
+        "superagent/server/src/runtime.ts → @superagent/model-policy"
       ]
     },
     {

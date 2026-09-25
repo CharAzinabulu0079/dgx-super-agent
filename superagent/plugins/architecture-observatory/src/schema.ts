@@ -152,4 +152,6 @@ export interface ArchitectureGraph {
   readonly services: readonly ServiceInfo[]
   readonly dataflows: DeclaredArchitecture['dataflows']
   readonly stats: { readonly files: number; readonly modules: number; readonly edges: number; readonly scanMs: number }
+  /** Set on live reads: whether the persisted graph still describes the working tree. */
+  readonly freshness?: { readonly stale: boolean; readonly reason: string; readonly graphCommit?: string; readonly headCommit?: string }
 }

@@ -44,6 +44,21 @@ export interface TaskPolicy {
 
 export type RetryStrategy = 'retry-with-feedback' | 'fresh-context' | 'escalate-model'
 
+/** Roles a model can be assigned to (Directive §4.F). */
+export type ModelRole = 'chief' | 'worker' | 'reviewer' | 'escalation' | 'planner'
+
+/**
+ * One layer of model/loop policy. Layers resolve defaults ← global ← project ← task pin.
+ * Global lives in `$SUPERAGENT_HOME/policy.json`, project in the project record —
+ * never in the Worker-writable tree.
+ */
+export interface PolicyLayer {
+  readonly models?: Partial<Record<ModelRole, ModelRef>>
+  readonly maxAttempts?: number
+  readonly maxSameFailure?: number
+  readonly strategies?: readonly RetryStrategy[]
+}
+
 // ---------------------------------------------------------------- project / goal
 
 export interface Project {
@@ -63,6 +78,8 @@ export interface Project {
   readonly gateRegistry?: readonly GateSpec[]
   /** Verification-integrity policy; defaults apply when absent. */
   readonly verification?: VerificationPolicy
+  /** Project-level model/loop policy layer (human-edited). */
+  readonly policy?: PolicyLayer
 }
 
 /** What counts as a verification asset and what the Worker environment may not change. */
@@ -143,6 +160,8 @@ export interface Task {
   readonly humanGateId?: HumanGateId
   /** Pending steer text for the next attempt (user "Steer"). */
   readonly steer?: string
+  /** Roles whose model was explicitly chosen for this task; other roles follow live defaults. */
+  readonly pinnedModels?: Partial<Record<ModelRole, ModelRef>>
   /** Human-granted permissions for this task (never set by model tools). */
   readonly grants?: TaskGrants
   /** Pre-attempt gate run on the untouched tree: which named tests exist (anti-suppression). */

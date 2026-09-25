@@ -13,7 +13,7 @@ import { existsSync, readFileSync, statSync, watch, type FSWatcher } from 'node:
 import { extname, join, normalize, resolve } from 'node:path'
 import type { AddressInfo } from 'node:net'
 import { parseGateSpec, type Project, type SuperAgentEvent } from '@superagent/contracts'
-import { parseModelSpec } from '@superagent/model-policy'
+import { effectiveModels, loadGlobalPolicy, parseModelSpec, parsePolicyLayer, roleModel, saveGlobalPolicy } from '@superagent/model-policy'
 import type { SuperAgentRuntime } from './runtime.ts'
 import { ChiefDriver, DshChiefChannel, GateRegistryError, WakeMonitor, type ChiefChannel } from '@superagent/chief-worker'
 
@@ -125,6 +125,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       workers: store.listWorkers(p.id).slice(-50),
       humanGates: store.listHumanGates(p.id),
       report: chief.statusReport(p.id),
+      models: effectiveModels(loadGlobalPolicy(store.home), p.policy),
       runningGoals: [...runningGoals].filter(k => k.startsWith(`${p.id}/`)).map(k => k.split('/')[1]),
     }
   })
@@ -171,7 +172,10 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     if (!model) throw new HttpError(400, 'model must be "provider/model" or "local-default"')
     const task = store.requireTask(p.id, params.tid!)
     if (engine.isRunning(task.id)) throw new HttpError(409, 'task is running; stop it first')
-    return store.updateTask(p.id, task.id, { policy: { ...task.policy, model: { ...task.policy.model, [modelRole]: model } } })
+    return store.updateTask(p.id, task.id, {
+      policy: { ...task.policy, model: { ...task.policy.model, [modelRole]: model } },
+      pinnedModels: { ...task.pinnedModels, [modelRole]: model },
+    })
   }, 'human')
   route('POST', '/api/projects/:pid/human-gates/:hid', ({ params, body }) => {
     const decision = body?.decision
@@ -179,6 +183,23 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     const p = project(params.pid!)
     const task = engine.resolveHumanGate(p.id, params.hid!, decision, String(body?.resolution ?? ''))
     return { gate: store.getHumanGate(p.id, params.hid!), task: task ?? null }
+  }, 'human')
+  // ---------------------------------------------------------------- model policy (Directive §4.F)
+  route('GET', '/api/policy', () => ({ global: loadGlobalPolicy(store.home), effective: effectiveModels(loadGlobalPolicy(store.home)) }))
+  route('POST', '/api/policy', ({ body }) => {
+    try {
+      return saveGlobalPolicy(store.home, parsePolicyLayer(body, 'global'))
+    } catch (error) {
+      throw new HttpError(400, String((error as Error).message))
+    }
+  }, 'human')
+  route('POST', '/api/projects/:pid/policy', ({ params, body }) => {
+    const p = project(params.pid!)
+    try {
+      return store.updateProject(p.id, { policy: parsePolicyLayer(body, 'project') })
+    } catch (error) {
+      throw new HttpError(400, String((error as Error).message))
+    }
   }, 'human')
   route('GET', '/api/projects/:pid/chief', ({ params }) => {
     const p = project(params.pid!)
@@ -211,7 +232,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   route('GET', '/api/projects/:pid/architecture', async ({ params }) => {
     const p = project(params.pid!)
     let graph = observatory.withRuntime(p.root, runtime.runtimeInputs(p))
-    if (!graph) {
+    if (!graph || graph.freshness?.stale) {
       await runtime.scanArchitecture(p)
       graph = observatory.withRuntime(p.root, runtime.runtimeInputs(p))
     }
@@ -318,7 +339,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     const cfg = typeof options.chiefWake === 'object' ? options.chiefWake : {}
     chiefDriver = new ChiefDriver({
       store, monitor: new WakeMonitor(store), minIntervalMs: cfg.minIntervalMs,
-      channel: cfg.channel ?? new DshChiefChannel({ stateHome: store.home, apiUrl: url, agentToken, store, env: cfg.env }),
+      channel: cfg.channel ?? new DshChiefChannel({ stateHome: store.home, apiUrl: url, agentToken, store, env: cfg.env, model: pid => roleModel(store.home, store.getProject(pid), 'chief') }),
       statusReport: id => chief.statusReport(id),
     })
     chiefDriver.start(cfg.intervalMs ?? 2_000)

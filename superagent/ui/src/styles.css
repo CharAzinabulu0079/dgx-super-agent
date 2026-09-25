@@ -48,3 +48,8 @@ table.tasks th, table.tasks td { text-align: left; border-bottom: 1px solid var(
 .node-meta { font-size: 11px; color: var(--muted); } .node-badges { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; margin-top: 3px; }
 .node-badges .badge { font-size: 10px; padding: 0 5px; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .arch-body { grid-template-columns: 1fr; } }
+.health-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.health .badge { background: #334155; }
+.health .badge.warn { background: #f59e0b; color: #111; }
+details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.state.promoted { background: #16a34a; } .state.rejected, .state.archived { background: #475569; } .state.candidate, .state.evaluating { background: #2563eb; }

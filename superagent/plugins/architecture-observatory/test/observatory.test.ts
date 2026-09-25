@@ -145,3 +145,50 @@ test('loop integration: receipts carry changed + impacted modules; worker activi
   assert.deepEqual(receipt.impactedModules, ['app'])
   assert.ok(sawActive, 'domain should be worker-active during the attempt')
 })
+
+test('language adapter seam: Python imports become module edges (absolute, relative, src layout, stdlib ignored)', async () => {
+  const root = gitRepo({
+    'src/app/__init__.py': '',
+    'src/app/main.py': 'import os\nfrom app.services import billing\nfrom .util import helper\n',
+    'src/app/util.py': 'def helper():\n    return 1\n',
+    'src/app/services/__init__.py': '',
+    'src/app/services/billing.py': 'import json\nimport requests\nfrom app import util\n',
+    'tests/test_billing.py': 'from app.services import billing\n',
+    '.architecture/declared.json': JSON.stringify({ modules: [
+      { id: 'app-core', paths: ['src/app/*.py'] }, { id: 'services', paths: ['src/app/services/**'] }, { id: 'tests', paths: ['tests/**'] },
+    ] }),
+  })
+  const g = await new Observatory().scan(root, { write: false })
+  const edges = g.edges.map(e => `${e.from}->${e.to}${e.testOnly ? ' (test)' : ''}`).sort()
+  assert.deepEqual(edges, ['app-core->services', 'services->app-core', 'tests->services (test)'])
+  assert.deepEqual(g.drift.map(d => d.kind), ['cycle'])
+  const modules = JSON.parse(JSON.stringify(g.nodes.find(n => n.id === 'services')))
+  assert.deepEqual(modules.usedBy.sort(), ['app-core', 'tests'])
+})
+
+test('stale graph is detected on live reads; the engine rescans before attributing a new module', async () => {
+  const root = monorepo()
+  const obs = new Observatory()
+  await obs.scan(root)
+  git(root, 'add', '-A'); git(root, 'commit', '-qm', 'arch')
+  await obs.scan(root)
+  assert.equal(obs.withRuntime(root, undefined)!.freshness!.stale, false)
+  writeFiles(root, { 'packages/billing/package.json': pkg('@acme/billing', ['@acme/core']), 'packages/billing/src/index.ts': `import { util } from '@acme/core'\nexport const b = util\n` })
+  const live = obs.withRuntime(root, undefined)!
+  assert.equal(live.freshness!.stale, true)
+  assert.match(live.freshness!.reason, /changed|unmapped/)
+  // Loop integration: a Worker that creates a new package gets it attributed correctly.
+  const store = new StateStore(tempDir('sa-home-'))
+  writeFiles(root, { 'packages/core/test/core.test.js': `import test from 'node:test'\ntest('ok', () => {})\n` })
+  git(root, 'add', '-A'); git(root, 'commit', '-qm', 'billing')
+  await obs.scan(root)
+  const engine = new LoopEngine({ store, verifier: new Verifier(), architecture: observatoryHooks(obs), executor: new ScriptedExecutor(() => {
+    writeFiles(root, { 'packages/audit/package.json': pkg('@acme/audit', ['@acme/core']), 'packages/audit/src/index.ts': `import { util } from '@acme/core'\nexport const a = util\n` })
+  }) })
+  const p = store.createProject({ name: 'mono', root, defaultGates: [{ id: 'unit', kind: 'command', command: 'node --test packages/core/test/*.test.js', required: true }] })
+  const chief = new Chief(engine)
+  const goal = chief.createGoal(p.id, 'audit')
+  chief.addTask(p.id, goal.id, { title: 'add audit package', instructions: '...' })
+  await chief.runGoal(p.id, goal.id)
+  assert.deepEqual(store.listReceipts(p.id)[0]!.changedModules, ['audit'])
+})

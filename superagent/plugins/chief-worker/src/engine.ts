@@ -14,7 +14,7 @@ import { availableStrategies, decideNext, type LoopDecision, type ToolPolicy } f
 import { DEFAULT_VERIFICATION_POLICY } from '@superagent/verifier'
 import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { modelForStrategy } from '@superagent/model-policy'
+import { livePolicy, modelForStrategy } from '@superagent/model-policy'
 import type { AttemptFeedback, WorkerExecutor } from './executor.ts'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -80,6 +80,24 @@ export class LoopEngine {
     this.apiOrigins = options.apiOrigins ?? []
   }
 
+  /**
+   * Protected modules, one definition for the guard and the loop policy: the project's
+   * protected module ids ∪ modules marked `protected` in the *task baseline* declared.json
+   * (read from the snapshot, so a Worker cannot unprotect a module by editing the tree).
+   */
+  protectedModules(project: Project, task: Task): { ids: string[]; paths: string[] } {
+    let declared: { modules?: Array<{ id: string; paths: string[]; protected?: boolean }> } = {}
+    if (task.baseline?.snapshot) {
+      try {
+        declared = JSON.parse(execFileSync('git', ['show', `${task.baseline.snapshot}:.architecture/declared.json`], { cwd: project.root, stdio: ['ignore', 'pipe', 'ignore'] }).toString('utf8'))
+      } catch (absent) {
+        void absent // no declared architecture at baseline
+      }
+    }
+    const marked = (declared.modules ?? []).filter(m => m.protected || project.protectedModules.includes(m.id))
+    return { ids: [...new Set([...project.protectedModules, ...marked.map(m => m.id)])].sort(), paths: marked.flatMap(m => m.paths) }
+  }
+
   /** Tell the pre-tool guard which API origins Workers must not call (set by the server). */
   setApiOrigins(origins: readonly string[]): void {
     this.apiOrigins = [...new Set([...this.apiOrigins, ...origins])]
@@ -95,15 +113,7 @@ export class LoopEngine {
       ...(project.verification?.protectedPaths ?? DEFAULT_VERIFICATION_POLICY.protectedPaths),
       ...gates.flatMap(g => g.assets ?? []),
     ]
-    let declared: { modules?: Array<{ id: string; paths: string[]; protected?: boolean }> } = {}
-    if (task.baseline?.snapshot) {
-      try {
-        declared = JSON.parse(execFileSync('git', ['show', `${task.baseline.snapshot}:.architecture/declared.json`], { cwd: project.root, stdio: ['ignore', 'pipe', 'ignore'] }).toString('utf8'))
-      } catch (absent) {
-        void absent // no declared architecture at baseline
-      }
-    }
-    const protectedModulePaths = (declared.modules ?? []).filter(m => m.protected || project.protectedModules.includes(m.id)).flatMap(m => m.paths)
+    const protectedModulePaths = this.protectedModules(project, task).paths
     return {
       role: 'worker', projectRoot: project.root, verificationPaths, protectedModulePaths,
       approvedActions: (task.grants?.approvedActions ?? []).map(a => a.fingerprint),
@@ -163,7 +173,8 @@ export class LoopEngine {
       for (;;) {
         const strategy: RetryStrategy = task.nextStrategy ?? availableStrategies(task)[0] ?? 'retry-with-feedback'
         const n = task.attempts.length + 1
-        const model = modelForStrategy(task.policy, strategy)
+        // Un-pinned roles follow the current global/project defaults at attempt time.
+        const model = modelForStrategy(livePolicy(this.store.home, project, task), strategy)
         const worker = this.store.createWorker({ taskId, projectId, attempt: n, executor: this.executor.name, model })
         const attempt: Attempt = { n, strategy, model, workerId: worker.id, startedAt: now() }
         const steer = task.steer
@@ -207,6 +218,9 @@ export class LoopEngine {
         const claim = workerClaim(reports)
         const afterSnapshot = git ? snapshotCommit(project.root, `${taskId}/${n}-after`) : undefined
         const changedFiles = baseSnapshot && afterSnapshot ? changedBetween(project.root, baseSnapshot, afterSnapshot) : []
+        // Refresh the architecture map first: a stale graph would misattribute files in
+        // modules this attempt created.
+        await this.architecture?.refresh?.(project)
         const reportedModules = [...new Set(reports.flatMap(r => r.changed_modules))]
         const detectedModules = this.architecture?.modulesForFiles(project, changedFiles) ?? []
         const changedModules = [...new Set([...detectedModules, ...reportedModules])].sort()
@@ -230,15 +244,13 @@ export class LoopEngine {
         if (receipt.claimOverruled) {
           await this.wake({ projectId, taskId, goalId: task.goalId, reason: 'claim-overruled', detail: `attempt ${n}: worker claimed PASS; ${receipt.reason}` })
         }
-        await this.architecture?.refresh?.(project)
-
         task = this.closeAttempt(this.store.requireTask(projectId, taskId), {
           endedAt: now(), receiptId: receipt.id, verdict: receipt.verdict, failureSignature: receiptSignature(receipt), afterSnapshot,
         })
         task = this.store.updateTask(projectId, taskId, { attempts: task.attempts })
 
         const blockedActions = this.store.readBlockedActions(projectId, worker.id)
-        const decision = decideNext({ task, attempts: task.attempts, receipt, lastReport, protectedModules: project.protectedModules, blockedActions })
+        const decision = decideNext({ task, attempts: task.attempts, receipt, lastReport, protectedModules: this.protectedModules(project, task).ids, blockedActions })
         this.store.emitTyped('loop/decision', projectId, { attempt: n, decision, workerExit: output.exit }, { taskId, goalId: task.goalId })
 
         const outcome = await this.apply(project, task, decision, receipts)

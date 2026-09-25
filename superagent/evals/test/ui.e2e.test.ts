@@ -24,7 +24,8 @@ test('UI: projects, goal, tasks with model selection, live loop, human gate, arc
       await new Promise(r => setTimeout(r, 400)) // visible "executing" state
       if (input.task.title === 'ask human') {
         if (input.attempt === 1) {
-          input.report({ kind: 'blocker', current_state: 'needs decision', progress: 20, changed_modules: [], verification_result: 'not_run', blocker: 'Accept strings in add()?', next_action: null, human_required: true, summary: '' })
+          // What the DSH guard records when it blocks a call before execution.
+          runtime.store.appendBlockedAction(input.project.id, input.worker.id, { fingerprint: 'fp-1', tool: 'bash', summary: 'bash: rm -rf data', category: 'irreversible-data', rule: 'recursive delete', at: new Date().toISOString() })
           return
         }
       }
@@ -81,11 +82,29 @@ test('UI: projects, goal, tasks with model selection, live loop, human gate, arc
     await page.locator('[data-testid^="task-task_"]').first().waitFor()
     await page.getByTestId('run-goal').click()
     const gate = page.locator('[data-testid^="gate-hg_"]').first()
-    await gate.getByText('Accept strings in add()?').waitFor({ timeout: 30_000 })
+    await gate.getByTestId('gate-actions').getByText('bash: rm -rf data').waitFor({ timeout: 30_000 })
     await gate.getByTestId('gate-note').fill('numbers only')
     await gate.getByTestId('approve').click()
     await page.getByTestId('run-goal').click()
     await page.getByTestId('goal-status').filter({ hasText: 'complete' }).waitFor({ timeout: 60_000 })
+
+    // Health panel is visible on the overview.
+    assert.match(await page.getByTestId('health-chief').textContent() ?? '', /Chief wake: off/)
+    assert.match(await page.getByTestId('health-arch').textContent() ?? '', /architecture: \d+ modules/)
+
+    // Model policy: switch every Worker to a cheap model from the UI, no model call.
+    await page.getByTestId('tab-policy').click()
+    await page.getByTestId('policy-worker').fill('openai-compat/qwen-cheap')
+    await page.getByTestId('policy-save').click()
+    await page.getByTestId('effective-worker').filter({ hasText: 'openai-compat/qwen-cheap' }).waitFor()
+    assert.deepEqual((await (await fetch(`${server.url}/api/policy`)).json()).global.models.worker, { provider: 'openai-compat', model: 'qwen-cheap' })
+
+    // Learning: candidates from the task that passed after failing; memory needs a human.
+    await page.getByTestId('tab-learning').click()
+    const memory = page.locator('[data-testid^="candidate-lesson-"]').first()
+    await memory.waitFor()
+    await memory.getByTestId('candidate-approve').click()
+    await memory.getByTestId('candidate-status').filter({ hasText: 'promoted' }).waitFor()
 
     // Architecture view: nodes render with status; clicking opens the inspector.
     await page.getByTestId('tab-architecture').click()

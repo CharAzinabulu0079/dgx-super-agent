@@ -156,7 +156,7 @@
     "description": "Static architecture graph, drift, impact",
     "protected": false,
     "declared": true,
-    "files": 9,
+    "files": 10,
     "gates": [
       "unit",
       "architecture"
@@ -276,7 +276,7 @@
     "description": "Minimal Web/PWA",
     "protected": false,
     "declared": true,
-    "files": 12,
+    "files": 13,
     "gates": [
       "e2e-ui"
     ],

@@ -8,8 +8,10 @@
  * Both sides persist their state in the store, so a restart neither loses pending
  * wakes nor re-enqueues processed events (wake ids are derived from the event seq).
  */
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { now, type SuperAgentEvent } from '@superagent/contracts'
+import { now, type ModelRef, type SuperAgentEvent } from '@superagent/contracts'
+import { loadModelRoutes, modelPatch } from './dsh-executor.ts'
 import type { StateStore } from '@superagent/project-state'
 import { classifyEvent, DEFAULT_WAKE_POLICY, type WakePolicyOptions, type WakePriority, type WakeReason } from '@superagent/loop-policy'
 import { runDshStreaming } from './dsh-process.ts'
@@ -199,6 +201,8 @@ export interface DshChiefChannelOptions {
   readonly env?: Record<string, string>
   readonly timeoutMs?: number
   readonly store: StateStore
+  /** Chief model per project (policy role `chief`); mapped to DSH via model-routes. */
+  readonly model?: (projectId: string) => ModelRef | undefined
 }
 
 /** Delivers digests into a persistent per-project Chief DSH session (`--session-id` resume). */
@@ -212,7 +216,16 @@ export class DshChiefChannel implements ChiefChannel {
   async deliver(digest: ChiefDigest, signal: AbortSignal): Promise<{ sessionId?: string; reply?: string }> {
     const project = this.o.store.requireProject(digest.projectId)
     const prior = this.o.store.getMeta<{ sessionId?: string }>(digest.projectId, 'chief-session')?.sessionId
-    const args = ['--profile', this.o.profile ?? 'superagent-chief-cli', '--json', ...(prior ? ['--session-id', prior] : []), digest.text]
+    const args = ['--profile', this.o.profile ?? 'superagent-chief-cli']
+    const model = this.o.model?.(digest.projectId)
+    const patch = model ? modelPatch(model, loadModelRoutes(this.o.stateHome)) : undefined
+    if (patch) {
+      const dir = join(this.o.stateHome, 'runtime', 'chief')
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(join(dir, `${digest.projectId}.model.yml`), patch)
+      args.push('--patch', join(dir, `${digest.projectId}.model.yml`))
+    }
+    args.push('--json', ...(prior ? ['--session-id', prior] : []), digest.text)
     let sessionId: string | undefined
     let reply = ''
     const r = await runDshStreaming({

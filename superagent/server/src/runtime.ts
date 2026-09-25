@@ -7,7 +7,8 @@ import { StateStore, defaultHome } from '@superagent/project-state'
 import { Verifier } from '@superagent/verifier'
 import { Chief, DshHeadlessExecutor, LoopEngine, type ChiefWake, type WorkerExecutor } from '@superagent/chief-worker'
 import { Observatory, driftGateRunner, observatoryHooks, type RuntimeInputs } from '@superagent/architecture-observatory'
-import { LearningService } from '@superagent/learning'
+import { DshReflector, LearningService, llmExtractor, traceExtractor } from '@superagent/learning'
+import { roleModel } from '@superagent/model-policy'
 
 export interface RuntimeOptions {
   readonly home?: string
@@ -15,6 +16,8 @@ export interface RuntimeOptions {
   /** Extra DSH `--patch` overlays for Workers (e.g. browser-use). */
   readonly workerPatches?: readonly string[]
   readonly onChiefWake?: (wake: ChiefWake) => void
+  /** Also reflect with an LLM (DSH session, policy role `reviewer`) after each passed task. Costs one model call per task. */
+  readonly llmReflection?: boolean
 }
 
 export interface SuperAgentRuntime {
@@ -47,7 +50,14 @@ export function createRuntime(options: RuntimeOptions = {}): SuperAgentRuntime {
     }
   }
 
-  const learning = new LearningService(store, verifier)
+  const learning = new LearningService(store, verifier, {
+    extractors: [
+      traceExtractor,
+      ...(options.llmReflection ? [llmExtractor(new DshReflector({ stateHome: store.home, model: pid => roleModel(store.home, store.getProject(pid), 'reviewer') }))] : []),
+    ],
+    // Fresh replay with the same Worker backend as production (fresh context per arm).
+    replay: { executorFactory: () => options.executor ?? new DshHeadlessExecutor({ patches: options.workerPatches }), maxAttempts: 2 },
+  })
   const hooks = observatoryHooks(observatory, {
     runtime: runtimeInputs,
     skills: project => learning.projectSkills(project.id),

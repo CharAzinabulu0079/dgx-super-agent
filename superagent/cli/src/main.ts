@@ -7,7 +7,7 @@ import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { parseGateSpec, type GateSpec } from '@superagent/contracts'
-import { parseModelSpec } from '@superagent/model-policy'
+import { effectiveModels, formatModel, loadGlobalPolicy, parseModelSpec, parsePolicyLayer, saveGlobalPolicy } from '@superagent/model-policy'
 import { scanHygiene } from '@superagent/verifier'
 import { Observatory } from '@superagent/architecture-observatory'
 import { BROWSER_PATCH, CHIEF_PROFILE, createRuntime, setupDshProfiles, startServer } from '@superagent/server'
@@ -18,7 +18,7 @@ const HELP = `sa — DGX Super Agent CLI
 
   sa dsh setup [--no-chief]                    create DSH profiles superagent-worker (+browser) / superagent-chief
   sa chief                                      print how to open the Chief (DSH Web with SuperAgent tools)
-  sa serve [--port 7788] [--host 127.0.0.1] [--no-watch] [--browser] [--no-chief] [--worker-patch file.yml]...
+  sa serve [--port 7788] [--host 127.0.0.1] [--no-watch] [--browser] [--no-chief] [--reflect] [--worker-patch file.yml]...
                                                 Chief auto-wake is on when "sa dsh setup" created superagent-chief-cli
   sa project add <name> <root> [--gate 'id=command'...] [--protect module...]
   sa project list
@@ -29,6 +29,9 @@ const HELP = `sa — DGX Super Agent CLI
   sa stop <project> <task> | sa steer <project> <task> "<text>"
   sa decide <project> <humanGate> approve|reject ["note"]
   sa learn list [project] | sa learn eval <candidate> | sa learn approve|reject <candidate> ["note"]
+  sa policy show [--project p]                  effective role → model (chief, worker, reviewer, escalation, planner)
+  sa policy set <role> <provider/model|local-default> [--project p]    e.g. all Workers on a cheap API model
+  sa policy clear <role> [--project p]
   sa recover <project>                          close attempts interrupted by a crash
   sa arch scan [root] [--check]                 regenerate .architecture/ (exit 1 on drift errors with --check)
   sa arch hook [root]                           install a git pre-commit hook that refreshes .architecture/
@@ -56,7 +59,7 @@ async function main(argv: string[]): Promise<number> {
       'worker-patch': { type: 'string', multiple: true },
       gate: { type: 'string', multiple: true }, protect: { type: 'string', multiple: true },
       title: { type: 'string' }, instructions: { type: 'string' }, model: { type: 'string' }, escalation: { type: 'string' },
-      check: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+      check: { type: 'boolean' }, help: { type: 'boolean', short: 'h' }, project: { type: 'string' }, reflect: { type: 'boolean' },
     },
   })
   const [cmd, sub, ...rest] = positionals
@@ -98,7 +101,27 @@ async function main(argv: string[]): Promise<number> {
     return 0
   }
   const workerPatches = [...(values.browser ? [BROWSER_PATCH] : []), ...(values['worker-patch'] ?? [])]
-  const rt = createRuntime({ workerPatches })
+  if (cmd === 'policy') {
+    const home = defaultHome()
+    const { StateStore } = await import('@superagent/project-state')
+    const store = new StateStore(home)
+    const proj = values.project ? store.requireProject(values.project) : undefined
+    if (sub === 'set' || sub === 'clear') {
+      const [role, spec] = rest
+      if (!role) throw new Error('usage: sa policy set <role> <provider/model>')
+      const current = proj ? (proj.policy ?? {}) : loadGlobalPolicy(home)
+      const models: Record<string, unknown> = { ...current.models }
+      if (sub === 'clear') delete models[role]
+      else models[role] = spec
+      const layer = parsePolicyLayer({ ...current, models }, proj ? 'project' : 'global')
+      if (proj) store.updateProject(proj.id, { policy: layer })
+      else saveGlobalPolicy(home, layer)
+    }
+    const eff = effectiveModels(loadGlobalPolicy(home), proj ? store.requireProject(proj.id).policy : undefined)
+    for (const [role, m] of Object.entries(eff)) if (m) console.log(`${role.padEnd(11)} ${formatModel(m)}`)
+    return 0
+  }
+  const rt = createRuntime({ workerPatches, llmReflection: values.reflect })
   const { store, chief, engine } = rt
   switch (cmd) {
     case 'serve': {

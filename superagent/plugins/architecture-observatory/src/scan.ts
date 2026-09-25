@@ -6,9 +6,9 @@
 import { readFileSync } from 'node:fs'
 import { isBuiltin } from 'node:module'
 import { join } from 'node:path'
-import { cruise } from 'dependency-cruiser'
 import ts from 'typescript'
 import { buildModules, listProjectFiles, readJson, SOURCE_EXT, TEST_FILE, type ModuleResolver } from './discover.ts'
+import { DEFAULT_ADAPTERS, type FileDependency, type LanguageAdapter } from './adapters.ts'
 import type { DeclaredArchitecture, InterfaceInfo, ModuleEdge, ModuleInfo, ServiceInfo } from './schema.ts'
 
 export interface ScanResult {
@@ -23,63 +23,43 @@ export interface ScanResult {
   readonly scanMs: number
 }
 
-type CruiseDep = { resolved: string; module: string; couldNotResolve: boolean; coreModule: boolean; dependencyTypes: string[]; circular?: boolean; cycle?: Array<{ name: string } | string> }
-type CruiseModule = { source: string; dependencies: CruiseDep[] }
-
-export async function scanProject(root: string, declared: DeclaredArchitecture): Promise<ScanResult> {
+export async function scanProject(root: string, declared: DeclaredArchitecture, adapters: readonly LanguageAdapter[] = DEFAULT_ADAPTERS): Promise<ScanResult> {
   const started = Date.now()
   const files = listProjectFiles(root, declared.ignore ?? [])
   const resolver = buildModules(root, files, declared)
-  const sources = files.filter(f => SOURCE_EXT.test(f))
-
-  let cruised: CruiseModule[] = []
-  if (sources.length) {
-    const result = await cruise([...sources], {
-      baseDir: root,
-      doNotFollow: { path: 'node_modules' },
-      exclude: { path: '(^|/)node_modules/' },
-      tsPreCompilationDeps: true,
-      combinedDependencies: true,
-      validate: false,
-      skipAnalysisNotInRules: false,
-    } as never, {}, {})
-    cruised = (result.output as unknown as { modules: CruiseModule[] }).modules
-  }
+  const deps: FileDependency[] = []
+  for (const adapter of adapters) deps.push(...await adapter.collect(root, files.filter(f => adapter.files.test(f))))
 
   const edgeMap = new Map<string, { weight: number; typeOnly: boolean; testOnly: boolean; evidence: string[] }>()
   const external = new Map<string, Set<string>>()
   const fileCycles: string[][] = []
   const cycleKeys = new Set<string>()
-  for (const m of cruised) {
-    const from = resolver.moduleOf(m.source)
+  for (const dep of deps) {
+    const from = resolver.moduleOf(dep.from)
     if (!from) continue
-    for (const dep of m.dependencies) {
-      let to: string | undefined
-      const spec = dep.module
-      if (!dep.couldNotResolve && !dep.coreModule && !dep.resolved.includes('node_modules/') && !dep.resolved.startsWith('/')) to = resolver.moduleOf(dep.resolved)
-      if (!to && !spec.startsWith('.')) to = resolver.moduleOfPackage(spec)
-      if (!to) {
-        if (!spec.startsWith('.') && !dep.coreModule && !isBuiltin(spec) && !spec.startsWith('node:')) {
-          const pkg = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0]!
-          if (!external.has(from)) external.set(from, new Set())
-          external.get(from)!.add(pkg)
-        }
-        continue
+    const spec = dep.specifier
+    let to = dep.to ? resolver.moduleOf(dep.to) : undefined
+    if (!to && !spec.startsWith('.')) to = resolver.moduleOfPackage(spec)
+    if (!to) {
+      if (!dep.to && !spec.startsWith('.') && !dep.builtin && !isBuiltin(spec)) {
+        const pkg = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0]!
+        if (!external.has(from)) external.set(from, new Set())
+        external.get(from)!.add(pkg)
       }
-      if (dep.circular && Array.isArray(dep.cycle)) {
-        const cycle = [m.source, ...dep.cycle.map(c => (typeof c === 'string' ? c : c.name))]
-        const key = [...new Set(cycle)].sort().join('|')
-        if (!cycleKeys.has(key)) { cycleKeys.add(key); fileCycles.push(cycle) }
-      }
-      if (to === from) continue
-      const key = `${from}\u0000${to}`
-      const e = edgeMap.get(key) ?? { weight: 0, typeOnly: true, testOnly: true, evidence: [] }
-      e.weight++
-      if (!TEST_FILE.test(m.source)) e.testOnly = false
-      if (!dep.dependencyTypes.includes('type-only')) e.typeOnly = false
-      if (e.evidence.length < 5) e.evidence.push(`${m.source} → ${dep.resolved || spec}`)
-      edgeMap.set(key, e)
+      continue
     }
+    if (dep.cycle) {
+      const key = [...new Set(dep.cycle)].sort().join('|')
+      if (!cycleKeys.has(key)) { cycleKeys.add(key); fileCycles.push([...dep.cycle]) }
+    }
+    if (to === from) continue
+    const key = `${from}\u0000${to}`
+    const e = edgeMap.get(key) ?? { weight: 0, typeOnly: true, testOnly: true, evidence: [] }
+    e.weight++
+    if (!TEST_FILE.test(dep.from)) e.testOnly = false
+    if (!dep.typeOnly) e.typeOnly = false
+    if (e.evidence.length < 5) e.evidence.push(`${dep.from} → ${dep.to ?? spec}`)
+    edgeMap.set(key, e)
   }
   const edges: ModuleEdge[] = [...edgeMap].map(([key, e]) => {
     const [from, to] = key.split('\u0000') as [string, string]

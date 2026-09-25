@@ -9,7 +9,7 @@
  */
 import type { Goal, GateSpec, Project, Task, TaskScope } from '@superagent/contracts'
 import { parseGateSpec } from '@superagent/contracts'
-import { resolveTaskPolicy, formatModel } from '@superagent/model-policy'
+import { formatModel, livePolicy, loadGlobalPolicy, resolveTaskPolicy } from '@superagent/model-policy'
 import type { LoopEngine } from './engine.ts'
 
 /** Who is creating a task. Only a human may define new gate commands (Gate Registry rule). */
@@ -71,13 +71,15 @@ export class Chief {
     const project = this.store.requireProject(projectId)
     if (!this.store.getGoal(projectId, goalId)) throw new Error(`goal ${goalId} not found`)
     const gates: GateSpec[] = resolveGates(project, input.gates ?? [], actor)
+    const { policy, pinned } = resolveTaskPolicy({ global: loadGlobalPolicy(this.store.home), project: project.policy }, input.policy)
     return this.store.createTask({
       projectId, goalId,
       title: input.title,
       instructions: input.instructions,
       scope: { paths: input.scope?.paths ?? [], modules: input.scope?.modules ?? [] },
       gates,
-      policy: resolveTaskPolicy(project.root, input.policy),
+      policy,
+      pinnedModels: Object.keys(pinned).length ? pinned : undefined,
     })
   }
 
@@ -127,7 +129,7 @@ export class Chief {
       const t = this.store.requireTask(projectId, id)
       const last = t.attempts.at(-1)
       const receipt = last?.receiptId ? this.store.getReceipt(projectId, last.receiptId) : undefined
-      lines.push(`- [${t.state}] ${t.title} — attempts ${t.attempts.length}/${t.policy.maxAttempts}, worker ${formatModel(t.policy.model.worker)}${receipt ? `, last receipt ${receipt.verdict}: ${receipt.reason}` : ''}`)
+      lines.push(`- [${t.state}] ${t.title} — attempts ${t.attempts.length}/${t.policy.maxAttempts}, worker ${formatModel(livePolicy(this.store.home, project, t).model.worker)}${receipt ? `, last receipt ${receipt.verdict}: ${receipt.reason}` : ''}`)
     }
     const open = this.store.listHumanGates(projectId, 'open')
     if (open.length) {

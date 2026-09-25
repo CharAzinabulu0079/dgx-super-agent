@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T20:09:40.119Z",
-  "commit": "8f59338",
+  "generatedAt": "2026-09-25T20:16:25.969Z",
+  "commit": "d2e963e",
   "layers": [
     "foundation",
     "capability",
@@ -17,7 +17,8 @@
       "layer": "foundation",
       "root": "superagent/contracts",
       "status": [
-        "protected"
+        "protected",
+        "changing"
       ],
       "files": 5,
       "declared": true,
@@ -104,6 +105,7 @@
         "dsh-bundle",
         "evals",
         "learning",
+        "model-policy",
         "server"
       ],
       "gates": [
@@ -140,6 +142,7 @@
         "cli",
         "evals",
         "learning",
+        "model-policy",
         "server"
       ],
       "gates": [
@@ -191,7 +194,7 @@
       "layer": "capability",
       "root": "superagent/plugins/model-policy",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 4,
       "declared": true,
@@ -199,7 +202,9 @@
       "dependsOn": [
         "chief-worker",
         "contracts",
-        "testkit"
+        "project-state",
+        "testkit",
+        "verifier"
       ],
       "usedBy": [
         "chief-worker",
@@ -223,9 +228,9 @@
       "layer": "capability",
       "root": "superagent/plugins/architecture-observatory",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 9,
+      "files": 10,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -401,9 +406,9 @@
       "layer": "interface",
       "root": "superagent/ui",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 12,
+      "files": 13,
       "declared": true,
       "protected": false,
       "dependsOn": [],
@@ -563,10 +568,10 @@
       "testOnly": false,
       "evidence": [
         "superagent/plugins/chief-worker/src/chief-wake.ts → @superagent/contracts",
-        "superagent/plugins/chief-worker/src/chief.ts → @superagent/contracts",
-        "superagent/plugins/chief-worker/src/chief.ts → @superagent/contracts",
-        "superagent/plugins/chief-worker/src/engine.ts → @superagent/contracts",
-        "superagent/plugins/chief-worker/src/engine.ts → @superagent/contracts"
+        "superagent/plugins/chief-worker/src/dsh-executor.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/executor.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/prompt.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/chief.ts → @superagent/contracts"
       ]
     },
     {
@@ -577,8 +582,8 @@
       "testOnly": false,
       "evidence": [
         "superagent/plugins/chief-worker/src/chief-wake.ts → @superagent/loop-policy",
-        "superagent/plugins/chief-worker/src/engine.ts → @superagent/loop-policy",
         "superagent/plugins/chief-worker/src/executor.ts → @superagent/loop-policy",
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/loop-policy",
         "superagent/plugins/chief-worker/test/chief-wake.test.ts → @superagent/loop-policy"
       ]
     },
@@ -828,12 +833,13 @@
     {
       "from": "learning",
       "to": "contracts",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/learning/src/evolution.ts → @superagent/contracts",
         "superagent/plugins/learning/src/learning.ts → @superagent/contracts",
+        "superagent/plugins/learning/src/reflector.ts → @superagent/contracts",
         "superagent/plugins/learning/src/replay.ts → @superagent/contracts"
       ]
     },
@@ -915,12 +921,32 @@
     },
     {
       "from": "model-policy",
+      "to": "project-state",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/model-policy/test/policy.test.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "model-policy",
       "to": "testkit",
       "weight": 1,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/plugins/model-policy/test/policy.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "model-policy",
+      "to": "verifier",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/model-policy/test/policy.test.ts → @superagent/verifier"
       ]
     },
     {
@@ -989,11 +1015,12 @@
     {
       "from": "server",
       "to": "model-policy",
-      "weight": 1,
+      "weight": 2,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/server/src/http.ts → @superagent/model-policy"
+        "superagent/server/src/http.ts → @superagent/model-policy",
+        "superagent/server/src/runtime.ts → @superagent/model-policy"
       ]
     },
     {
@@ -1059,37 +1086,53 @@
       "DECISIONS.md",
       "pnpm-lock.yaml",
       "superagent/cli/src/main.ts",
-      "superagent/evals/package.json",
-      "superagent/evals/test/learning-replay.integration.test.ts",
+      "superagent/contracts/src/types.ts",
+      "superagent/evals/test/ui.e2e.test.ts",
+      "superagent/plugins/architecture-observatory/src/adapters.ts",
+      "superagent/plugins/architecture-observatory/src/discover.ts",
+      "superagent/plugins/architecture-observatory/src/index.ts",
+      "superagent/plugins/architecture-observatory/src/observatory.ts",
+      "superagent/plugins/architecture-observatory/src/scan.ts",
+      "superagent/plugins/architecture-observatory/src/schema.ts",
+      "superagent/plugins/architecture-observatory/test/observatory.test.ts",
+      "superagent/plugins/chief-worker/src/chief-wake.ts",
+      "superagent/plugins/chief-worker/src/chief.ts",
       "superagent/plugins/chief-worker/src/engine.ts",
-      "superagent/plugins/chief-worker/src/executor.ts",
-      "superagent/plugins/chief-worker/src/prompt.ts",
-      "superagent/plugins/learning/package.json",
-      "superagent/plugins/learning/src/evolution.ts",
-      "superagent/plugins/learning/src/index.ts",
-      "superagent/plugins/learning/src/learning.ts",
       "superagent/plugins/learning/src/reflector.ts",
-      "superagent/plugins/learning/src/replay.ts",
       "superagent/plugins/learning/test/learning.test.ts",
+      "superagent/plugins/model-policy/package.json",
+      "superagent/plugins/model-policy/src/policy.ts",
+      "superagent/plugins/model-policy/test/policy.test.ts",
       "superagent/server/src/http.ts",
-      "superagent/server/src/runtime.ts"
+      "superagent/server/src/runtime.ts",
+      "superagent/ui/src/App.tsx",
+      "superagent/ui/src/Panels.tsx",
+      "superagent/ui/src/api.ts",
+      "superagent/ui/src/styles.css"
     ],
     "modules": [
+      "architecture-observatory",
       "chief-worker",
       "cli",
+      "contracts",
       "evals",
       "learning",
-      "server"
+      "model-policy",
+      "server",
+      "ui"
     ],
     "impacted": [
-      "architecture-observatory",
-      "model-policy"
+      "dsh-bundle",
+      "loop-policy",
+      "project-state",
+      "verifier"
     ],
     "gates": [
       "architecture",
       "e2e-ui",
       "evals",
       "smoke-dsh",
+      "typecheck",
       "unit"
     ]
   },
@@ -1166,9 +1209,9 @@
     }
   ],
   "stats": {
-    "files": 123,
+    "files": 125,
     "modules": 15,
-    "edges": 49,
-    "scanMs": 554
+    "edges": 51,
+    "scanMs": 567
   }
 }

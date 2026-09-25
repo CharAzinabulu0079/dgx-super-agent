@@ -2,8 +2,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api, eventStream, fmtModel, type ProjectDetail, type Project, type SAEvent, type Task } from './api.ts'
 import { ArchitectureView } from './ArchitectureView.tsx'
+import { HealthPanel, LearningPanel, PolicyPanel } from './Panels.tsx'
 
-type Tab = 'overview' | 'workers' | 'architecture' | 'events'
+type Tab = 'overview' | 'workers' | 'architecture' | 'learning' | 'policy' | 'events'
 
 export function App() {
   const [projects, setProjects] = useState<Project[]>([])
@@ -65,12 +66,14 @@ export function App() {
               <h2 data-testid="project-title">{detail.project.name}</h2>
               <code>{detail.project.root}</code>
               <div className="tabs">
-                {(['overview', 'workers', 'architecture', 'events'] as Tab[]).map(t => (
+                {(['overview', 'workers', 'architecture', 'learning', 'policy', 'events'] as Tab[]).map(t => (
                   <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)} data-testid={`tab-${t}`}>{t}</button>
                 ))}
               </div>
             </header>
-            {tab === 'overview' && <Overview detail={detail} act={act} />}
+            {tab === 'overview' && <><HealthPanel projectId={detail.project.id} refreshKey={archKey} /><Overview detail={detail} act={act} /></>}
+            {tab === 'learning' && <LearningPanel projectId={detail.project.id} onError={setError} refreshKey={events.length} />}
+            {tab === 'policy' && <PolicyPanel projectId={detail.project.id} onError={setError} />}
             {tab === 'workers' && <Workers detail={detail} />}
             {tab === 'architecture' && <ArchitectureView projectId={detail.project.id} refreshKey={archKey} />}
             {tab === 'events' && <Events events={events} />}
@@ -196,6 +199,11 @@ function HumanGateCard({ gate, task, onDecide }: { gate: ProjectDetail['humanGat
     <div className="gate" data-testid={`gate-${gate.id}`}>
       <div><span className="badge warn">{gate.reason}</span> {task && <strong>{task.title}</strong>}</div>
       <p>{gate.detail}</p>
+      {gate.actions && gate.actions.length > 0 && (
+        <details open data-testid="gate-actions"><summary>{gate.actions.length} action(s) blocked before execution — approving allows exactly these</summary>
+          <ul>{gate.actions.map(a => <li key={a.fingerprint}><code>{a.summary}</code> <span className="muted">[{a.category}: {a.rule}]</span></li>)}</ul>
+        </details>
+      )}
       <input placeholder="decision note / direction" value={note} onChange={e => setNote(e.target.value)} data-testid="gate-note" />
       <button onClick={() => onDecide('approved', note)} data-testid="approve">Approve</button>
       <button className="danger" onClick={() => onDecide('rejected', note)} data-testid="reject">Reject</button>

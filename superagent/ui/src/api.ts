@@ -11,7 +11,7 @@ export interface Goal { id: string; objective: string; status: string; taskIds: 
 export interface Project { id: string; name: string; root: string; goal?: Goal | null; openHumanGates?: number }
 export interface WorkerReport { kind: string; current_state: string; progress: number; changed_modules: string[]; verification_result: string; summary: string; human_required: boolean; blocker: string | null; at?: string }
 export interface Worker { id: string; taskId: string; attempt: number; status: string; model: ModelRef; activeModules: string[]; lastReport?: WorkerReport; startedAt: string; executor: string }
-export interface HumanGate { id: string; taskId?: string; reason: string; detail: string; status: string; resolution?: string }
+export interface HumanGate { id: string; taskId?: string; reason: string; detail: string; status: string; resolution?: string; actions?: Array<{ fingerprint: string; summary: string; category: string; rule: string }> }
 export interface ProjectDetail { project: Project; goal: Goal | null; goals: Goal[]; tasks: Task[]; workers: Worker[]; humanGates: HumanGate[]; report: string; runningGoals: string[] }
 export interface GraphNode {
   id: string; label: string; layer?: string; root: string; status: string[]; files: number; declared: boolean; protected: boolean

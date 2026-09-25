@@ -216,9 +216,15 @@ importers:
       '@superagent/chief-worker':
         specifier: workspace:*
         version: link:../chief-worker
+      '@superagent/project-state':
+        specifier: workspace:*
+        version: link:../project-state
       '@superagent/testkit':
         specifier: workspace:*
         version: link:../../testkit
+      '@superagent/verifier':
+        specifier: workspace:*
+        version: link:../verifier
 
   superagent/plugins/project-state:
     dependencies:

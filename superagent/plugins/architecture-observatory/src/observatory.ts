@@ -123,7 +123,14 @@ export class Observatory {
     const moduleOf = resolverFromModules(modules)
     const changes = changeSet(graph.changes.base, changedFiles(root), moduleOf, modules, graph.edges)
     const overlay = runtimeOverlay(modules, changes, runtime, moduleOf)
-    return { ...graph, changes, nodes: graph.nodes.map(n => ({ ...n, status: overlay.status[n.id] ?? ['stable'] })) }
+    const headCommit = git(root, ['rev-parse', '--short', 'HEAD'])?.trim()
+    const sameFiles = JSON.stringify([...changes.files].sort()) === JSON.stringify([...graph.changes.files].sort())
+    const unmapped = changes.files.filter(f => !moduleOf(f) && /\.(ts|tsx|js|jsx|mjs|cjs|py)$/.test(f))
+    const reason = headCommit !== graph.commit ? `HEAD moved (${graph.commit ?? 'none'} → ${headCommit ?? 'none'})` : !sameFiles ? 'working tree changed since the last scan' : unmapped.length ? `unmapped source files: ${unmapped.slice(0, 5).join(', ')}` : 'current'
+    return {
+      ...graph, changes, nodes: graph.nodes.map(n => ({ ...n, status: overlay.status[n.id] ?? ['stable'] })),
+      freshness: { stale: reason !== 'current', reason, graphCommit: graph.commit, headCommit },
+    }
   }
 }
 

@@ -5,7 +5,9 @@
  */
 import { join } from 'node:path'
 import type { StateStore } from '@superagent/project-state'
-import { runDshStreaming } from '@superagent/chief-worker'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import type { ModelRef } from '@superagent/contracts'
+import { loadModelRoutes, modelPatch, runDshStreaming } from '@superagent/chief-worker'
 import type { EvolutionKind } from './evolution.ts'
 
 export const CANDIDATES_FENCE = 'superagent-candidates'
@@ -87,6 +89,8 @@ export interface DshReflectorOptions {
   readonly profile?: string
   readonly env?: Record<string, string>
   readonly timeoutMs?: number
+  /** Reviewer model (policy role `reviewer`). */
+  readonly model?: (projectId: string) => ModelRef | undefined
 }
 
 /** Runs one DSH turn over the trace and returns validated proposals. */
@@ -100,12 +104,25 @@ export class DshReflector {
     const project = store.requireProject(projectId)
     let final = ''
     const r = await runDshStreaming({
-      args: ['--profile', this.o.profile ?? 'headless', '--json', reflectionPrompt(traceSummary(store, projectId, taskId))],
+      args: [...this.modelArgs(projectId), '--json', reflectionPrompt(traceSummary(store, projectId, taskId))],
       cwd: project.root, signal, timeoutMs: this.o.timeoutMs ?? 5 * 60_000,
       env: { DSH_HOME: join(this.o.stateHome, 'dsh-home'), SUPERAGENT_ROLE: 'chief', ...this.o.env },
       onEvent: e => { if (e.type === 'final' && typeof e.text === 'string') final = e.text },
     })
     if (r.exitCode !== 0) throw new Error(`reflection session exited ${r.exitCode}: ${r.stderrTail.slice(-300)}`)
     return parseCandidates(final)
+  }
+
+  private modelArgs(projectId: string): string[] {
+    const args = ['--profile', this.o.profile ?? 'headless']
+    const model = this.o.model?.(projectId)
+    const patch = model ? modelPatch(model, loadModelRoutes(this.o.stateHome)) : undefined
+    if (patch) {
+      const dir = join(this.o.stateHome, 'runtime', 'reflection')
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(join(dir, `${projectId}.model.yml`), patch)
+      args.push('--patch', join(dir, `${projectId}.model.yml`))
+    }
+    return args
   }
 }

@@ -9,8 +9,8 @@ import yaml from 'js-yaml'
 import picomatch from 'picomatch'
 import type { DeclaredArchitecture, ModuleInfo } from './schema.ts'
 
-export const SOURCE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|vue|svelte)$/
-export const TEST_FILE = /(\.test\.|\.spec\.|(^|\/)tests?\/|__tests__)/
+export const SOURCE_EXT = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|vue|svelte|py)$/
+export const TEST_FILE = /(\.test\.|\.spec\.|(^|\/)tests?\/|__tests__|(^|\/)test_[^/]*\.py$|_test\.py$)/
 const DEFAULT_IGNORE = ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/lib/**', '**/build/**', '**/coverage/**', '.architecture/**', '**/*.d.ts']
 
 export interface PackageManifest {
