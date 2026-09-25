@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T17:18:32.087Z",
-  "commit": "cc3959f",
+  "generatedAt": "2026-09-25T17:20:54.697Z",
+  "commit": "a39dc21",
   "layers": [
     "foundation",
     "capability",
@@ -53,7 +53,7 @@
       "layer": "foundation",
       "root": "superagent/testkit",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 6,
       "declared": true,
@@ -329,7 +329,7 @@
       "layer": "interface",
       "root": "superagent/server",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 6,
       "declared": true,
@@ -442,7 +442,7 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 6,
       "declared": true,
@@ -1002,40 +1002,11 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "ARCHITECTURE.md",
-      "CURRENT_STATE.md",
-      "DECISIONS.md",
-      "NEXT_STEPS.md",
-      "README.md",
-      "SETUP_DGX.md",
-      "THIRD_PARTY_NOTICES.md",
-      "superagent/evals/test/chief-tools.integration.test.ts",
-      "superagent/evals/test/model-route.integration.test.ts",
-      "superagent/server/src/dsh-setup.ts",
-      "superagent/testkit/src/mock-llm.ts"
+      "CURRENT_STATE.md"
     ],
-    "modules": [
-      "evals",
-      "server",
-      "testkit"
-    ],
-    "impacted": [
-      "architecture-observatory",
-      "chief-worker",
-      "cli",
-      "dsh-bundle",
-      "learning",
-      "model-policy",
-      "project-state",
-      "verifier"
-    ],
-    "gates": [
-      "architecture",
-      "e2e-ui",
-      "evals",
-      "smoke-dsh",
-      "unit"
-    ]
+    "modules": [],
+    "impacted": [],
+    "gates": []
   },
   "services": [
     {
@@ -1113,6 +1084,6 @@
     "files": 110,
     "modules": 15,
     "edges": 47,
-    "scanMs": 480
+    "scanMs": 576
   }
 }
