@@ -7,9 +7,18 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@superagent/contracts": "workspace:*"
+    "@superagent/contracts": "workspace:*",
+    "dependency-cruiser": "^18.4.0",
+    "js-yaml": "^4.3.2",
+    "picomatch": "^4.0.7",
+    "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@superagent/testkit": "workspace:*"
+    "@superagent/testkit": "workspace:*",
+    "@types/js-yaml": "^4.0.9",
+    "@types/picomatch": "^4.0.3",
+    "@superagent/project-state": "workspace:*",
+    "@superagent/verifier": "workspace:*",
+    "@superagent/chief-worker": "workspace:*"
   }
 }

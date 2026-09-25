@@ -1,0 +1,291 @@
+[
+  {
+    "id": "contracts",
+    "source": "declared",
+    "root": "superagent/contracts",
+    "paths": [
+      "superagent/contracts/**"
+    ],
+    "packageName": "@superagent/contracts",
+    "layer": "foundation",
+    "description": "Shared JSON contracts: Goal/Task/WorkerReport/Receipt/Gate/Event/Policy",
+    "protected": true,
+    "declared": true,
+    "files": 5,
+    "gates": [
+      "typecheck",
+      "unit"
+    ],
+    "adrs": [
+      "ADR-0005"
+    ],
+    "tests": [],
+    "entry": "superagent/contracts/src/index.ts",
+    "externalDeps": []
+  },
+  {
+    "id": "testkit",
+    "source": "declared",
+    "root": "superagent/testkit",
+    "paths": [
+      "superagent/testkit/**"
+    ],
+    "packageName": "@superagent/testkit",
+    "layer": "foundation",
+    "description": "Mock LLM, DSH runner, git fixtures",
+    "protected": false,
+    "declared": true,
+    "files": 5,
+    "gates": [
+      "unit",
+      "smoke-dsh"
+    ],
+    "adrs": [
+      "ADR-0003"
+    ],
+    "tests": [],
+    "entry": "superagent/testkit/src/index.ts",
+    "externalDeps": []
+  },
+  {
+    "id": "project-state",
+    "source": "declared",
+    "root": "superagent/plugins/project-state",
+    "paths": [
+      "superagent/plugins/project-state/**"
+    ],
+    "packageName": "@superagent/project-state",
+    "layer": "capability",
+    "description": "File-backed state store (SUPERAGENT_HOME)",
+    "protected": false,
+    "declared": true,
+    "files": 4,
+    "gates": [
+      "unit"
+    ],
+    "adrs": [
+      "ADR-0005"
+    ],
+    "tests": [
+      "superagent/plugins/project-state/test/store.test.ts"
+    ],
+    "entry": "superagent/plugins/project-state/src/index.ts",
+    "externalDeps": []
+  },
+  {
+    "id": "verifier",
+    "source": "declared",
+    "root": "superagent/plugins/verifier",
+    "paths": [
+      "superagent/plugins/verifier/**"
+    ],
+    "packageName": "@superagent/verifier",
+    "layer": "capability",
+    "description": "Independent gates and receipts; Worker claims never PASS",
+    "protected": true,
+    "declared": true,
+    "files": 7,
+    "gates": [
+      "unit"
+    ],
+    "adrs": [
+      "ADR-0006"
+    ],
+    "tests": [
+      "superagent/plugins/verifier/test/verifier.test.ts"
+    ],
+    "entry": "superagent/plugins/verifier/src/index.ts",
+    "externalDeps": []
+  },
+  {
+    "id": "loop-policy",
+    "source": "declared",
+    "root": "superagent/plugins/loop-policy",
+    "paths": [
+      "superagent/plugins/loop-policy/**"
+    ],
+    "packageName": "@superagent/loop-policy",
+    "layer": "capability",
+    "description": "Retry / strategy switch / Human Gate decisions",
+    "protected": false,
+    "declared": true,
+    "files": 3,
+    "gates": [
+      "unit"
+    ],
+    "adrs": [],
+    "tests": [],
+    "entry": "superagent/plugins/loop-policy/src/index.ts",
+    "externalDeps": []
+  },
+  {
+    "id": "model-policy",
+    "source": "declared",
+    "root": "superagent/plugins/model-policy",
+    "paths": [
+      "superagent/plugins/model-policy/**"
+    ],
+    "packageName": "@superagent/model-policy",
+    "layer": "capability",
+    "description": "Manual per-task model selection",
+    "protected": false,
+    "declared": true,
+    "files": 3,
+    "gates": [
+      "unit"
+    ],
+    "adrs": [],
+    "tests": [],
+    "entry": "superagent/plugins/model-policy/src/index.ts",
+    "externalDeps": []
+  },
+  {
+    "id": "architecture-observatory",
+    "source": "declared",
+    "root": "superagent/plugins/architecture-observatory",
+    "paths": [
+      "superagent/plugins/architecture-observatory/**"
+    ],
+    "packageName": "@superagent/architecture-observatory",
+    "layer": "capability",
+    "description": "Static architecture graph, drift, impact",
+    "protected": false,
+    "declared": true,
+    "files": 9,
+    "gates": [
+      "unit",
+      "architecture"
+    ],
+    "adrs": [],
+    "tests": [
+      "superagent/plugins/architecture-observatory/test/observatory.test.ts"
+    ],
+    "entry": "superagent/plugins/architecture-observatory/src/index.ts",
+    "externalDeps": []
+  },
+  {
+    "id": "learning",
+    "source": "declared",
+    "root": "superagent/plugins/learning",
+    "paths": [
+      "superagent/plugins/learning/**"
+    ],
+    "packageName": "@superagent/learning",
+    "layer": "capability",
+    "description": "Memory/Skill candidates → eval → promote",
+    "protected": false,
+    "declared": true,
+    "files": 1,
+    "gates": [
+      "unit"
+    ],
+    "adrs": [],
+    "tests": [],
+    "externalDeps": []
+  },
+  {
+    "id": "chief-worker",
+    "source": "declared",
+    "root": "superagent/plugins/chief-worker",
+    "paths": [
+      "superagent/plugins/chief-worker/**"
+    ],
+    "packageName": "@superagent/chief-worker",
+    "layer": "orchestration",
+    "description": "LoopEngine, Chief, Worker executors (DSH headless)",
+    "protected": false,
+    "declared": true,
+    "files": 11,
+    "gates": [
+      "unit",
+      "smoke-dsh"
+    ],
+    "adrs": [
+      "ADR-0004"
+    ],
+    "tests": [
+      "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts",
+      "superagent/plugins/chief-worker/test/loop.test.ts"
+    ],
+    "entry": "superagent/plugins/chief-worker/src/index.ts",
+    "externalDeps": []
+  },
+  {
+    "id": "server",
+    "source": "declared",
+    "root": "superagent/server",
+    "paths": [
+      "superagent/server/**"
+    ],
+    "layer": "interface",
+    "description": "Headless HTTP/SSE Realtime API",
+    "protected": false,
+    "declared": true,
+    "files": 0,
+    "gates": [
+      "unit",
+      "e2e-ui"
+    ],
+    "adrs": [],
+    "tests": [],
+    "externalDeps": []
+  },
+  {
+    "id": "cli",
+    "source": "declared",
+    "root": "superagent/cli",
+    "paths": [
+      "superagent/cli/**"
+    ],
+    "packageName": "@superagent/cli",
+    "layer": "interface",
+    "description": "`sa` command line",
+    "protected": false,
+    "declared": true,
+    "files": 1,
+    "gates": [
+      "unit"
+    ],
+    "adrs": [],
+    "tests": [],
+    "externalDeps": []
+  },
+  {
+    "id": "ui",
+    "source": "declared",
+    "root": "superagent/ui",
+    "paths": [
+      "superagent/ui/**"
+    ],
+    "layer": "interface",
+    "description": "Minimal Web/PWA",
+    "protected": false,
+    "declared": true,
+    "files": 0,
+    "gates": [
+      "e2e-ui"
+    ],
+    "adrs": [],
+    "tests": [],
+    "externalDeps": []
+  },
+  {
+    "id": "dsh-bundle",
+    "source": "declared",
+    "root": "superagent/dsh-bundle",
+    "paths": [
+      "superagent/dsh-bundle/**"
+    ],
+    "layer": "interface",
+    "description": "DSH bundle: SuperAgent tools for Chief/Worker sessions",
+    "protected": false,
+    "declared": true,
+    "files": 0,
+    "gates": [
+      "smoke-dsh"
+    ],
+    "adrs": [],
+    "tests": [],
+    "externalDeps": []
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "from": "chief-worker",
+    "to": "verifier",
+    "label": "attempt → gates → Receipt"
+  },
+  {
+    "from": "chief-worker",
+    "to": "project-state",
+    "label": "events / tasks / receipts"
+  },
+  {
+    "from": "architecture-observatory",
+    "to": "server",
+    "label": ".architecture/graph.json"
+  },
+  {
+    "from": "server",
+    "to": "ui",
+    "label": "HTTP + SSE"
+  }
+]

@@ -1,0 +1,191 @@
+{
+  "edges": [
+    {
+      "from": "architecture-observatory",
+      "to": "chief-worker",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/architecture-observatory/test/observatory.test.ts → @superagent/chief-worker"
+      ]
+    },
+    {
+      "from": "architecture-observatory",
+      "to": "contracts",
+      "weight": 3,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/architecture-observatory/src/analysis.ts → @superagent/contracts",
+        "superagent/plugins/architecture-observatory/src/hooks.ts → @superagent/contracts",
+        "superagent/plugins/architecture-observatory/src/observatory.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "architecture-observatory",
+      "to": "project-state",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/architecture-observatory/test/observatory.test.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "architecture-observatory",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/architecture-observatory/test/observatory.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "architecture-observatory",
+      "to": "verifier",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/architecture-observatory/test/observatory.test.ts → @superagent/verifier"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "contracts",
+      "weight": 7,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/chief.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/chief.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/executor.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "loop-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/loop-policy"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "model-policy",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/chief.ts → @superagent/model-policy",
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/model-policy"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "project-state",
+      "weight": 3,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/project-state",
+        "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/project-state",
+        "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "testkit",
+      "weight": 3,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/dsh-process.ts → @superagent/testkit",
+        "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/testkit",
+        "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "verifier",
+      "weight": 3,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/verifier",
+        "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/verifier",
+        "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/verifier"
+      ]
+    },
+    {
+      "from": "loop-policy",
+      "to": "contracts",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/loop-policy/src/policy.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "model-policy",
+      "to": "contracts",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/model-policy/src/policy.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "project-state",
+      "to": "contracts",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/project-state/src/store.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "project-state",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/project-state/test/store.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "verifier",
+      "to": "contracts",
+      "weight": 4,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/verifier/src/command.ts → @superagent/contracts",
+        "superagent/plugins/verifier/src/hygiene.ts → @superagent/contracts",
+        "superagent/plugins/verifier/src/verifier.ts → @superagent/contracts",
+        "superagent/plugins/verifier/test/verifier.test.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "verifier",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/verifier/test/verifier.test.ts → @superagent/testkit"
+      ]
+    }
+  ],
+  "fileCycles": []
+}

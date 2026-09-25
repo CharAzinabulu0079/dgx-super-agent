@@ -1,0 +1,51 @@
+flowchart LR
+  subgraph layer_foundation["foundation"]
+    contracts["contracts<br/><small>5 files</small>"]
+    testkit["testkit<br/><small>5 files</small>"]
+  end
+  subgraph layer_capability["capability"]
+    project_state["project-state<br/><small>4 files</small>"]
+    verifier["verifier<br/><small>7 files</small>"]
+    loop_policy["loop-policy<br/><small>3 files</small>"]
+    model_policy["model-policy<br/><small>3 files</small>"]
+    architecture_observatory["architecture-observatory<br/><small>9 files</small>"]
+    learning["learning<br/><small>1 files</small>"]
+  end
+  subgraph layer_orchestration["orchestration"]
+    chief_worker["chief-worker<br/><small>11 files</small>"]
+  end
+  subgraph layer_interface["interface"]
+    server["server<br/><small>0 files</small>"]
+    cli["cli<br/><small>1 files</small>"]
+    ui["ui<br/><small>0 files</small>"]
+    dsh_bundle["dsh-bundle<br/><small>0 files</small>"]
+  end
+  architecture_observatory --> contracts
+  chief_worker --> contracts
+  chief_worker --> loop_policy
+  chief_worker --> model_policy
+  chief_worker --> project_state
+  chief_worker --> testkit
+  chief_worker --> verifier
+  loop_policy --> contracts
+  model_policy --> contracts
+  project_state --> contracts
+  verifier --> contracts
+  classDef stable fill:#e8f5e9,stroke:#2e7d32
+  classDef changing fill:#fff8e1,stroke:#f9a825
+  classDef worker_active fill:#e3f2fd,stroke:#1565c0
+  classDef gate_failed fill:#ffebee,stroke:#c62828
+  classDef protected stroke:#6a1b9a,stroke-width:3px
+  class contracts stable
+  class testkit stable
+  class project_state stable
+  class verifier stable
+  class loop_policy stable
+  class model_policy stable
+  class architecture_observatory changing
+  class learning stable
+  class chief_worker stable
+  class server stable
+  class cli stable
+  class ui stable
+  class dsh_bundle stable

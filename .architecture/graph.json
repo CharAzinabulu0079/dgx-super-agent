@@ -1,0 +1,646 @@
+{
+  "schemaVersion": 1,
+  "project": "dgx-super-agent",
+  "generatedAt": "2026-09-25T16:49:25.859Z",
+  "commit": "dbb9553",
+  "layers": [
+    "foundation",
+    "capability",
+    "orchestration",
+    "interface"
+  ],
+  "nodes": [
+    {
+      "id": "contracts",
+      "label": "contracts",
+      "layer": "foundation",
+      "root": "superagent/contracts",
+      "status": [
+        "protected"
+      ],
+      "files": 5,
+      "declared": true,
+      "protected": true,
+      "dependsOn": [],
+      "usedBy": [
+        "architecture-observatory",
+        "chief-worker",
+        "loop-policy",
+        "model-policy",
+        "project-state",
+        "verifier"
+      ],
+      "gates": [
+        "typecheck",
+        "unit"
+      ],
+      "adrs": [
+        "ADR-0005"
+      ],
+      "tests": [],
+      "entry": "superagent/contracts/src/index.ts",
+      "description": "Shared JSON contracts: Goal/Task/WorkerReport/Receipt/Gate/Event/Policy",
+      "drift": []
+    },
+    {
+      "id": "testkit",
+      "label": "testkit",
+      "layer": "foundation",
+      "root": "superagent/testkit",
+      "status": [
+        "stable"
+      ],
+      "files": 5,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [],
+      "usedBy": [
+        "architecture-observatory",
+        "chief-worker",
+        "project-state",
+        "verifier"
+      ],
+      "gates": [
+        "unit",
+        "smoke-dsh"
+      ],
+      "adrs": [
+        "ADR-0003"
+      ],
+      "tests": [],
+      "entry": "superagent/testkit/src/index.ts",
+      "description": "Mock LLM, DSH runner, git fixtures",
+      "drift": []
+    },
+    {
+      "id": "project-state",
+      "label": "project-state",
+      "layer": "capability",
+      "root": "superagent/plugins/project-state",
+      "status": [
+        "stable"
+      ],
+      "files": 4,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [
+        "contracts",
+        "testkit"
+      ],
+      "usedBy": [
+        "architecture-observatory",
+        "chief-worker"
+      ],
+      "gates": [
+        "unit"
+      ],
+      "adrs": [
+        "ADR-0005"
+      ],
+      "tests": [
+        "superagent/plugins/project-state/test/store.test.ts"
+      ],
+      "entry": "superagent/plugins/project-state/src/index.ts",
+      "description": "File-backed state store (SUPERAGENT_HOME)",
+      "drift": []
+    },
+    {
+      "id": "verifier",
+      "label": "verifier",
+      "layer": "capability",
+      "root": "superagent/plugins/verifier",
+      "status": [
+        "protected"
+      ],
+      "files": 7,
+      "declared": true,
+      "protected": true,
+      "dependsOn": [
+        "contracts",
+        "testkit"
+      ],
+      "usedBy": [
+        "architecture-observatory",
+        "chief-worker"
+      ],
+      "gates": [
+        "unit"
+      ],
+      "adrs": [
+        "ADR-0006"
+      ],
+      "tests": [
+        "superagent/plugins/verifier/test/verifier.test.ts"
+      ],
+      "entry": "superagent/plugins/verifier/src/index.ts",
+      "description": "Independent gates and receipts; Worker claims never PASS",
+      "drift": []
+    },
+    {
+      "id": "loop-policy",
+      "label": "loop-policy",
+      "layer": "capability",
+      "root": "superagent/plugins/loop-policy",
+      "status": [
+        "stable"
+      ],
+      "files": 3,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [
+        "contracts"
+      ],
+      "usedBy": [
+        "chief-worker"
+      ],
+      "gates": [
+        "unit"
+      ],
+      "adrs": [],
+      "tests": [],
+      "entry": "superagent/plugins/loop-policy/src/index.ts",
+      "description": "Retry / strategy switch / Human Gate decisions",
+      "drift": []
+    },
+    {
+      "id": "model-policy",
+      "label": "model-policy",
+      "layer": "capability",
+      "root": "superagent/plugins/model-policy",
+      "status": [
+        "stable"
+      ],
+      "files": 3,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [
+        "contracts"
+      ],
+      "usedBy": [
+        "chief-worker"
+      ],
+      "gates": [
+        "unit"
+      ],
+      "adrs": [],
+      "tests": [],
+      "entry": "superagent/plugins/model-policy/src/index.ts",
+      "description": "Manual per-task model selection",
+      "drift": []
+    },
+    {
+      "id": "architecture-observatory",
+      "label": "architecture-observatory",
+      "layer": "capability",
+      "root": "superagent/plugins/architecture-observatory",
+      "status": [
+        "changing"
+      ],
+      "files": 9,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [
+        "chief-worker",
+        "contracts",
+        "project-state",
+        "testkit",
+        "verifier"
+      ],
+      "usedBy": [],
+      "gates": [
+        "unit",
+        "architecture"
+      ],
+      "adrs": [],
+      "tests": [
+        "superagent/plugins/architecture-observatory/test/observatory.test.ts"
+      ],
+      "entry": "superagent/plugins/architecture-observatory/src/index.ts",
+      "description": "Static architecture graph, drift, impact",
+      "drift": []
+    },
+    {
+      "id": "learning",
+      "label": "learning",
+      "layer": "capability",
+      "root": "superagent/plugins/learning",
+      "status": [
+        "stable"
+      ],
+      "files": 1,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [],
+      "usedBy": [],
+      "gates": [
+        "unit"
+      ],
+      "adrs": [],
+      "tests": [],
+      "description": "Memory/Skill candidates → eval → promote",
+      "drift": []
+    },
+    {
+      "id": "chief-worker",
+      "label": "chief-worker",
+      "layer": "orchestration",
+      "root": "superagent/plugins/chief-worker",
+      "status": [
+        "stable"
+      ],
+      "files": 11,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [
+        "contracts",
+        "loop-policy",
+        "model-policy",
+        "project-state",
+        "testkit",
+        "verifier"
+      ],
+      "usedBy": [
+        "architecture-observatory"
+      ],
+      "gates": [
+        "unit",
+        "smoke-dsh"
+      ],
+      "adrs": [
+        "ADR-0004"
+      ],
+      "tests": [
+        "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts",
+        "superagent/plugins/chief-worker/test/loop.test.ts"
+      ],
+      "entry": "superagent/plugins/chief-worker/src/index.ts",
+      "description": "LoopEngine, Chief, Worker executors (DSH headless)",
+      "drift": []
+    },
+    {
+      "id": "server",
+      "label": "server",
+      "layer": "interface",
+      "root": "superagent/server",
+      "status": [
+        "stable"
+      ],
+      "files": 0,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [],
+      "usedBy": [],
+      "gates": [
+        "unit",
+        "e2e-ui"
+      ],
+      "adrs": [],
+      "tests": [],
+      "description": "Headless HTTP/SSE Realtime API",
+      "drift": [
+        "missing-module"
+      ]
+    },
+    {
+      "id": "cli",
+      "label": "cli",
+      "layer": "interface",
+      "root": "superagent/cli",
+      "status": [
+        "stable"
+      ],
+      "files": 1,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [],
+      "usedBy": [],
+      "gates": [
+        "unit"
+      ],
+      "adrs": [],
+      "tests": [],
+      "description": "`sa` command line",
+      "drift": []
+    },
+    {
+      "id": "ui",
+      "label": "ui",
+      "layer": "interface",
+      "root": "superagent/ui",
+      "status": [
+        "stable"
+      ],
+      "files": 0,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [],
+      "usedBy": [],
+      "gates": [
+        "e2e-ui"
+      ],
+      "adrs": [],
+      "tests": [],
+      "description": "Minimal Web/PWA",
+      "drift": [
+        "missing-module"
+      ]
+    },
+    {
+      "id": "dsh-bundle",
+      "label": "dsh-bundle",
+      "layer": "interface",
+      "root": "superagent/dsh-bundle",
+      "status": [
+        "stable"
+      ],
+      "files": 0,
+      "declared": true,
+      "protected": false,
+      "dependsOn": [],
+      "usedBy": [],
+      "gates": [
+        "smoke-dsh"
+      ],
+      "adrs": [],
+      "tests": [],
+      "description": "DSH bundle: SuperAgent tools for Chief/Worker sessions",
+      "drift": [
+        "missing-module"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "architecture-observatory",
+      "to": "chief-worker",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/architecture-observatory/test/observatory.test.ts → @superagent/chief-worker"
+      ]
+    },
+    {
+      "from": "architecture-observatory",
+      "to": "contracts",
+      "weight": 3,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/architecture-observatory/src/analysis.ts → @superagent/contracts",
+        "superagent/plugins/architecture-observatory/src/hooks.ts → @superagent/contracts",
+        "superagent/plugins/architecture-observatory/src/observatory.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "architecture-observatory",
+      "to": "project-state",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/architecture-observatory/test/observatory.test.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "architecture-observatory",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/architecture-observatory/test/observatory.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "architecture-observatory",
+      "to": "verifier",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/architecture-observatory/test/observatory.test.ts → @superagent/verifier"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "contracts",
+      "weight": 7,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/chief.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/chief.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/contracts",
+        "superagent/plugins/chief-worker/src/executor.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "loop-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/loop-policy"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "model-policy",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/chief.ts → @superagent/model-policy",
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/model-policy"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "project-state",
+      "weight": 3,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/project-state",
+        "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/project-state",
+        "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "testkit",
+      "weight": 3,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/dsh-process.ts → @superagent/testkit",
+        "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/testkit",
+        "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "chief-worker",
+      "to": "verifier",
+      "weight": 3,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/verifier",
+        "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/verifier",
+        "superagent/plugins/chief-worker/test/loop.test.ts → @superagent/verifier"
+      ]
+    },
+    {
+      "from": "loop-policy",
+      "to": "contracts",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/loop-policy/src/policy.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "model-policy",
+      "to": "contracts",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/model-policy/src/policy.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "project-state",
+      "to": "contracts",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/project-state/src/store.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "project-state",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/project-state/test/store.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "verifier",
+      "to": "contracts",
+      "weight": 4,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/verifier/src/command.ts → @superagent/contracts",
+        "superagent/plugins/verifier/src/hygiene.ts → @superagent/contracts",
+        "superagent/plugins/verifier/src/verifier.ts → @superagent/contracts",
+        "superagent/plugins/verifier/test/verifier.test.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "verifier",
+      "to": "testkit",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/plugins/verifier/test/verifier.test.ts → @superagent/testkit"
+      ]
+    }
+  ],
+  "drift": [
+    {
+      "kind": "missing-module",
+      "severity": "warn",
+      "modules": [
+        "server"
+      ],
+      "detail": "declared module server matches no files"
+    },
+    {
+      "kind": "missing-module",
+      "severity": "warn",
+      "modules": [
+        "ui"
+      ],
+      "detail": "declared module ui matches no files"
+    },
+    {
+      "kind": "missing-module",
+      "severity": "warn",
+      "modules": [
+        "dsh-bundle"
+      ],
+      "detail": "declared module dsh-bundle matches no files"
+    }
+  ],
+  "changes": {
+    "base": "HEAD",
+    "files": [
+      "pnpm-lock.yaml",
+      "scripts/arch-scan.ts",
+      "superagent/plugins/architecture-observatory/package.json",
+      "superagent/plugins/architecture-observatory/src/analysis.ts",
+      "superagent/plugins/architecture-observatory/src/discover.ts",
+      "superagent/plugins/architecture-observatory/src/hooks.ts",
+      "superagent/plugins/architecture-observatory/src/index.ts",
+      "superagent/plugins/architecture-observatory/src/observatory.ts",
+      "superagent/plugins/architecture-observatory/src/scan.ts",
+      "superagent/plugins/architecture-observatory/src/schema.ts",
+      "superagent/plugins/architecture-observatory/test/observatory.test.ts"
+    ],
+    "modules": [
+      "architecture-observatory"
+    ],
+    "impacted": [],
+    "gates": [
+      "architecture",
+      "unit"
+    ]
+  },
+  "services": [
+    {
+      "id": "testkit:http:superagent/testkit/src/mock-llm.ts",
+      "module": "testkit",
+      "kind": "http-server",
+      "detail": "superagent/testkit/src/mock-llm.ts"
+    }
+  ],
+  "dataflows": [
+    {
+      "from": "chief-worker",
+      "to": "verifier",
+      "label": "attempt → gates → Receipt"
+    },
+    {
+      "from": "chief-worker",
+      "to": "project-state",
+      "label": "events / tasks / receipts"
+    },
+    {
+      "from": "architecture-observatory",
+      "to": "server",
+      "label": ".architecture/graph.json"
+    },
+    {
+      "from": "server",
+      "to": "ui",
+      "label": "HTTP + SSE"
+    }
+  ],
+  "stats": {
+    "files": 62,
+    "modules": 13,
+    "edges": 17,
+    "scanMs": 422
+  }
+}

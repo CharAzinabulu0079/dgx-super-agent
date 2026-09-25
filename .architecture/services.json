@@ -1,0 +1,8 @@
+[
+  {
+    "id": "testkit:http:superagent/testkit/src/mock-llm.ts",
+    "module": "testkit",
+    "kind": "http-server",
+    "detail": "superagent/testkit/src/mock-llm.ts"
+  }
+]
