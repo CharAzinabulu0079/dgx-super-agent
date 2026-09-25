@@ -1,0 +1,17 @@
+{
+  "name": "@superagent/learning",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@superagent/contracts": "workspace:*",
+    "@superagent/project-state": "workspace:*",
+    "@superagent/verifier": "workspace:*"
+  },
+  "devDependencies": {
+    "@superagent/testkit": "workspace:*"
+  }
+}

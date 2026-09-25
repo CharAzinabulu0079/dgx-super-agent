@@ -19,6 +19,103 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  superagent/cli:
+    dependencies:
+      '@superagent/testkit':
+        specifier: workspace:*
+        version: link:../testkit
+
+  superagent/contracts: {}
+
+  superagent/plugins/architecture-observatory:
+    dependencies:
+      '@superagent/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+    devDependencies:
+      '@superagent/testkit':
+        specifier: workspace:*
+        version: link:../../testkit
+
+  superagent/plugins/chief-worker:
+    dependencies:
+      '@superagent/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@superagent/loop-policy':
+        specifier: workspace:*
+        version: link:../loop-policy
+      '@superagent/model-policy':
+        specifier: workspace:*
+        version: link:../model-policy
+      '@superagent/project-state':
+        specifier: workspace:*
+        version: link:../project-state
+      '@superagent/testkit':
+        specifier: workspace:*
+        version: link:../../testkit
+      '@superagent/verifier':
+        specifier: workspace:*
+        version: link:../verifier
+
+  superagent/plugins/learning:
+    dependencies:
+      '@superagent/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@superagent/project-state':
+        specifier: workspace:*
+        version: link:../project-state
+      '@superagent/verifier':
+        specifier: workspace:*
+        version: link:../verifier
+    devDependencies:
+      '@superagent/testkit':
+        specifier: workspace:*
+        version: link:../../testkit
+
+  superagent/plugins/loop-policy:
+    dependencies:
+      '@superagent/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+    devDependencies:
+      '@superagent/testkit':
+        specifier: workspace:*
+        version: link:../../testkit
+
+  superagent/plugins/model-policy:
+    dependencies:
+      '@superagent/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+    devDependencies:
+      '@superagent/testkit':
+        specifier: workspace:*
+        version: link:../../testkit
+
+  superagent/plugins/project-state:
+    dependencies:
+      '@superagent/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+    devDependencies:
+      '@superagent/testkit':
+        specifier: workspace:*
+        version: link:../../testkit
+
+  superagent/plugins/verifier:
+    dependencies:
+      '@superagent/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+    devDependencies:
+      '@superagent/testkit':
+        specifier: workspace:*
+        version: link:../../testkit
+
+  superagent/testkit: {}
+
 packages:
 
   '@agentclientprotocol/sdk@1.4.0':
