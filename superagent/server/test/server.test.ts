@@ -101,3 +101,18 @@ test('API: project → goal → task → run → PASS, SSE stream, architecture,
     await server.close()
   }
 })
+
+test('API refuses cross-origin and non-JSON POSTs (CSRF guard)', async () => {
+  const runtime = createRuntime({ home: tempDir('sa-home-'), executor: new ScriptedExecutor(() => {}) })
+  const server = await startServer({ runtime, port: 0 })
+  try {
+    const textPlain = await fetch(`${server.url}/api/projects`, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ name: 'x', root: '/tmp' }) })
+    assert.equal(textPlain.status, 415)
+    const foreign = await fetch(`${server.url}/api/projects`, { headers: { origin: 'https://evil.example' } })
+    assert.equal(foreign.status, 403)
+    const same = await fetch(`${server.url}/api/projects`, { headers: { origin: server.url } })
+    assert.equal(same.status, 200)
+  } finally {
+    await server.close()
+  }
+})

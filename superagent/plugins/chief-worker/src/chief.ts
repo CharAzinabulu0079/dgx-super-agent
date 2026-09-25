@@ -62,8 +62,10 @@ export class Chief {
     if (!goal) throw new Error(`goal ${goalId} not found`)
     if (goal.status !== 'active') goal = this.store.updateGoal(projectId, goalId, { status: 'active', blocker: undefined })
     for (const taskId of goal.taskIds) {
-      const task = this.store.requireTask(projectId, taskId)
+      let task = this.store.requireTask(projectId, taskId)
       if (task.state === 'passed') continue
+      // An explicit (re)run of the goal resumes tasks the human stopped earlier.
+      if (task.state === 'stopped') task = this.store.updateTask(projectId, taskId, { state: task.attempts.length ? 'retrying' : 'pending', stopRequested: false })
       const { task: after, humanGate } = await this.engine.runTask(projectId, taskId)
       if (after.state === 'passed') continue
       if (after.state === 'human_gate') {

@@ -169,3 +169,22 @@ test('stop aborts the running Worker and leaves the task stopped', async () => {
   assert.equal(after.state, 'stopped')
   assert.equal(store.listReceipts(project.id).length, 0)
 })
+
+test('an executor that throws yields a crashed attempt that is still verified — never a stuck task', async () => {
+  const { store, project, goal } = setup(() => {})
+  const throwing = new LoopEngine({ store, verifier: new Verifier(), executor: { name: 'boom', run: async i => { if (i.attempt === 1) throw new Error('spawn ENOENT'); writeFileSync(join(i.project.root, 'src/calc.js'), FIXED_CALC); return { exit: 'completed' } } } })
+  const task = store.listTasks(project.id, goal.id)[0]!
+  const { task: after } = await throwing.runTask(project.id, task.id)
+  assert.equal(after.state, 'passed')
+  assert.equal(store.listWorkers(project.id).every(w => w.status === 'exited'), true)
+})
+
+test('re-running a goal resumes a task the human stopped', async () => {
+  let runs = 0
+  const { store, engine, chief, project, goal } = setup(input => { runs++; if (runs > 1) writeFileSync(join(input.project.root, 'src/calc.js'), FIXED_CALC) })
+  const task = store.listTasks(project.id, goal.id)[0]!
+  engine.stop(project.id, task.id)
+  assert.equal(store.requireTask(project.id, task.id).state, 'stopped')
+  const r = await chief.runGoal(project.id, goal.id)
+  assert.equal(r.tasks[0]!.state, 'passed')
+})

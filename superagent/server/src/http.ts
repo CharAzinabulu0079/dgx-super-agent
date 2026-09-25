@@ -102,6 +102,8 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     const p = project(params.pid!)
     const key = `${p.id}/${params.gid}`
     if (runningGoals.has(key)) throw new HttpError(409, 'goal already running')
+    // One goal per project tree at a time: concurrent Workers would mix their changes.
+    if ([...runningGoals].some(k => k.startsWith(`${p.id}/`))) throw new HttpError(409, 'another goal of this project is running')
     runningGoals.add(key)
     void chief.runGoal(p.id, params.gid!)
       .catch(error => store.emitTyped('goal/updated', p.id, { error: String(error) }, { goalId: params.gid }))
@@ -203,6 +205,12 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     const url = new URL(req.url ?? '/', 'http://localhost')
     try {
       if (url.pathname.startsWith('/api/')) {
+        // CSRF guard for a local agent with shell access: browsers may send "simple"
+        // cross-origin POSTs (text/plain) without preflight. Require JSON (forces a
+        // preflight we never grant) and reject foreign Origins outright.
+        const origin = req.headers.origin
+        if (origin && origin !== `http://${req.headers.host}`) throw new HttpError(403, 'cross-origin request refused')
+        if (req.method === 'POST' && !String(req.headers['content-type'] ?? '').startsWith('application/json')) throw new HttpError(415, 'POST requires application/json')
         if (options.token && req.headers.authorization !== `Bearer ${options.token}` && url.searchParams.get('token') !== options.token) throw new HttpError(401, 'unauthorized')
         if (url.pathname === '/api/events/stream') {
           res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' })

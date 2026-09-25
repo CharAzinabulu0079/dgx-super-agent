@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T17:10:14.679Z",
-  "commit": "928c830",
+  "generatedAt": "2026-09-25T17:11:46.954Z",
+  "commit": "d84e5ca",
   "layers": [
     "foundation",
     "capability",
@@ -189,7 +189,7 @@
       "layer": "capability",
       "root": "superagent/plugins/model-policy",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 4,
       "declared": true,
@@ -221,7 +221,7 @@
       "layer": "capability",
       "root": "superagent/plugins/architecture-observatory",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 9,
       "declared": true,
@@ -255,7 +255,7 @@
       "layer": "capability",
       "root": "superagent/plugins/learning",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 4,
       "declared": true,
@@ -367,7 +367,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 2,
       "declared": true,
@@ -993,33 +993,22 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "pnpm-lock.yaml",
-      "superagent/cli/package.json",
-      "superagent/cli/src/main.ts",
-      "superagent/plugins/architecture-observatory/src/hooks.ts",
+      "superagent/plugins/chief-worker/src/chief.ts",
       "superagent/plugins/chief-worker/src/engine.ts",
-      "superagent/plugins/chief-worker/src/executor.ts",
-      "superagent/plugins/chief-worker/src/prompt.ts",
-      "superagent/plugins/learning/package.json",
-      "superagent/plugins/learning/src/index.ts",
-      "superagent/plugins/learning/src/learning.ts",
-      "superagent/plugins/learning/test/learning.test.ts",
-      "superagent/plugins/model-policy/package.json",
-      "superagent/plugins/model-policy/test/policy.test.ts",
-      "superagent/server/package.json",
+      "superagent/plugins/chief-worker/test/loop.test.ts",
       "superagent/server/src/http.ts",
-      "superagent/server/src/runtime.ts"
+      "superagent/server/test/server.test.ts"
     ],
     "modules": [
-      "architecture-observatory",
       "chief-worker",
-      "cli",
-      "learning",
-      "model-policy",
       "server"
     ],
     "impacted": [
-      "evals"
+      "architecture-observatory",
+      "cli",
+      "evals",
+      "learning",
+      "model-policy"
     ],
     "gates": [
       "architecture",
@@ -1105,6 +1094,6 @@
     "files": 103,
     "modules": 15,
     "edges": 47,
-    "scanMs": 548
+    "scanMs": 530
   }
 }

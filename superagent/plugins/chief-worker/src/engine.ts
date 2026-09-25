@@ -119,7 +119,7 @@ export class LoopEngine {
         const previous = task.attempts.at(-2)
         const previousSessionId = previous ? this.store.getWorker(projectId, previous.workerId)?.sessionId : undefined
         this.store.updateWorker(projectId, worker.id, { status: 'running' })
-        const output = await this.executor.run({
+        const output = await this.safeRun({
           project, task, worker, attempt: n, strategy, model,
           feedback: this.feedbackFor(projectId, task),
           previousSessionId: strategy === 'retry-with-feedback' ? previousSessionId : undefined,
@@ -248,6 +248,15 @@ export class LoopEngine {
       }
     }
     return recovered
+  }
+
+  /** An executor that throws is a crashed attempt, never a stuck task. */
+  private async safeRun(input: Parameters<WorkerExecutor['run']>[0]): Promise<Awaited<ReturnType<WorkerExecutor['run']>>> {
+    try {
+      return await this.executor.run(input)
+    } catch (error) {
+      return { exit: input.signal.aborted ? 'cancelled' : 'crashed', diagnostics: String((error as Error).stack ?? error) }
+    }
   }
 
   private closeAttempt(task: Task, change: Partial<Attempt>): Task {
