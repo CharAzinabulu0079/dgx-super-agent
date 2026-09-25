@@ -120,7 +120,9 @@ export function baselineFindings(results: readonly GateResult[], baseline: TaskB
   const out: IntegrityFinding[] = []
   for (const r of results) {
     const expected = baseline.gates[r.gateId]?.tests ?? []
-    if (!expected.length) continue
+    // Suppression only matters when the gate claims success; an ordinary failing
+    // test is a gate failure, not an integrity violation.
+    if (!expected.length || r.status !== 'pass') continue
     const passing = new Set((r.tests ?? []).filter(t => t.ok).map(t => t.name))
     const missing = expected.filter(name => !passing.has(name))
     if (missing.length) {

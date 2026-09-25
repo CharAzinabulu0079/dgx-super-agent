@@ -14,6 +14,8 @@ import { dshBin, REPO_ROOT } from '@superagent/testkit'
 
 export const WORKER_PROFILE = 'superagent-worker'
 export const CHIEF_PROFILE = 'superagent-chief'
+/** Headless Chief profile used by the wake driver (no browser, SuperAgent bundle). */
+export const CHIEF_CLI_PROFILE = 'superagent-chief-cli'
 export const BUNDLE_DIR = join(REPO_ROOT, 'superagent', 'dsh-bundle')
 export const BROWSER_PATCH = join(BUNDLE_DIR, 'patches', 'worker-browser.yml')
 const DSH_VERSION = JSON.parse(readFileSync(join(REPO_ROOT, 'upstream', 'dsh.lock.json'), 'utf8')).npm.version as string
@@ -77,7 +79,10 @@ export function setupDshProfiles(dshHome: string, options: { chief?: boolean } =
   ensureBundleBuilt()
   const profiles: SetupResult['profiles'] = {}
   profiles[WORKER_PROFILE] = ensureProfile(dshHome, WORKER_PROFILE, 'headless', true)
-  if (options.chief !== false) profiles[CHIEF_PROFILE] = ensureProfile(dshHome, CHIEF_PROFILE, 'web', false)
+  if (options.chief !== false) {
+    profiles[CHIEF_PROFILE] = ensureProfile(dshHome, CHIEF_PROFILE, 'web', false)
+    profiles[CHIEF_CLI_PROFILE] = ensureProfile(dshHome, CHIEF_CLI_PROFILE, 'headless', false)
+  }
   return { dshHome, profiles }
 }
 

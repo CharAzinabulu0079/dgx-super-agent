@@ -109,7 +109,7 @@
     "description": "Retry / strategy switch / Human Gate decisions",
     "protected": false,
     "declared": true,
-    "files": 6,
+    "files": 7,
     "gates": [
       "unit"
     ],
@@ -203,7 +203,7 @@
     "description": "LoopEngine, Chief, Worker executors (DSH headless)",
     "protected": false,
     "declared": true,
-    "files": 11,
+    "files": 13,
     "gates": [
       "unit",
       "smoke-dsh"
@@ -213,6 +213,7 @@
     ],
     "tests": [
       "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts",
+      "superagent/plugins/chief-worker/test/chief-wake.test.ts",
       "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts",
       "superagent/plugins/chief-worker/test/loop.test.ts"
     ],
@@ -318,13 +319,14 @@
     "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
     "protected": false,
     "declared": true,
-    "files": 7,
+    "files": 8,
     "gates": [
       "evals"
     ],
     "adrs": [],
     "tests": [
       "superagent/evals/test/browser-e2e-gate.test.ts",
+      "superagent/evals/test/chief-autowake.integration.test.ts",
       "superagent/evals/test/chief-tools.integration.test.ts",
       "superagent/evals/test/dsh-browser-worker.integration.test.ts",
       "superagent/evals/test/model-route.integration.test.ts",

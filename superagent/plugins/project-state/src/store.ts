@@ -29,7 +29,7 @@ export function defaultHome(): string {
   return resolve(process.env.SUPERAGENT_HOME ?? join(homedir(), '.superagent'))
 }
 
-type Collection = 'goals' | 'tasks' | 'workers' | 'receipts' | 'human-gates'
+type Collection = 'goals' | 'tasks' | 'workers' | 'receipts' | 'human-gates' | 'wakes'
 
 export type NewEvent = Omit<SuperAgentEvent, 'seq' | 'ts'> & { ts?: string }
 
@@ -269,7 +269,10 @@ export class StateStore {
     this.put('receipts', record)
     this.appendEvent({
       type: 'receipt/created', projectId: receipt.projectId, taskId: receipt.taskId,
-      data: { receiptId: record.id, verdict: record.verdict, attempt: record.attempt, claimOverruled: record.claimOverruled, reason: record.reason },
+      data: {
+        receiptId: record.id, verdict: record.verdict, attempt: record.attempt, claimOverruled: record.claimOverruled, reason: record.reason,
+        integrityBlocked: (record.integrity?.findings ?? []).some(f => f.severity === 'block'), impactedModules: record.impactedModules,
+      },
     })
     return record
   }
@@ -300,6 +303,28 @@ export class StateStore {
     this.put('human-gates', next)
     this.appendEvent({ type: 'human-gate/resolved', projectId: pid, taskId: gate.taskId, data: { humanGateId: id, decision, resolution } })
     return next
+  }
+
+  // ------------------------------------------------------------ generic records (wakes, meta)
+
+  /** Durable per-project record in a named collection (e.g. Chief wakes). */
+  putRecord<T extends { id: string; projectId: ProjectId }>(collection: 'wakes', record: T): T {
+    return this.put(collection, record)
+  }
+  getRecord<T>(pid: ProjectId, collection: 'wakes', id: string): T | undefined {
+    return this.readJson<T>(this.recordPath(pid, collection, id))
+  }
+  listRecords<T>(pid: ProjectId, collection: 'wakes'): T[] {
+    return this.list<T>(pid, collection)
+  }
+  /** Small per-project key/value state (cursors, session ids). */
+  getMeta<T>(pid: ProjectId, key: string): T | undefined {
+    if (!/^[\w.-]+$/.test(key)) throw new Error(`invalid meta key ${key}`)
+    return this.readJson<T>(join(this.projectDir(pid), 'meta', `${key}.json`))
+  }
+  setMeta(pid: ProjectId, key: string, value: unknown): void {
+    if (!/^[\w.-]+$/.test(key)) throw new Error(`invalid meta key ${key}`)
+    this.writeJson(join(this.projectDir(pid), 'meta', `${key}.json`), value)
   }
 
   // ------------------------------------------------------------ events

@@ -15,7 +15,7 @@ import type { AddressInfo } from 'node:net'
 import { parseGateSpec, type Project, type SuperAgentEvent } from '@superagent/contracts'
 import { parseModelSpec } from '@superagent/model-policy'
 import type { SuperAgentRuntime } from './runtime.ts'
-import { GateRegistryError } from '@superagent/chief-worker'
+import { ChiefDriver, DshChiefChannel, GateRegistryError, WakeMonitor, type ChiefChannel } from '@superagent/chief-worker'
 
 export interface ServerOptions {
   readonly runtime: SuperAgentRuntime
@@ -31,6 +31,11 @@ export interface ServerOptions {
   readonly agentToken?: string
   /** Also require a token for reads (default: reads open on localhost). */
   readonly protectReads?: boolean
+  /**
+   * Chief auto-wake. `true` delivers wakes to a persistent DSH Chief session
+   * (profile superagent-chief-cli); pass a channel to override; omit to disable.
+   */
+  readonly chiefWake?: boolean | { readonly channel?: ChiefChannel; readonly intervalMs?: number; readonly minIntervalMs?: number; readonly env?: Record<string, string> }
   /** Directory with the built UI (`superagent/ui/dist`). */
   readonly uiDir?: string
   /** Watch registered project trees and rescan architecture on change. */
@@ -96,6 +101,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     return p
   }
   const runningGoals = new Set<string>()
+  let chiefDriver: ChiefDriver | undefined
 
   // ---------------------------------------------------------------- projects
   route('GET', '/api/health', () => ({ ok: true, home: store.home }))
@@ -174,6 +180,18 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     const task = engine.resolveHumanGate(p.id, params.hid!, decision, String(body?.resolution ?? ''))
     return { gate: store.getHumanGate(p.id, params.hid!), task: task ?? null }
   }, 'human')
+  route('GET', '/api/projects/:pid/chief', ({ params }) => {
+    const p = project(params.pid!)
+    const wakes = store.listRecords<{ status: string; createdAt: string }>(p.id, 'wakes').sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return {
+      enabled: chiefDriver !== undefined,
+      pending: wakes.filter(w => w.status === 'pending').length,
+      failed: wakes.filter(w => w.status === 'failed').length,
+      lastDelivery: store.getMeta(p.id, 'chief-last-delivery') ?? null,
+      session: store.getMeta(p.id, 'chief-session') ?? null,
+      recent: wakes.slice(0, 20),
+    }
+  })
   route('GET', '/api/projects/:pid/receipts', ({ params, query }) => store.listReceipts(project(params.pid!).id, query.get('task') ?? undefined))
   route('GET', '/api/projects/:pid/workers/:wid/reports', ({ params }) => store.readReports(project(params.pid!).id, params.wid!))
   route('GET', '/api/projects/:pid/events', ({ params, query }) => store.readEvents(project(params.pid!).id, Number(query.get('since') ?? 0), Number(query.get('limit') ?? 500)))
@@ -296,12 +314,22 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const addr = server.address() as AddressInfo
   const url = `http://${addr.address}:${addr.port}`
   engine.setApiOrigins([url, `http://localhost:${addr.port}`])
+  if (options.chiefWake) {
+    const cfg = typeof options.chiefWake === 'object' ? options.chiefWake : {}
+    chiefDriver = new ChiefDriver({
+      store, monitor: new WakeMonitor(store), minIntervalMs: cfg.minIntervalMs,
+      channel: cfg.channel ?? new DshChiefChannel({ stateHome: store.home, apiUrl: url, agentToken, store, env: cfg.env }),
+      statusReport: id => chief.statusReport(id),
+    })
+    chiefDriver.start(cfg.intervalMs ?? 2_000)
+  }
   return {
     url,
     humanToken,
     agentToken,
     server,
     close: async () => {
+      chiefDriver?.stop()
       clearInterval(pump)
       clearInterval(heartbeat)
       for (const w of watchers.values()) w.close()

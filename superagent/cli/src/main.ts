@@ -18,7 +18,8 @@ const HELP = `sa — DGX Super Agent CLI
 
   sa dsh setup [--no-chief]                    create DSH profiles superagent-worker (+browser) / superagent-chief
   sa chief                                      print how to open the Chief (DSH Web with SuperAgent tools)
-  sa serve [--port 7788] [--host 127.0.0.1] [--no-watch] [--browser] [--worker-patch file.yml]...
+  sa serve [--port 7788] [--host 127.0.0.1] [--no-watch] [--browser] [--no-chief] [--worker-patch file.yml]...
+                                                Chief auto-wake is on when "sa dsh setup" created superagent-chief-cli
   sa project add <name> <root> [--gate 'id=command'...] [--protect module...]
   sa project list
   sa status <project>
@@ -104,6 +105,7 @@ async function main(argv: string[]): Promise<number> {
       const s = await startServer({
         runtime: rt, port: Number(values.port ?? 7788), host: values.host,
         uiDir: join(REPO_ROOT, 'superagent/ui/dist'), watch: !values['no-watch'],
+        chiefWake: !values['no-chief'] && existsSync(join(dshHome, 'profiles', 'superagent-chief-cli', 'package.json')),
       })
       for (const p of store.listProjects()) engine.recoverInterrupted(p.id)
       // Agent token for the Chief launcher (0600, outside any worktree). The human token
