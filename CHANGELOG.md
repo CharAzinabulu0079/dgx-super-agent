@@ -34,7 +34,7 @@ The last release built in Claude Cloud. Everything that can be implemented and v
 - `pnpm smoke:dsh`: 6/6.
 - `pnpm test:evals`: 10/10 (new: DSH planner + reviewer, UI one-box).
 - `pnpm redteam`: 19/19 scenarios fail closed (new: RT-18 held-out, RT-19 planner/reviewer abuse).
-- Fresh-clone verification is recorded in `CURRENT_STATE.md`.
+- Fresh-clone verification of `5da45d5` (empty directory, empty `SUPERAGENT_HOME`): all of the above green; recorded in `CURRENT_STATE.md`.
 
 ## terminal-harness (untagged) — Directive M1–M6
 - Changes:

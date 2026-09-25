@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T21:36:05.280Z",
-  "commit": "78301e4",
+  "generatedAt": "2026-09-25T21:40:33.400Z",
+  "commit": "5da45d5",
   "layers": [
     "foundation",
     "capability",
@@ -126,8 +126,7 @@
       "layer": "capability",
       "root": "superagent/plugins/verifier",
       "status": [
-        "protected",
-        "changing"
+        "protected"
       ],
       "files": 10,
       "declared": true,
@@ -1128,28 +1127,13 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "superagent/plugins/verifier/src/command.ts",
-      "superagent/plugins/verifier/test/verifier.test.ts"
+      "CHANGELOG.md",
+      "CURRENT_STATE.md",
+      "REDTEAM_REPORT.md"
     ],
-    "modules": [
-      "verifier"
-    ],
-    "impacted": [
-      "architecture-observatory",
-      "chief-worker",
-      "cli",
-      "evals",
-      "learning",
-      "model-policy",
-      "server"
-    ],
-    "gates": [
-      "architecture",
-      "e2e-ui",
-      "evals",
-      "smoke-dsh",
-      "unit"
-    ]
+    "modules": [],
+    "impacted": [],
+    "gates": []
   },
   "services": [
     {
@@ -1227,6 +1211,6 @@
     "files": 140,
     "modules": 15,
     "edges": 53,
-    "scanMs": 715
+    "scanMs": 638
   }
 }
