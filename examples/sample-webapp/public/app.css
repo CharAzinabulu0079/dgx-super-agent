@@ -1,0 +1,2 @@
+body { font-family: system-ui, sans-serif; max-width: 480px; margin: 2rem auto; }
+li.done span { text-decoration: line-through; color: #888; }

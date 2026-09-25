@@ -163,3 +163,6 @@ upstream/deepseek-harness/
 test-results/
 playwright-report/
 superagent/**/lib/
+.superagent-tmp/
+.playwright-mcp/
+.sa-gate-*.json

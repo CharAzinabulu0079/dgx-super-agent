@@ -1,0 +1,12 @@
+# Overlay for Worker runs that need a real browser (Freeze §8): Playwright MCP through
+# DSH's browser-use seam. Pass with `--patch` (sa serve --worker-patch <this file>).
+# Set SUPERAGENT_CHROMIUM to reuse an installed Chromium (e.g. /opt/pw-browsers/chromium).
+- insert:
+    - id: browser-use
+      name: '@deepseek-ai/dsh-browser-use'
+    - id: browser-use-playwright-mcp
+      name: '@deepseek-ai/dsh-experimental-browser-use-playwright-mcp'
+      config:
+        mode: launch
+        headless: true
+        executablePath: !!js process.env.SUPERAGENT_CHROMIUM || undefined

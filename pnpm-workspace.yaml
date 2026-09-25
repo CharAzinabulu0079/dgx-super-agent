@@ -7,6 +7,7 @@ packages:
   - superagent/ui
   - superagent/dsh-bundle
   - examples/*
+  - superagent/evals
 
 # pnpm 11 blocks dependency install scripts unless reviewed here.
 # Mirrors the DSH 0.1.7-rc.2 upstream allowlist for the runtime closure.
@@ -21,3 +22,8 @@ allowBuilds:
   node-addon-require-builtin: false
   msgpackr-extract: false
   electron-winstaller: false
+
+# DSH resolves profile-plugin peers (dsh-agent, dsh-scope, dsh-mcp-client, …) from the
+# host installation, as an `npm i -g` hoisted install would provide. Hoist them publicly.
+publicHoistPattern:
+  - '@deepseek-ai/*'

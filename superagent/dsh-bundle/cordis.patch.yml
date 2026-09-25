@@ -1,0 +1,8 @@
+# DGX Super Agent bundle: apply after dsh-base. Adds the SuperAgent tools.
+# Worker sessions get `superagent_report` (active only when SUPERAGENT_WORKER_ID is set);
+# Chief sessions get the project/goal/task/architecture tools (talk to the SuperAgent API).
+- insert:
+    - id: superagent-tools
+      name: '@superagent/dsh-bundle'
+      config:
+        apiUrl: !!js process.env.SUPERAGENT_API_URL ?? 'http://127.0.0.1:7788'

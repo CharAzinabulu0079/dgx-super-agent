@@ -155,6 +155,16 @@
     },
     {
       "from": "cli",
+      "to": "project-state",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/cli/src/main.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "cli",
       "to": "server",
       "weight": 1,
       "typeOnly": false,
@@ -181,6 +191,83 @@
       "testOnly": false,
       "evidence": [
         "superagent/cli/src/main.ts → @superagent/verifier"
+      ]
+    },
+    {
+      "from": "dsh-bundle",
+      "to": "contracts",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/dsh-bundle/src/index.ts → @superagent/contracts"
+      ]
+    },
+    {
+      "from": "dsh-bundle",
+      "to": "project-state",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/dsh-bundle/src/index.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "evals",
+      "to": "chief-worker",
+      "weight": 3,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/chief-worker",
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/chief-worker",
+        "superagent/evals/test/ui.e2e.test.ts → @superagent/chief-worker"
+      ]
+    },
+    {
+      "from": "evals",
+      "to": "project-state",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/project-state",
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/project-state"
+      ]
+    },
+    {
+      "from": "evals",
+      "to": "server",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server",
+        "superagent/evals/test/ui.e2e.test.ts → @superagent/server"
+      ]
+    },
+    {
+      "from": "evals",
+      "to": "testkit",
+      "weight": 3,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/testkit",
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/testkit",
+        "superagent/evals/test/ui.e2e.test.ts → @superagent/testkit"
+      ]
+    },
+    {
+      "from": "evals",
+      "to": "verifier",
+      "weight": 2,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/verifier",
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/verifier"
       ]
     },
     {
@@ -279,10 +366,11 @@
     {
       "from": "server",
       "to": "testkit",
-      "weight": 1,
+      "weight": 2,
       "typeOnly": false,
-      "testOnly": true,
+      "testOnly": false,
       "evidence": [
+        "superagent/server/src/dsh-setup.ts → @superagent/testkit",
         "superagent/server/test/server.test.ts → @superagent/testkit"
       ]
     },

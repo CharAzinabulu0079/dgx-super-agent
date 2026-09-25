@@ -1,29 +1,262 @@
 {
   "version": 1,
-  "layers": ["foundation", "capability", "orchestration", "interface"],
+  "layers": [
+    "foundation",
+    "capability",
+    "orchestration",
+    "interface",
+    "verification"
+  ],
   "modules": [
-    { "id": "contracts", "paths": ["superagent/contracts/**"], "layer": "foundation", "protected": true, "description": "Shared JSON contracts: Goal/Task/WorkerReport/Receipt/Gate/Event/Policy", "dependsOn": [], "gates": ["typecheck", "unit"], "adrs": ["ADR-0005"] },
-    { "id": "testkit", "paths": ["superagent/testkit/**"], "layer": "foundation", "description": "Mock LLM, DSH runner, git fixtures", "dependsOn": [], "gates": ["unit", "smoke-dsh"], "adrs": ["ADR-0003"] },
-    { "id": "project-state", "paths": ["superagent/plugins/project-state/**"], "layer": "capability", "description": "File-backed state store (SUPERAGENT_HOME)", "dependsOn": ["contracts"], "gates": ["unit"], "adrs": ["ADR-0005"] },
-    { "id": "verifier", "paths": ["superagent/plugins/verifier/**"], "layer": "capability", "protected": true, "description": "Independent gates and receipts; Worker claims never PASS", "dependsOn": ["contracts"], "gates": ["unit"], "adrs": ["ADR-0006"] },
-    { "id": "loop-policy", "paths": ["superagent/plugins/loop-policy/**"], "layer": "capability", "description": "Retry / strategy switch / Human Gate decisions", "dependsOn": ["contracts"], "gates": ["unit"] },
-    { "id": "model-policy", "paths": ["superagent/plugins/model-policy/**"], "layer": "capability", "description": "Manual per-task model selection", "dependsOn": ["contracts"], "gates": ["unit"] },
-    { "id": "architecture-observatory", "paths": ["superagent/plugins/architecture-observatory/**"], "layer": "capability", "description": "Static architecture graph, drift, impact", "dependsOn": ["contracts"], "gates": ["unit", "architecture"] },
-    { "id": "learning", "paths": ["superagent/plugins/learning/**"], "layer": "capability", "description": "Memory/Skill candidates → eval → promote", "dependsOn": ["contracts", "project-state", "verifier"], "gates": ["unit"] },
-    { "id": "chief-worker", "paths": ["superagent/plugins/chief-worker/**"], "layer": "orchestration", "description": "LoopEngine, Chief, Worker executors (DSH headless)", "dependsOn": ["contracts", "project-state", "verifier", "loop-policy", "model-policy", "testkit"], "gates": ["unit", "smoke-dsh"], "adrs": ["ADR-0004"] },
-    { "id": "server", "paths": ["superagent/server/**"], "layer": "interface", "description": "Headless HTTP/SSE Realtime API", "gates": ["unit", "e2e-ui"] },
-    { "id": "cli", "paths": ["superagent/cli/**"], "layer": "interface", "description": "`sa` command line", "gates": ["unit"] },
-    { "id": "ui", "paths": ["superagent/ui/**"], "layer": "interface", "description": "Minimal Web/PWA", "gates": ["e2e-ui"] },
-    { "id": "dsh-bundle", "paths": ["superagent/dsh-bundle/**"], "layer": "interface", "description": "DSH bundle: SuperAgent tools for Chief/Worker sessions", "gates": ["smoke-dsh"] }
+    {
+      "id": "contracts",
+      "paths": [
+        "superagent/contracts/**"
+      ],
+      "layer": "foundation",
+      "protected": true,
+      "description": "Shared JSON contracts: Goal/Task/WorkerReport/Receipt/Gate/Event/Policy",
+      "dependsOn": [],
+      "gates": [
+        "typecheck",
+        "unit"
+      ],
+      "adrs": [
+        "ADR-0005"
+      ]
+    },
+    {
+      "id": "testkit",
+      "paths": [
+        "superagent/testkit/**"
+      ],
+      "layer": "foundation",
+      "description": "Mock LLM, DSH runner, git fixtures",
+      "dependsOn": [],
+      "gates": [
+        "unit",
+        "smoke-dsh"
+      ],
+      "adrs": [
+        "ADR-0003"
+      ]
+    },
+    {
+      "id": "project-state",
+      "paths": [
+        "superagent/plugins/project-state/**"
+      ],
+      "layer": "capability",
+      "description": "File-backed state store (SUPERAGENT_HOME)",
+      "dependsOn": [
+        "contracts"
+      ],
+      "gates": [
+        "unit"
+      ],
+      "adrs": [
+        "ADR-0005"
+      ]
+    },
+    {
+      "id": "verifier",
+      "paths": [
+        "superagent/plugins/verifier/**"
+      ],
+      "layer": "capability",
+      "protected": true,
+      "description": "Independent gates and receipts; Worker claims never PASS",
+      "dependsOn": [
+        "contracts"
+      ],
+      "gates": [
+        "unit"
+      ],
+      "adrs": [
+        "ADR-0006"
+      ]
+    },
+    {
+      "id": "loop-policy",
+      "paths": [
+        "superagent/plugins/loop-policy/**"
+      ],
+      "layer": "capability",
+      "description": "Retry / strategy switch / Human Gate decisions",
+      "dependsOn": [
+        "contracts"
+      ],
+      "gates": [
+        "unit"
+      ]
+    },
+    {
+      "id": "model-policy",
+      "paths": [
+        "superagent/plugins/model-policy/**"
+      ],
+      "layer": "capability",
+      "description": "Manual per-task model selection",
+      "dependsOn": [
+        "contracts"
+      ],
+      "gates": [
+        "unit"
+      ]
+    },
+    {
+      "id": "architecture-observatory",
+      "paths": [
+        "superagent/plugins/architecture-observatory/**"
+      ],
+      "layer": "capability",
+      "description": "Static architecture graph, drift, impact",
+      "dependsOn": [
+        "contracts"
+      ],
+      "gates": [
+        "unit",
+        "architecture"
+      ]
+    },
+    {
+      "id": "learning",
+      "paths": [
+        "superagent/plugins/learning/**"
+      ],
+      "layer": "capability",
+      "description": "Memory/Skill candidates \u2192 eval \u2192 promote",
+      "dependsOn": [
+        "contracts",
+        "project-state",
+        "verifier"
+      ],
+      "gates": [
+        "unit"
+      ]
+    },
+    {
+      "id": "chief-worker",
+      "paths": [
+        "superagent/plugins/chief-worker/**"
+      ],
+      "layer": "orchestration",
+      "description": "LoopEngine, Chief, Worker executors (DSH headless)",
+      "dependsOn": [
+        "contracts",
+        "project-state",
+        "verifier",
+        "loop-policy",
+        "model-policy",
+        "testkit"
+      ],
+      "gates": [
+        "unit",
+        "smoke-dsh"
+      ],
+      "adrs": [
+        "ADR-0004"
+      ]
+    },
+    {
+      "id": "server",
+      "paths": [
+        "superagent/server/**"
+      ],
+      "layer": "interface",
+      "description": "Headless HTTP/SSE Realtime API",
+      "gates": [
+        "unit",
+        "e2e-ui"
+      ]
+    },
+    {
+      "id": "cli",
+      "paths": [
+        "superagent/cli/**"
+      ],
+      "layer": "interface",
+      "description": "`sa` command line",
+      "gates": [
+        "unit"
+      ]
+    },
+    {
+      "id": "ui",
+      "paths": [
+        "superagent/ui/**"
+      ],
+      "layer": "interface",
+      "description": "Minimal Web/PWA",
+      "gates": [
+        "e2e-ui"
+      ]
+    },
+    {
+      "id": "dsh-bundle",
+      "paths": [
+        "superagent/dsh-bundle/**"
+      ],
+      "layer": "interface",
+      "description": "DSH bundle: SuperAgent tools for Chief/Worker sessions",
+      "gates": [
+        "smoke-dsh"
+      ]
+    },
+    {
+      "id": "evals",
+      "paths": [
+        "superagent/evals/**"
+      ],
+      "layer": "verification",
+      "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
+      "gates": [
+        "evals"
+      ]
+    },
+    {
+      "id": "sample-webapp",
+      "paths": [
+        "examples/sample-webapp/**"
+      ],
+      "description": "Example app for real-browser E2E gates",
+      "gates": [
+        "e2e"
+      ]
+    }
   ],
   "forbidden": [
-    { "from": "contracts", "to": "*", "reason": "contracts is the leaf of the graph" },
-    { "from": "verifier", "to": "chief-worker", "reason": "verification must not depend on the Worker side" }
+    {
+      "from": "contracts",
+      "to": "*",
+      "reason": "contracts is the leaf of the graph"
+    },
+    {
+      "from": "verifier",
+      "to": "chief-worker",
+      "reason": "verification must not depend on the Worker side"
+    }
   ],
   "dataflows": [
-    { "from": "chief-worker", "to": "verifier", "label": "attempt → gates → Receipt" },
-    { "from": "chief-worker", "to": "project-state", "label": "events / tasks / receipts" },
-    { "from": "architecture-observatory", "to": "server", "label": ".architecture/graph.json" },
-    { "from": "server", "to": "ui", "label": "HTTP + SSE" }
+    {
+      "from": "chief-worker",
+      "to": "verifier",
+      "label": "attempt \u2192 gates \u2192 Receipt"
+    },
+    {
+      "from": "chief-worker",
+      "to": "project-state",
+      "label": "events / tasks / receipts"
+    },
+    {
+      "from": "architecture-observatory",
+      "to": "server",
+      "label": ".architecture/graph.json"
+    },
+    {
+      "from": "server",
+      "to": "ui",
+      "label": "HTTP + SSE"
+    }
   ]
 }

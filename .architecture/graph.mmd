@@ -1,7 +1,7 @@
 flowchart LR
   subgraph layer_foundation["foundation"]
     contracts["contracts<br/><small>5 files</small>"]
-    testkit["testkit<br/><small>5 files</small>"]
+    testkit["testkit<br/><small>6 files</small>"]
   end
   subgraph layer_capability["capability"]
     project_state["project-state<br/><small>4 files</small>"]
@@ -15,11 +15,15 @@ flowchart LR
     chief_worker["chief-worker<br/><small>11 files</small>"]
   end
   subgraph layer_interface["interface"]
-    server["server<br/><small>5 files</small>"]
+    server["server<br/><small>6 files</small>"]
     cli["cli<br/><small>2 files</small>"]
-    ui["ui<br/><small>0 files</small>"]
-    dsh_bundle["dsh-bundle<br/><small>0 files</small>"]
+    ui["ui<br/><small>12 files</small>"]
+    dsh_bundle["dsh-bundle<br/><small>5 files</small>"]
   end
+  subgraph layer_verification["verification"]
+    evals["evals<br/><small>4 files</small>"]
+  end
+  sample_webapp["sample-webapp<br/><small>7 files</small>"]
   architecture_observatory --> contracts
   chief_worker --> contracts
   chief_worker --> loop_policy
@@ -30,9 +34,12 @@ flowchart LR
   cli --> architecture_observatory
   cli --> contracts
   cli --> model_policy
+  cli --> project_state
   cli --> server
   cli --> testkit
   cli --> verifier
+  dsh_bundle --> contracts
+  dsh_bundle --> project_state
   loop_policy --> contracts
   model_policy --> contracts
   project_state --> contracts
@@ -41,6 +48,7 @@ flowchart LR
   server --> contracts
   server --> model_policy
   server --> project_state
+  server --> testkit
   server --> verifier
   verifier --> contracts
   classDef stable fill:#e8f5e9,stroke:#2e7d32
@@ -49,15 +57,17 @@ flowchart LR
   classDef gate_failed fill:#ffebee,stroke:#c62828
   classDef protected stroke:#6a1b9a,stroke-width:3px
   class contracts stable
-  class testkit stable
+  class testkit changing
   class project_state stable
   class verifier stable
-  class loop_policy changing
+  class loop_policy stable
   class model_policy stable
   class architecture_observatory stable
   class learning stable
-  class chief_worker stable
+  class chief_worker changing
   class server changing
   class cli changing
-  class ui stable
-  class dsh_bundle stable
+  class ui changing
+  class dsh_bundle changing
+  class evals changing
+  class sample_webapp changing

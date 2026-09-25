@@ -35,7 +35,7 @@
     "description": "Mock LLM, DSH runner, git fixtures",
     "protected": false,
     "declared": true,
-    "files": 5,
+    "files": 6,
     "gates": [
       "unit",
       "smoke-dsh"
@@ -224,7 +224,7 @@
     "description": "Headless HTTP/SSE Realtime API",
     "protected": false,
     "declared": true,
-    "files": 5,
+    "files": 6,
     "gates": [
       "unit",
       "e2e-ui"
@@ -263,17 +263,20 @@
     "paths": [
       "superagent/ui/**"
     ],
+    "packageName": "@superagent/ui",
     "layer": "interface",
     "description": "Minimal Web/PWA",
     "protected": false,
     "declared": true,
-    "files": 0,
+    "files": 12,
     "gates": [
       "e2e-ui"
     ],
     "adrs": [],
     "tests": [],
-    "externalDeps": []
+    "externalDeps": [
+      "@vitejs/plugin-react"
+    ]
   },
   {
     "id": "dsh-bundle",
@@ -282,16 +285,63 @@
     "paths": [
       "superagent/dsh-bundle/**"
     ],
+    "packageName": "@superagent/dsh-bundle",
     "layer": "interface",
     "description": "DSH bundle: SuperAgent tools for Chief/Worker sessions",
     "protected": false,
     "declared": true,
-    "files": 0,
+    "files": 5,
     "gates": [
       "smoke-dsh"
     ],
     "adrs": [],
     "tests": [],
+    "entry": "superagent/dsh-bundle/lib/index.js",
+    "externalDeps": []
+  },
+  {
+    "id": "evals",
+    "source": "declared",
+    "root": "superagent/evals",
+    "paths": [
+      "superagent/evals/**"
+    ],
+    "packageName": "@superagent/evals",
+    "layer": "verification",
+    "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
+    "protected": false,
+    "declared": true,
+    "files": 4,
+    "gates": [
+      "evals"
+    ],
+    "adrs": [],
+    "tests": [
+      "superagent/evals/test/browser-e2e-gate.test.ts",
+      "superagent/evals/test/dsh-browser-worker.integration.test.ts",
+      "superagent/evals/test/ui.e2e.test.ts"
+    ],
+    "externalDeps": []
+  },
+  {
+    "id": "sample-webapp",
+    "source": "declared",
+    "root": "examples/sample-webapp",
+    "paths": [
+      "examples/sample-webapp/**"
+    ],
+    "packageName": "@superagent-example/sample-webapp",
+    "description": "Example app for real-browser E2E gates",
+    "protected": false,
+    "declared": true,
+    "files": 7,
+    "gates": [
+      "e2e"
+    ],
+    "adrs": [],
+    "tests": [
+      "examples/sample-webapp/e2e/todo.spec.js"
+    ],
     "externalDeps": []
   }
 ]

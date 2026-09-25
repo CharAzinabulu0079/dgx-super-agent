@@ -29,7 +29,7 @@ export interface ModelRoutes {
 export interface DshExecutorOptions {
   /** DSH_HOME for Worker runs; default `<stateHome>/dsh-home`. */
   readonly dshHome?: string
-  /** DSH profile; default `headless`. */
+  /** DSH profile; default `superagent-worker` when set up in `dshHome`, else `headless`. */
   readonly profile?: string
   /** Extra `--patch` overlays (e.g. browser-use / SuperAgent bundle). */
   readonly patches?: readonly string[]
@@ -73,7 +73,8 @@ export class DshHeadlessExecutor implements WorkerExecutor {
     const dshHome = this.options.dshHome ?? join(input.stateHome, 'dsh-home')
     const runDir = join(input.stateHome, 'runtime', 'workers', input.worker.id)
     mkdirSync(runDir, { recursive: true })
-    const args = ['--profile', this.options.profile ?? 'headless']
+    const profile = this.options.profile ?? (existsSync(join(dshHome, 'profiles', 'superagent-worker', 'package.json')) ? 'superagent-worker' : 'headless')
+    const args = ['--profile', profile]
     for (const p of this.options.patches ?? []) args.push('--patch', p)
     const patch = modelPatch(input.model, routes)
     if (patch) {
@@ -100,6 +101,8 @@ export class DshHeadlessExecutor implements WorkerExecutor {
         SUPERAGENT_PROJECT_ID: input.project.id,
         SUPERAGENT_TASK_ID: input.task.id,
         SUPERAGENT_WORKER_ID: input.worker.id,
+        SUPERAGENT_MODEL_PROVIDER: input.model.provider,
+        SUPERAGENT_MODEL: input.model.model,
         ...routes.env,
         ...this.options.env,
       },
@@ -123,6 +126,7 @@ export class DshHeadlessExecutor implements WorkerExecutor {
       },
     })
 
+    if (result.stderrTail) writeFileSync(join(runDir, 'stderr.log'), result.stderrTail)
     const fallback = { task_id: input.task.id, model: input.model }
     const final = extractFinalReport(finalText, fallback)
     if (final) input.report(final)

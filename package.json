@@ -10,15 +10,22 @@
     "node": ">=22.19.0"
   },
   "scripts": {
-    "test": "node --test --test-reporter=spec \"superagent/**/*.test.ts\"",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --test-reporter=spec \"superagent/contracts/**/*.test.ts\" \"superagent/plugins/**/*.test.ts\" \"superagent/server/**/*.test.ts\"",
+    "test:evals": "node --test --test-concurrency=1 --test-reporter=spec \"superagent/evals/test/*.test.ts\"",
+    "test:all": "pnpm test && pnpm test:evals",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p superagent/ui/tsconfig.json --noEmit",
+    "build": "pnpm --filter @superagent/ui run build && pnpm --filter @superagent/dsh-bundle run build",
     "smoke:dsh": "node scripts/smoke-dsh.ts",
+    "arch": "node scripts/arch-scan.ts --check",
+    "hygiene": "node superagent/cli/src/main.ts hygiene .",
+    "check": "pnpm typecheck && pnpm test && pnpm arch && pnpm hygiene",
     "sa": "node superagent/cli/src/main.ts"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.1.7-rc.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@types/node": "^22.19.0",
     "typescript": "^5.9.0"
   }

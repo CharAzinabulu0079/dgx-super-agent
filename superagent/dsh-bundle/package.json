@@ -1,0 +1,35 @@
+{
+  "name": "@superagent/dsh-bundle",
+  "description": "DGX Super Agent tools for DSH sessions: Worker structured reports, Chief project/goal/task/architecture tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": ["lib/index.js", "cordis.patch.yml", "patches/*.yml"],
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-browser-use": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-experimental-browser-use-playwright-mcp": "0.1.7-rc.2"
+  },
+  "devDependencies": {
+    "@superagent/contracts": "workspace:*",
+    "@superagent/project-state": "workspace:*",
+    "esbuild": "^0.25.0"
+  }
+}

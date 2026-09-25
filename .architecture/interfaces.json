@@ -58,6 +58,7 @@
       "BUGGY_CALC",
       "DshRunOptions",
       "DshRunResult",
+      "E2E_GATE",
       "FIXED_CALC",
       "MockBlock",
       "MockLlm",
@@ -71,6 +72,7 @@
       "git",
       "gitRepo",
       "runDsh",
+      "sampleWebappRepo",
       "startMockLlm",
       "tempDir",
       "text",
@@ -231,12 +233,29 @@
     "module": "server",
     "entry": "superagent/server/src/index.ts",
     "exports": [
+      "BROWSER_PATCH",
+      "BUNDLE_DIR",
+      "CHIEF_PROFILE",
       "RunningServer",
       "RuntimeOptions",
       "ServerOptions",
+      "SetupResult",
       "SuperAgentRuntime",
+      "WORKER_PROFILE",
       "createRuntime",
-      "startServer"
+      "ensureBundleBuilt",
+      "setupDshProfiles",
+      "startServer",
+      "workerProfileReady"
+    ]
+  },
+  {
+    "module": "dsh-bundle",
+    "entry": "superagent/dsh-bundle/lib/index.js",
+    "exports": [
+      "apply",
+      "inject",
+      "name"
     ]
   }
 ]

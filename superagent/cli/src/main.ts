@@ -10,12 +10,15 @@ import { parseGateSpec, type GateSpec } from '@superagent/contracts'
 import { parseModelSpec } from '@superagent/model-policy'
 import { scanHygiene } from '@superagent/verifier'
 import { Observatory } from '@superagent/architecture-observatory'
-import { createRuntime, startServer } from '@superagent/server'
+import { BROWSER_PATCH, CHIEF_PROFILE, createRuntime, setupDshProfiles, startServer } from '@superagent/server'
+import { defaultHome } from '@superagent/project-state'
 import { REPO_ROOT } from '@superagent/testkit'
 
 const HELP = `sa — DGX Super Agent CLI
 
-  sa serve [--port 7788] [--host 127.0.0.1] [--no-watch] [--worker-patch file.yml]...
+  sa dsh setup [--no-chief]                    create DSH profiles superagent-worker (+browser) / superagent-chief
+  sa chief                                      print how to open the Chief (DSH Web with SuperAgent tools)
+  sa serve [--port 7788] [--host 127.0.0.1] [--no-watch] [--browser] [--worker-patch file.yml]...
   sa project add <name> <root> [--gate 'id=command'...] [--protect module...]
   sa project list
   sa status <project>
@@ -47,7 +50,7 @@ async function main(argv: string[]): Promise<number> {
     args: argv,
     allowPositionals: true,
     options: {
-      port: { type: 'string' }, host: { type: 'string' }, 'no-watch': { type: 'boolean' },
+      port: { type: 'string' }, host: { type: 'string' }, 'no-watch': { type: 'boolean' }, browser: { type: 'boolean' }, 'no-chief': { type: 'boolean' },
       'worker-patch': { type: 'string', multiple: true },
       gate: { type: 'string', multiple: true }, protect: { type: 'string', multiple: true },
       title: { type: 'string' }, instructions: { type: 'string' }, model: { type: 'string' }, escalation: { type: 'string' },
@@ -82,7 +85,18 @@ async function main(argv: string[]): Promise<number> {
     return blocks ? 1 : 0
   }
 
-  const rt = createRuntime({ workerPatches: values['worker-patch'] })
+  const dshHome = join(defaultHome(), 'dsh-home')
+  if (cmd === 'dsh' && sub === 'setup') {
+    const r = setupDshProfiles(dshHome, { chief: !values['no-chief'] })
+    console.log(JSON.stringify(r, null, 2))
+    return 0
+  }
+  if (cmd === 'chief') {
+    console.log(`DSH_HOME=${dshHome} node_modules/.bin/dsh --profile ${CHIEF_PROFILE} web\n(run \`sa dsh setup\` first; keep \`sa serve\` running so the Chief's superagent_* tools reach the API)`)
+    return 0
+  }
+  const workerPatches = [...(values.browser ? [BROWSER_PATCH] : []), ...(values['worker-patch'] ?? [])]
+  const rt = createRuntime({ workerPatches })
   const { store, chief, engine } = rt
   switch (cmd) {
     case 'serve': {

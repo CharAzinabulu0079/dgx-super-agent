@@ -1,18 +1,1 @@
-[
-  {
-    "kind": "missing-module",
-    "severity": "warn",
-    "modules": [
-      "ui"
-    ],
-    "detail": "declared module ui matches no files"
-  },
-  {
-    "kind": "missing-module",
-    "severity": "warn",
-    "modules": [
-      "dsh-bundle"
-    ],
-    "detail": "declared module dsh-bundle matches no files"
-  }
-]
+[]

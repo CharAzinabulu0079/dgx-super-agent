@@ -1,0 +1,11 @@
+{
+  "name": "@superagent-example/sample-webapp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tiny todo web app used to prove real-browser E2E gates feed the SuperAgent Verifier",
+  "scripts": {
+    "start": "node server.js",
+    "e2e": "playwright test"
+  }
+}

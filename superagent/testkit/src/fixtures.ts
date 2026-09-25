@@ -1,8 +1,11 @@
 /** Temporary git project fixtures for loop/verifier/observatory tests. */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const REPO_ROOT_FROM_FIXTURES = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 
 export function tempDir(prefix = 'sa-'): string {
   return mkdtempSync(join(tmpdir(), prefix))
@@ -44,3 +47,25 @@ export function calcProject(): string {
 }
 
 export const NODE_TEST_GATE = { id: 'unit', kind: 'command', command: 'node --test', required: true, parser: 'node-test', timeoutMs: 60_000 } as const
+
+/**
+ * Copy of `examples/sample-webapp` as a git repo *inside* the workspace
+ * (`.superagent-tmp/`, gitignored) so `@playwright/test` resolves from the root.
+ * @param mutate - edits applied before the initial commit (e.g. inject a bug).
+ */
+export function sampleWebappRepo(mutate?: (root: string) => void): string {
+  const base = join(REPO_ROOT_FROM_FIXTURES, '.superagent-tmp')
+  mkdirSync(base, { recursive: true })
+  const root = mkdtempSync(join(base, 'webapp-'))
+  cpSync(join(REPO_ROOT_FROM_FIXTURES, 'examples', 'sample-webapp'), root, { recursive: true, filter: (src: string) => !src.includes('node_modules') && !src.includes('test-results') })
+  mutate?.(root)
+  git(root, 'init', '-q', '-b', 'main')
+  git(root, 'config', 'user.email', 'test@superagent.local')
+  git(root, 'config', 'user.name', 'SuperAgent Test')
+  writeFileSync(join(root, '.gitignore'), 'test-results/\n.sa-gate-*.json\n.playwright-mcp/\n')
+  git(root, 'add', '-A')
+  git(root, 'commit', '-q', '-m', 'fixture')
+  return root
+}
+
+export const E2E_GATE = { id: 'e2e', kind: 'e2e', command: 'npx playwright test --reporter=json', required: true, parser: 'playwright-json', timeoutMs: 120_000 } as const

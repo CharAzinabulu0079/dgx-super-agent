@@ -1,18 +1,17 @@
 {
-  "name": "@superagent/cli",
+  "name": "@superagent/evals",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "dependencies": {
+  "description": "End-to-end loop scenarios (browser E2E gate, DSH workers, UI)",
+  "devDependencies": {
     "@superagent/contracts": "workspace:*",
-    "@superagent/model-policy": "workspace:*",
+    "@superagent/project-state": "workspace:*",
     "@superagent/verifier": "workspace:*",
+    "@superagent/chief-worker": "workspace:*",
     "@superagent/architecture-observatory": "workspace:*",
     "@superagent/server": "workspace:*",
     "@superagent/testkit": "workspace:*",
-    "@superagent/project-state": "workspace:*"
-  },
-  "bin": {
-    "sa": "src/main.ts"
+    "@playwright/test": "1.56.1"
   }
 }
