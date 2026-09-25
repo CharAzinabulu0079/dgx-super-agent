@@ -4,7 +4,7 @@ import type { WorkerRunInput } from './executor.ts'
 
 export const REPORT_FENCE = 'superagent-report'
 
-export function buildWorkerPrompt(input: Omit<WorkerRunInput, 'report' | 'signal'>, gates: ReadonlyArray<{ id: string; command?: string; kind: string; cwd?: string }>): string {
+export function buildWorkerPrompt(input: Omit<WorkerRunInput, 'report' | 'signal'>, gates: ReadonlyArray<{ id: string; command?: string; kind: string; cwd?: string; heldOut?: unknown }>): string {
   const { task, project, attempt, strategy, feedback, steer } = input
   const lines: string[] = [
     `You are a SuperAgent Worker: a short-lived, task-scoped engineer. Work only inside ${project.root}.`,
@@ -20,7 +20,10 @@ export function buildWorkerPrompt(input: Omit<WorkerRunInput, 'report' | 'signal
     lines.push('Read `.architecture/graph.json` (if present) instead of scanning the whole repository.')
   }
   lines.push('', '## Verification gates', 'After you finish, an independent verifier runs these gates. Your own claim of success is recorded but never counts as PASS.')
-  for (const g of gates) lines.push(`- ${g.id} (${g.kind})${g.command ? `: \`${g.command}\`${g.cwd ? ` in ${g.cwd}` : ''}` : ''}`)
+  for (const g of gates) {
+    if (g.heldOut) lines.push(`- ${g.id} (${g.kind}, held-out): additional acceptance tests you cannot see run against your final tree. Implement the task fully and generally; do not special-case inputs.`)
+    else lines.push(`- ${g.id} (${g.kind})${g.command ? `: \`${g.command}\`${g.cwd ? ` in ${g.cwd}` : ''}` : ''}`)
+  }
   const failures = feedback.filter(f => f.verdict === 'FAIL')
   if (failures.length) {
     // fresh-context attempts get only the latest failure, condensed.

@@ -98,6 +98,9 @@ importers:
       '@superagent/learning':
         specifier: workspace:*
         version: link:../plugins/learning
+      '@superagent/loop-policy':
+        specifier: workspace:*
+        version: link:../plugins/loop-policy
       '@superagent/project-state':
         specifier: workspace:*
         version: link:../plugins/project-state

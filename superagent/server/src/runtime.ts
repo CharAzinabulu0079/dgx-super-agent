@@ -2,6 +2,7 @@
  * SuperAgent runtime composition: one StateStore, Verifier (+ architecture gate),
  * Observatory, LoopEngine and Chief, shared by the API server and the CLI.
  */
+import { join } from 'node:path'
 import type { Project } from '@superagent/contracts'
 import { StateStore, defaultHome } from '@superagent/project-state'
 import { Verifier } from '@superagent/verifier'
@@ -9,6 +10,7 @@ import { Chief, DshHeadlessExecutor, LoopEngine, type ChiefWake, type WorkerExec
 import { Observatory, driftGateRunner, observatoryHooks, type RuntimeInputs } from '@superagent/architecture-observatory'
 import { DshReflector, LearningService, llmExtractor, traceExtractor } from '@superagent/learning'
 import { roleModel } from '@superagent/model-policy'
+import { detectGates } from './project-setup.ts'
 
 export interface RuntimeOptions {
   readonly home?: string
@@ -35,7 +37,7 @@ export interface SuperAgentRuntime {
 
 export function createRuntime(options: RuntimeOptions = {}): SuperAgentRuntime {
   const store = new StateStore(options.home ?? defaultHome())
-  const verifier = new Verifier()
+  const verifier = new Verifier({ heldOutRoot: join(store.home, 'heldout') })
   const observatory = new Observatory()
   verifier.register('architecture-drift', driftGateRunner(observatory))
 
@@ -84,7 +86,8 @@ export function createRuntime(options: RuntimeOptions = {}): SuperAgentRuntime {
   return {
     store, verifier, observatory, engine, chief, learning, runtimeInputs,
     async addProject(input) {
-      const project = store.createProject(input)
+      // No gates given → propose defaults from the repository (tests, E2E, architecture).
+      const project = store.createProject({ ...input, defaultGates: input.defaultGates?.length ? input.defaultGates : detectGates(input.root) })
       await hooks.refresh(project)
       return project
     },

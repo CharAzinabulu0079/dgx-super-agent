@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T20:31:19.575Z",
-  "commit": "46536ed",
+  "generatedAt": "2026-09-25T21:10:02.467Z",
+  "commit": "1f4641d",
   "layers": [
     "foundation",
     "capability",
@@ -17,7 +17,8 @@
       "layer": "foundation",
       "root": "superagent/contracts",
       "status": [
-        "protected"
+        "protected",
+        "changing"
       ],
       "files": 5,
       "declared": true,
@@ -126,9 +127,10 @@
       "layer": "capability",
       "root": "superagent/plugins/verifier",
       "status": [
-        "protected"
+        "protected",
+        "changing"
       ],
-      "files": 8,
+      "files": 10,
       "declared": true,
       "protected": true,
       "dependsOn": [
@@ -151,6 +153,7 @@
         "ADR-0006"
       ],
       "tests": [
+        "superagent/plugins/verifier/test/heldout.test.ts",
         "superagent/plugins/verifier/test/verifier.test.ts"
       ],
       "entry": "superagent/plugins/verifier/src/index.ts",
@@ -173,7 +176,8 @@
       ],
       "usedBy": [
         "chief-worker",
-        "dsh-bundle"
+        "dsh-bundle",
+        "evals"
       ],
       "gates": [
         "unit"
@@ -295,7 +299,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/chief-worker",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 13,
       "declared": true,
@@ -338,9 +342,9 @@
       "layer": "interface",
       "root": "superagent/server",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 6,
+      "files": 8,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -364,6 +368,7 @@
       ],
       "adrs": [],
       "tests": [
+        "superagent/server/test/project-setup.test.ts",
         "superagent/server/test/server.test.ts"
       ],
       "entry": "superagent/server/src/index.ts",
@@ -376,7 +381,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 2,
       "declared": true,
@@ -452,7 +457,7 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 11,
       "declared": true,
@@ -460,6 +465,7 @@
       "dependsOn": [
         "chief-worker",
         "learning",
+        "loop-policy",
         "project-state",
         "server",
         "testkit",
@@ -767,6 +773,16 @@
     },
     {
       "from": "evals",
+      "to": "loop-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": true,
+      "evidence": [
+        "superagent/evals/redteam/redteam.test.ts → @superagent/loop-policy"
+      ]
+    },
+    {
+      "from": "evals",
       "to": "project-state",
       "weight": 6,
       "typeOnly": false,
@@ -997,12 +1013,13 @@
     {
       "from": "server",
       "to": "contracts",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/server/src/http.ts → @superagent/contracts",
-        "superagent/server/src/runtime.ts → @superagent/contracts"
+        "superagent/server/src/runtime.ts → @superagent/contracts",
+        "superagent/server/src/project-setup.ts → @superagent/contracts"
       ]
     },
     {
@@ -1029,21 +1046,24 @@
     {
       "from": "server",
       "to": "project-state",
-      "weight": 1,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/server/src/runtime.ts → @superagent/project-state"
+        "superagent/server/src/runtime.ts → @superagent/project-state",
+        "superagent/server/src/project-setup.ts → @superagent/project-state",
+        "superagent/server/test/project-setup.test.ts → @superagent/project-state"
       ]
     },
     {
       "from": "server",
       "to": "testkit",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/server/src/dsh-setup.ts → @superagent/testkit",
+        "superagent/server/test/project-setup.test.ts → @superagent/testkit",
         "superagent/server/test/server.test.ts → @superagent/testkit"
       ]
     },
@@ -1060,24 +1080,25 @@
     {
       "from": "verifier",
       "to": "contracts",
-      "weight": 5,
+      "weight": 7,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/verifier/src/command.ts → @superagent/contracts",
-        "superagent/plugins/verifier/src/hygiene.ts → @superagent/contracts",
+        "superagent/plugins/verifier/src/heldout.ts → @superagent/contracts",
         "superagent/plugins/verifier/src/integrity.ts → @superagent/contracts",
-        "superagent/plugins/verifier/src/verifier.ts → @superagent/contracts",
-        "superagent/plugins/verifier/test/verifier.test.ts → @superagent/contracts"
+        "superagent/plugins/verifier/src/hygiene.ts → @superagent/contracts",
+        "superagent/plugins/verifier/src/verifier.ts → @superagent/contracts"
       ]
     },
     {
       "from": "verifier",
       "to": "testkit",
-      "weight": 1,
+      "weight": 2,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/plugins/verifier/test/heldout.test.ts → @superagent/testkit",
         "superagent/plugins/verifier/test/verifier.test.ts → @superagent/testkit"
       ]
     }
@@ -1086,12 +1107,48 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "CURRENT_STATE.md",
-      "REDTEAM_REPORT.md"
+      "pnpm-lock.yaml",
+      "scripts/redteam-report.ts",
+      "superagent/cli/src/main.ts",
+      "superagent/contracts/src/types.ts",
+      "superagent/contracts/src/validate.ts",
+      "superagent/evals/package.json",
+      "superagent/evals/redteam/redteam.test.ts",
+      "superagent/plugins/chief-worker/src/engine.ts",
+      "superagent/plugins/chief-worker/src/prompt.ts",
+      "superagent/plugins/verifier/src/heldout.ts",
+      "superagent/plugins/verifier/src/index.ts",
+      "superagent/plugins/verifier/src/verifier.ts",
+      "superagent/plugins/verifier/test/heldout.test.ts",
+      "superagent/server/src/index.ts",
+      "superagent/server/src/project-setup.ts",
+      "superagent/server/src/runtime.ts",
+      "superagent/server/test/project-setup.test.ts"
     ],
-    "modules": [],
-    "impacted": [],
-    "gates": []
+    "modules": [
+      "chief-worker",
+      "cli",
+      "contracts",
+      "evals",
+      "server",
+      "verifier"
+    ],
+    "impacted": [
+      "architecture-observatory",
+      "dsh-bundle",
+      "learning",
+      "loop-policy",
+      "model-policy",
+      "project-state"
+    ],
+    "gates": [
+      "architecture",
+      "e2e-ui",
+      "evals",
+      "smoke-dsh",
+      "typecheck",
+      "unit"
+    ]
   },
   "services": [
     {
@@ -1166,9 +1223,9 @@
     }
   ],
   "stats": {
-    "files": 129,
+    "files": 133,
     "modules": 15,
-    "edges": 51,
-    "scanMs": 628
+    "edges": 52,
+    "scanMs": 586
   }
 }

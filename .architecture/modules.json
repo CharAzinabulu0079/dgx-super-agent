@@ -84,7 +84,7 @@
     "description": "Independent gates and receipts; Worker claims never PASS",
     "protected": true,
     "declared": true,
-    "files": 8,
+    "files": 10,
     "gates": [
       "unit"
     ],
@@ -92,6 +92,7 @@
       "ADR-0006"
     ],
     "tests": [
+      "superagent/plugins/verifier/test/heldout.test.ts",
       "superagent/plugins/verifier/test/verifier.test.ts"
     ],
     "entry": "superagent/plugins/verifier/src/index.ts",
@@ -232,13 +233,14 @@
     "description": "Headless HTTP/SSE Realtime API",
     "protected": false,
     "declared": true,
-    "files": 6,
+    "files": 8,
     "gates": [
       "unit",
       "e2e-ui"
     ],
     "adrs": [],
     "tests": [
+      "superagent/server/test/project-setup.test.ts",
       "superagent/server/test/server.test.ts"
     ],
     "entry": "superagent/server/src/index.ts",

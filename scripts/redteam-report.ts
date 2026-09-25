@@ -8,6 +8,7 @@ import { writeFileSync } from 'node:fs'
 
 const FILES = [
   'superagent/plugins/chief-worker/test/adversarial-verifier.test.ts',
+  'superagent/plugins/verifier/test/heldout.test.ts',
   'superagent/plugins/chief-worker/test/loop.test.ts',
   'superagent/plugins/chief-worker/test/chief-wake.test.ts',
   'superagent/plugins/loop-policy/test/tool-policy.test.ts',
@@ -37,6 +38,7 @@ const SCENARIOS: Scenario[] = [
   { id: 'RT-14', attack: 'Model / provider failure', defense: 'Crashed attempts still verified; bounded; executor exceptions contained', tests: [/RT-13 model/, /executor that throws/] },
   { id: 'RT-15', attack: 'Browser / tool failure', defense: 'Gate fails closed (report missing ⇒ FAIL; missing tool ⇒ FAIL)', tests: [/RT-14 browser/] },
   { id: 'RT-16', attack: 'Learning poisoning (harmful or useless skills, forced promotion)', defense: 'Fresh replay compare; integrity in replay; per-kind governance; fail closed without replay', tests: [/tamper with tests is rejected/, /no measurable benefit/, /without a replay capability/, /need replay evidence AND a human|replay-evaluated under the proposed policy/] },
+  { id: 'RT-18', attack: 'Semantic test gaming (special-case the visible tests)', defense: 'Held-out gates: hidden tests mounted only into a throwaway verification copy; redacted feedback; guard forbids the store', tests: [/RT-18 semantic gaming/, /held-out gate runs hidden tests/, /mount path are replaced/, /held-out misconfiguration/] },
   { id: 'RT-17', attack: 'Chief wake flood / lost wakes', defense: 'Deterministic wake policy, coalescing, rate limit, durable queue with idempotent ids', tests: [/wake the Chief once/, /survive a restart/, /rate limit coalesces/] },
 ]
 

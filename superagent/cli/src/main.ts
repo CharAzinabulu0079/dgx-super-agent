@@ -10,7 +10,7 @@ import { parseGateSpec, type GateSpec } from '@superagent/contracts'
 import { effectiveModels, formatModel, loadGlobalPolicy, parseModelSpec, parsePolicyLayer, saveGlobalPolicy } from '@superagent/model-policy'
 import { scanHygiene } from '@superagent/verifier'
 import { Observatory } from '@superagent/architecture-observatory'
-import { BROWSER_PATCH, CHIEF_PROFILE, createRuntime, setupDshProfiles, startServer } from '@superagent/server'
+import { BROWSER_PATCH, CHIEF_PROFILE, createRuntime, registerHeldOut, setupDshProfiles, startServer } from '@superagent/server'
 import { defaultHome } from '@superagent/project-state'
 import { REPO_ROOT } from '@superagent/testkit'
 
@@ -22,6 +22,9 @@ const HELP = `sa — DGX Super Agent CLI
                                                 Chief auto-wake is on when "sa dsh setup" created superagent-chief-cli
   sa project add <name> <root> [--gate 'id=command'...] [--protect module...]
   sa project list
+  sa heldout add <project> <gateId> <testsDir> --mount <dir> --command "<cmd>"
+                                                hidden acceptance tests: copied into $SUPERAGENT_HOME/heldout,
+                                                mounted only into a verification copy, never visible to Workers
   sa status <project>
   sa goal <project> "<objective>"
   sa task add <project> <goal> --title T --instructions I [--model provider/model] [--escalation provider/model] [--gate 'id=command'...]
@@ -59,7 +62,7 @@ async function main(argv: string[]): Promise<number> {
       'worker-patch': { type: 'string', multiple: true },
       gate: { type: 'string', multiple: true }, protect: { type: 'string', multiple: true },
       title: { type: 'string' }, instructions: { type: 'string' }, model: { type: 'string' }, escalation: { type: 'string' },
-      check: { type: 'boolean' }, help: { type: 'boolean', short: 'h' }, project: { type: 'string' }, reflect: { type: 'boolean' },
+      check: { type: 'boolean' }, mount: { type: 'string' }, command: { type: 'string' }, help: { type: 'boolean', short: 'h' }, project: { type: 'string' }, reflect: { type: 'boolean' },
     },
   })
   const [cmd, sub, ...rest] = positionals
@@ -152,6 +155,13 @@ async function main(argv: string[]): Promise<number> {
         return 0
       }
       break
+    }
+    case 'heldout': {
+      const [pid, gateId, from] = rest
+      if (sub !== 'add' || !pid || !gateId || !from || !values.mount || !values.command) throw new Error('usage: sa heldout add <project> <gateId> <testsDir> --mount <dir> --command "<cmd>"')
+      const p = registerHeldOut(store, pid, { gateId, from, mountAt: values.mount, command: values.command })
+      console.log(`held-out gate ${gateId} registered on ${p.id}: ${p.defaultGates.map(g => g.id + (g.heldOut ? ' (held-out)' : '')).join(', ')}`)
+      return 0
     }
     case 'status': console.log(chief.statusReport(sub!)); return 0
     case 'goal': console.log(JSON.stringify(chief.createGoal(sub!, rest.join(' ')), null, 2)); return 0

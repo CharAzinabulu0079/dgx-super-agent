@@ -13,6 +13,7 @@
     "@superagent/server": "workspace:*",
     "@superagent/testkit": "workspace:*",
     "@playwright/test": "1.56.1",
-    "@superagent/learning": "workspace:*"
+    "@superagent/learning": "workspace:*",
+    "@superagent/loop-policy": "workspace:*"
   }
 }

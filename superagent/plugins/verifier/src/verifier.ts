@@ -8,6 +8,7 @@
  */
 import type { GateKind, GateResult, GateSpec, IntegrityFinding, IntegrityReport, ModelRef, Receipt, RetryStrategy, Task, TaskBaseline, Verdict, WorkerClaim } from '@superagent/contracts'
 import { runCommandGate } from './command.ts'
+import { runHeldOutGate } from './heldout.ts'
 import { runHygieneGate } from './hygiene.ts'
 
 export interface GateContext {
@@ -42,9 +43,17 @@ export type ReceiptDraft = Omit<Receipt, 'id' | 'createdAt'>
 export class Verifier {
   private readonly runners = new Map<GateKind, GateRunner>()
 
-  constructor() {
-    this.runners.set('command', (spec, ctx) => runCommandGate(spec, ctx.projectRoot, ctx.signal))
-    this.runners.set('e2e', (spec, ctx) => runCommandGate({ ...spec, parser: spec.parser ?? 'playwright-json' }, ctx.projectRoot, ctx.signal))
+  /** Where held-out test sources live (`$SUPERAGENT_HOME/heldout`); unset = held-out gates error. */
+  readonly heldOutRoot: string | undefined
+
+  constructor(opts: { heldOutRoot?: string } = {}) {
+    this.heldOutRoot = opts.heldOutRoot
+    let seq = 0
+    const command = (spec: GateSpec, ctx: GateContext): Promise<GateResult> => spec.heldOut
+      ? runHeldOutGate(spec, ctx.projectRoot, this.heldOutRoot, `${ctx.task.id}/heldout-${Date.now()}-${seq++}`, ctx.signal)
+      : runCommandGate(spec, ctx.projectRoot, ctx.signal)
+    this.runners.set('command', command)
+    this.runners.set('e2e', (spec, ctx) => command({ ...spec, parser: spec.parser ?? 'playwright-json' }, ctx))
     this.runners.set('hygiene', (spec, ctx) => runHygieneGate(spec, ctx.projectRoot))
   }
 

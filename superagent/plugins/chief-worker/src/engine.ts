@@ -6,7 +6,7 @@
  * The engine is deterministic code; all LLM reasoning happens inside the Worker
  * executor (a DSH session in production).
  */
-import type { Attempt, GateSpec, HumanGate, Project, Receipt, RetryStrategy, Task, WorkerClaim, WorkerReport } from '@superagent/contracts'
+import type { Attempt, GateResult, GateSpec, HumanGate, Project, Receipt, RetryStrategy, Task, WorkerClaim, WorkerReport } from '@superagent/contracts'
 import { TERMINAL_TASK_STATES, now, parseWorkerReport } from '@superagent/contracts'
 import { processAlive, type StateStore } from '@superagent/project-state'
 import { checkIntegrity, createMarker, headOf, isGitWorkTree, receiptSignature, snapshotCommit, changedBetween, type Verifier } from '@superagent/verifier'
@@ -123,7 +123,10 @@ export class LoopEngine {
   }
 
   gatesFor(project: Project, task: Task): GateSpec[] {
-    return [...(task.gates.length ? task.gates : project.defaultGates)]
+    if (!task.gates.length) return [...project.defaultGates]
+    // Held-out project gates always apply: a task's own gate list cannot drop them.
+    const own = new Set(task.gates.map(g => g.id))
+    return [...task.gates, ...project.defaultGates.filter(g => g.heldOut && !own.has(g.id))]
   }
 
   /** Abort a running task's current Worker and stop the loop at the next checkpoint. */
@@ -390,7 +393,7 @@ export class LoopEngine {
         const r = this.store.getReceipt(projectId, a.receiptId!)!
         return {
           attempt: a.n, strategy: a.strategy, verdict: r.verdict, reason: r.reason, workerClaim: r.workerClaim, claimOverruled: r.claimOverruled,
-          failingGates: r.gateResults.filter(g => g.status !== 'pass').map(g => ({ gateId: g.gateId, status: g.status, summary: g.summary, outputTail: g.outputTail })),
+          failingGates: r.gateResults.filter(g => g.status !== 'pass').map(g => g.heldOut ? heldOutFeedback(g) : ({ gateId: g.gateId, status: g.status, summary: g.summary, outputTail: g.outputTail })),
           integrity: (r.integrity?.findings ?? []).filter(f => f.severity !== 'info').map(f => `${f.severity}: ${f.detail}`),
         }
       })
@@ -406,4 +409,18 @@ export class LoopEngine {
 export function workerClaim(reports: readonly WorkerReport[]): WorkerClaim {
   const result = [...reports].reverse().find(r => r.kind === 'result') ?? reports.at(-1)
   return result?.verification_result ?? 'not_run'
+}
+
+/**
+ * Worker-facing view of a failed held-out gate: counts and failing test names only.
+ * Assertions, fixtures and output stay hidden so the Worker cannot fit to them.
+ */
+export function heldOutFeedback(g: GateResult): { gateId: string; status: string; summary: string; outputTail: string } {
+  const failing = (g.tests ?? []).filter(t => !t.ok).map(t => t.name)
+  return {
+    gateId: g.gateId,
+    status: g.status,
+    summary: `held-out tests (hidden from you): ${g.summary}${failing.length ? `; failing behaviours: ${failing.slice(0, 10).join('; ')}` : ''}`,
+    outputTail: '',
+  }
 }

@@ -93,6 +93,12 @@ export function parseGateSpec(value: unknown, path = 'gate'): GateSpec {
     assets: o.assets === undefined ? undefined : strList(o.assets, `${path}.assets`),
     minTests: o.minTests === undefined ? undefined : posInt(o.minTests, `${path}.minTests`),
     env: o.env === undefined ? undefined : Object.fromEntries(Object.entries(obj(o.env, `${path}.env`)).map(([k, v]) => [k, str(v, `${path}.env.${k}`)])),
+    heldOut: o.heldOut === undefined ? undefined : (() => {
+      const h = obj(o.heldOut, `${path}.heldOut`)
+      const mountAt = str(h.mountAt, `${path}.heldOut.mountAt`)
+      if (mountAt.startsWith('/') || mountAt.split('/').includes('..')) throw new ContractError(`${path}.heldOut.mountAt`, 'must be a project-relative path without ..')
+      return { source: str(h.source, `${path}.heldOut.source`), mountAt }
+    })(),
   }
 }
 

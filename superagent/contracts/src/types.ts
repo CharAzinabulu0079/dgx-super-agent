@@ -103,6 +103,10 @@ export interface Goal {
   readonly createdAt: IsoTime
   readonly updatedAt: IsoTime
   readonly blocker?: string
+  /** The goal should be (re)run; cleared when a run ends. Lets a restarted server resume it. */
+  readonly runRequested?: boolean
+  /** The plain-language request this goal came from, if any. */
+  readonly request?: string
 }
 
 // ---------------------------------------------------------------- task / loop
@@ -170,6 +174,18 @@ export interface Task {
   readonly nextStrategy?: RetryStrategy
   /** Set by Stop; the engine halts at the next checkpoint. */
   readonly stopRequested?: boolean
+  /** Require a reviewer's approval after gates PASS (the reviewer can block, never pass). */
+  readonly review?: boolean
+  /** Reviewer verdicts, oldest first. */
+  readonly reviews?: readonly ReviewRecord[]
+}
+
+export interface ReviewRecord {
+  readonly attempt: number
+  readonly approve: boolean
+  readonly comments: string
+  readonly reviewer: string
+  readonly at: IsoTime
 }
 
 export interface TaskGrants {
@@ -259,6 +275,12 @@ export interface GateSpec {
   readonly minTests?: number
   /** Extra environment for the gate process (the rest is an allowlist, not inherited). */
   readonly env?: Readonly<Record<string, string>>
+  /**
+   * Held-out verification: test files kept outside the Worker's reach (under
+   * `$SUPERAGENT_HOME/heldout/…`) and copied, only for this gate run, into a throwaway
+   * verification worktree at `mountAt`. The Worker never sees or edits them.
+   */
+  readonly heldOut?: { readonly source: string; readonly mountAt: string }
 }
 
 export type GateStatus = 'pass' | 'fail' | 'error' | 'skipped'
@@ -277,6 +299,8 @@ export interface GateResult {
   /** Normalized failure identity used by the loop breaker; absent on pass. */
   readonly failureSignature?: string
   readonly details?: Record<string, unknown>
+  /** Ran against held-out tests; its output is never shown to the Worker. */
+  readonly heldOut?: boolean
 }
 
 export type Verdict = 'PASS' | 'FAIL'
@@ -341,6 +365,7 @@ export type HumanGateReason =
   | 'worker-requested'
   | 'verification-change'
   | 'dangerous-action'
+  | 'review-disagreement'
 
 export type HumanGateStatus = 'open' | 'approved' | 'rejected'
 
@@ -392,6 +417,8 @@ export type SuperAgentEventType =
   | 'learning/candidate'
   | 'learning/promoted'
   | 'learning/archived'
+  | 'request/submitted'
+  | 'review/completed'
 
 /** Append-only, per-project event (events.jsonl). `seq` is monotonic per project. */
 export interface SuperAgentEvent {
