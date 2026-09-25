@@ -11,7 +11,7 @@
  * special-case it") has nothing to aim at.
  */
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync } from 'node:fs'
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative, resolve, sep } from 'node:path'
 import type { GateResult, GateSpec } from '@superagent/contracts'
@@ -66,6 +66,17 @@ export function prepareHeldOutTree(projectRoot: string, spec: GateSpec, heldOutR
     // Held-out files win over anything the Worker put at the same path.
     const target = resolve(dir, spec.heldOut.mountAt)
     if (!target.startsWith(dir + sep)) throw new HeldOutError(`mountAt escapes the verification tree: ${spec.heldOut.mountAt}`)
+    // The exported tree is Worker-controlled: a symlinked path component would carry the
+    // hidden tests somewhere the next attempt can read. Refuse any link on the way down.
+    const realDir = realpathSync(dir)
+    let walk = dir
+    for (const part of relative(dir, target).split(sep)) {
+      walk = join(walk, part)
+      if (existsSync(walk) || isLink(walk)) {
+        if (lstatSync(walk).isSymbolicLink()) throw new HeldOutError(`the Worker tree has a symlink at ${relative(dir, walk)}; refusing to mount held-out tests through it`)
+        if (!realpathSync(walk).startsWith(realDir + sep)) throw new HeldOutError(`mount path leaves the verification tree`)
+      }
+    }
     if (statSync(source).isDirectory()) {
       rmSync(target, { recursive: true, force: true })
       mkdirSync(target, { recursive: true })
@@ -96,5 +107,14 @@ export async function runHeldOutGate(spec: GateSpec, projectRoot: string, heldOu
     return { ...r, heldOut: true }
   } finally {
     tree.dispose()
+  }
+}
+
+function isLink(p: string): boolean {
+  try {
+    return lstatSync(p).isSymbolicLink()
+  } catch (absent) {
+    void absent
+    return false
   }
 }

@@ -28,7 +28,7 @@ The last release built in Claude Cloud. Everything that can be implemented and v
 - **`goal/updated` events** now carry the previous status.
 
 ### Verification
-- `pnpm check`: 87 tests, 0 architecture drift, 0 hygiene blocks.
+- `pnpm check`: 88 tests, 0 architecture drift, 0 hygiene blocks.
 - `pnpm smoke:dsh`: 6/6.
 - `pnpm test:evals`: 10/10 (new: DSH planner + reviewer, UI one-box).
 - `pnpm redteam`: 19/19 scenarios fail closed (new: RT-18 held-out, RT-19 planner/reviewer abuse).

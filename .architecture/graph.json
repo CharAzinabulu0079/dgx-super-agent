@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T21:29:47.936Z",
-  "commit": "f654c98",
+  "generatedAt": "2026-09-25T21:31:28.945Z",
+  "commit": "e8d6cc5",
   "layers": [
     "foundation",
     "capability",
@@ -17,8 +17,7 @@
       "layer": "foundation",
       "root": "superagent/contracts",
       "status": [
-        "protected",
-        "changing"
+        "protected"
       ],
       "files": 5,
       "declared": true,
@@ -54,7 +53,7 @@
       "layer": "foundation",
       "root": "superagent/testkit",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 6,
       "declared": true,
@@ -89,7 +88,7 @@
       "layer": "capability",
       "root": "superagent/plugins/project-state",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 4,
       "declared": true,
@@ -166,7 +165,7 @@
       "layer": "capability",
       "root": "superagent/plugins/loop-policy",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 7,
       "declared": true,
@@ -197,7 +196,7 @@
       "layer": "capability",
       "root": "superagent/plugins/model-policy",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 4,
       "declared": true,
@@ -232,7 +231,7 @@
       "layer": "capability",
       "root": "superagent/plugins/architecture-observatory",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 10,
       "declared": true,
@@ -266,7 +265,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/learning",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 7,
       "declared": true,
@@ -301,7 +300,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/chief-worker",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 15,
       "declared": true,
@@ -345,7 +344,7 @@
       "layer": "interface",
       "root": "superagent/server",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 11,
       "declared": true,
@@ -385,7 +384,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 2,
       "declared": true,
@@ -414,7 +413,7 @@
       "layer": "interface",
       "root": "superagent/ui",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 13,
       "declared": true,
@@ -435,7 +434,7 @@
       "layer": "interface",
       "root": "superagent/dsh-bundle",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 5,
       "declared": true,
@@ -461,7 +460,7 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 12,
       "declared": true,
@@ -1129,54 +1128,27 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "ARCHITECTURE.md",
-      "CHANGELOG.md",
-      "CURRENT_STATE.md",
-      "DECISIONS.md",
-      "NEXT_STEPS.md",
-      "README.md",
-      "REDTEAM_REPORT.md",
-      "SETUP_DGX.md",
-      "package.json",
       "scripts/redteam-report.ts",
-      "superagent/cli/package.json",
-      "superagent/contracts/package.json",
-      "superagent/dsh-bundle/package.json",
-      "superagent/evals/package.json",
-      "superagent/plugins/architecture-observatory/package.json",
-      "superagent/plugins/chief-worker/package.json",
-      "superagent/plugins/learning/package.json",
-      "superagent/plugins/loop-policy/package.json",
-      "superagent/plugins/model-policy/package.json",
-      "superagent/plugins/project-state/package.json",
-      "superagent/plugins/verifier/package.json",
-      "superagent/server/package.json",
-      "superagent/testkit/package.json",
-      "superagent/ui/package.json"
+      "superagent/plugins/verifier/src/heldout.ts",
+      "superagent/plugins/verifier/test/heldout.test.ts"
     ],
     "modules": [
+      "verifier"
+    ],
+    "impacted": [
       "architecture-observatory",
       "chief-worker",
       "cli",
-      "contracts",
-      "dsh-bundle",
       "evals",
       "learning",
-      "loop-policy",
       "model-policy",
-      "project-state",
-      "server",
-      "testkit",
-      "ui",
-      "verifier"
+      "server"
     ],
-    "impacted": [],
     "gates": [
       "architecture",
       "e2e-ui",
       "evals",
       "smoke-dsh",
-      "typecheck",
       "unit"
     ]
   },

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { calcProject, git, tempDir, FIXED_CALC } from '@superagent/testkit'
 import type { GateSpec, Task } from '@superagent/contracts'
@@ -48,4 +48,16 @@ test('held-out misconfiguration fails closed', async () => {
   const missing = await new Verifier({ heldOutRoot: home }).runGate({ ...GATE, heldOut: { source: 'nope', mountAt: 'acceptance' } }, { projectRoot: root, task, changedFiles: [] })
   assert.equal(missing.status, 'error')
   assert.match(missing.summary, /missing/)
+})
+
+test('a Worker symlink on the mount path cannot redirect the hidden tests', async () => {
+  const root = calcProject()
+  const outside = tempDir('sa-exfil-')
+  symlinkSync(outside, join(root, 'spec'))
+  git(root, 'add', '-A')
+  git(root, 'commit', '-q', '-m', 'link')
+  const r = await new Verifier({ heldOutRoot: heldOutHome() }).runGate({ ...GATE, heldOut: { source: 'calc', mountAt: 'spec/hidden' } }, { projectRoot: root, task, changedFiles: [] })
+  assert.equal(r.status, 'error')
+  assert.match(r.summary, /symlink/)
+  assert.deepEqual(readdirSync(outside), [], 'nothing copied through the link')
 })
