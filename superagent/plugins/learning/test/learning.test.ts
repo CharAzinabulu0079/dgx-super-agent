@@ -121,6 +121,30 @@ test('policy candidates are replay-evaluated under the proposed policy and still
   const promoted = rt.learning.decide(policy.id, true, 'ok for this project')
   assert.equal(promoted.status, 'promoted')
   assert.equal(readFileSync(join(rt.store.home, 'policies', 'allow-three-attempts.json'), 'utf8'), '{"maxAttempts":3}')
+  assert.equal(rt.store.requireProject(project.id).policy?.maxAttempts, 3, 'routing policy is live for the project')
+  const next = rt.chief.addTask(project.id, rt.chief.createGoal(project.id, 'g').id, { title: 't', instructions: 'i' })
+  assert.equal(next.policy.maxAttempts, 3, 'new tasks use it')
+})
+
+test('verifier-policy promotions only tighten verification; invalid policies are rejected, not applied', async () => {
+  const { rt, project, task } = await passedAfterFailure()
+  const snapshot = rt.store.requireTask(project.id, task.id).baseline!.snapshot
+  const evidence = { projectId: project.id, taskId: task.id, receiptIds: [], failureSignatures: [], snapshot }
+  const withEvidence = (id: string) => rt.learning.learning.transition(rt.learning.learning.get(id)!, { comparison: { improved: true, reason: 'x' }, evals: [{ at: '', method: 'fresh-replay', fresh: true, heldOutGates: true, arms: [] }] })
+  const tighten = rt.learning.learning.add({ kind: 'verifier-policy', name: 'protect-fixtures', description: 'd', scope: 'project', source: 'llm-reflection', body: '{"protectedPaths":["fixtures/**"]}', evidence })
+  withEvidence(tighten.id)
+  assert.equal(rt.learning.decide(tighten.id, true).status, 'promoted')
+  const v = rt.store.requireProject(project.id).verification!
+  assert.ok(v.protectedPaths.includes('fixtures/**'))
+  assert.ok(v.protectedPaths.includes('**/*.test.*'), 'defaults kept')
+  const loosen = rt.learning.learning.add({ kind: 'verifier-policy', name: 'drop-tests', description: 'd', scope: 'project', source: 'llm-reflection', body: '{"protectedPaths":[],"disable":true}', evidence })
+  withEvidence(loosen.id)
+  const r = rt.learning.decide(loosen.id, true)
+  assert.equal(r.status, 'rejected')
+  assert.match(r.decision!, /unsupported fields disable/)
+  const badRoute = rt.learning.learning.add({ kind: 'routing-policy', name: 'bad', description: 'd', scope: 'project', source: 'llm-reflection', body: '{"models":{"admin":"x/y"}}', evidence })
+  withEvidence(badRoute.id)
+  assert.equal(rt.learning.decide(badRoute.id, true).status, 'rejected')
 })
 
 test('compare and governance rules', () => {

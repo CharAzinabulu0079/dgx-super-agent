@@ -461,6 +461,70 @@ export class StateStore {
     return out.length > limit ? out.slice(-limit) : out
   }
 
+  /** Sequence number of the newest event (0 when none), without parsing the log. */
+  lastEventSeq(pid: ProjectId): number {
+    const file = join(this.projectDir(pid), 'events.jsonl')
+    return existsSync(file) ? this.countEventLines(pid, file) : 0
+  }
+
+  /** Byte offset where line `seq + 1` starts, per project (events only append). */
+  private readonly tailOffsets = new Map<string, Map<number, number>>()
+
+  /**
+   * Oldest-first events with `seq > since`, at most `limit` — for consumers that
+   * follow the log (SSE, wake monitor). Resumes from a cached byte offset instead of
+   * re-reading the file, and never returns an unterminated (in-progress/torn) tail line.
+   */
+  tailEvents(pid: ProjectId, since = 0, limit = 1000): SuperAgentEvent[] {
+    const file = join(this.projectDir(pid), 'events.jsonl')
+    if (!existsSync(file)) return []
+    let offsets = this.tailOffsets.get(pid)
+    if (!offsets) this.tailOffsets.set(pid, offsets = new Map())
+    let start = since === 0 ? 0 : offsets.get(since)
+    if (start === undefined) {
+      // Cold start: find the byte offset after `since` lines.
+      const buf = readFileSync(file)
+      let line = 0
+      start = buf.length
+      for (let i = 0; i < buf.length && line < since; i++) if (buf[i] === 0x0a && ++line === since) start = i + 1
+      if (line < since) return []
+    }
+    const size = statSync(file).size
+    if (size <= start) return []
+    const fd = openSync(file, 'r')
+    const chunk = Buffer.alloc(size - start)
+    try {
+      readSync(fd, chunk, 0, chunk.length, start)
+    } finally {
+      closeSync(fd)
+    }
+    const out: SuperAgentEvent[] = []
+    let seq = since
+    let pos = 0
+    let lastGood = start
+    let lastSeq = since
+    while (out.length < limit) {
+      const nl = chunk.indexOf(0x0a, pos)
+      if (nl < 0) break // unterminated tail: an append in progress or a torn write
+      seq++
+      const text = chunk.subarray(pos, nl).toString('utf8')
+      pos = nl + 1
+      if (text) {
+        try {
+          out.push({ seq, ...(JSON.parse(text) as Omit<SuperAgentEvent, 'seq'>) } as SuperAgentEvent)
+        } catch (partial) {
+          // Same rule as readEvents: only the final line may be torn.
+          if (chunk.indexOf(0x0a, pos) >= 0) throw new StateCorruptError(`${file}:${seq}`, partial)
+        }
+      }
+      lastGood = start + pos
+      lastSeq = seq
+    }
+    if (offsets.size > 256) offsets.clear()
+    offsets.set(lastSeq, lastGood)
+    return out
+  }
+
   eventsPath(pid: ProjectId): string { return join(this.projectDir(pid), 'events.jsonl') }
 
   /** Subscribe to events appended by this process. @returns unsubscribe. */

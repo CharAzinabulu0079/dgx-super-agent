@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { tempDir } from '@superagent/testkit'
-import { StateStore } from '../src/index.ts'
+import { StateStore, StateCorruptError } from '../src/index.ts'
 
 const policy = { model: { worker: { provider: 'local-default', model: 'default' } }, production_write: false, maxAttempts: 3, maxSameFailure: 2, strategies: ['retry-with-feedback' as const] }
 
@@ -47,4 +47,33 @@ test('goal/task lifecycle, state transitions emit events, reports feed worker vi
 test('ids are validated against path traversal', () => {
   const s = new StateStore(tempDir())
   assert.throws(() => s.getProject('../etc'), /invalid project id/)
+})
+
+test('tailEvents: follows the log oldest-first in bounded chunks, without gaps, skipping an in-progress tail', async () => {
+  const { appendFileSync } = await import('node:fs')
+  const store = new StateStore(tempDir('sa-home-'))
+  const p = store.createProject({ name: 'tail', root: tempDir('sa-root-') })
+  for (let i = 0; i < 1200; i++) store.emitTyped('task/steer', p.id, { i })
+  const all = store.readEvents(p.id, 0, 10_000)
+  const seen: number[] = []
+  let cursor = 0
+  for (;;) {
+    const chunk = store.tailEvents(p.id, cursor, 500)
+    if (!chunk.length) break
+    seen.push(...chunk.map(e => e.seq))
+    cursor = chunk.at(-1)!.seq
+  }
+  assert.deepEqual(seen, all.map(e => e.seq), 'same events and seqs as readEvents, none skipped')
+  assert.equal(store.lastEventSeq(p.id), all.at(-1)!.seq)
+  // An unterminated line (append in progress) is not delivered until it is complete.
+  const file = store.eventsPath(p.id)
+  appendFileSync(file, '{"type":"task/steer","projectId":"tail","data":{"i":"x"}')
+  assert.deepEqual(store.tailEvents(p.id, cursor, 500), [])
+  appendFileSync(file, ',"ts":"2026-01-01T00:00:00Z"}\n')
+  const next = store.tailEvents(p.id, cursor, 500)
+  assert.equal(next.length, 1)
+  assert.equal(next[0]!.seq, cursor + 1)
+  // Corruption in the middle fails closed, like readEvents.
+  appendFileSync(file, '{"torn"\n{"type":"task/steer","projectId":"tail","data":{},"ts":"2026-01-01T00:00:00Z"}\n')
+  assert.throws(() => store.tailEvents(p.id, next[0]!.seq, 500), StateCorruptError)
 })

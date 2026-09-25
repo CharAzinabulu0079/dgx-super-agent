@@ -350,6 +350,16 @@
     },
     {
       "from": "learning",
+      "to": "model-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/learning/src/learning.ts → @superagent/model-policy"
+      ]
+    },
+    {
+      "from": "learning",
       "to": "project-state",
       "weight": 3,
       "typeOnly": false,

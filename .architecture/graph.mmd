@@ -43,6 +43,7 @@ flowchart LR
   dsh_bundle --> project_state
   learning --> chief_worker
   learning --> contracts
+  learning --> model_policy
   learning --> project_state
   learning --> verifier
   loop_policy --> contracts
@@ -69,11 +70,11 @@ flowchart LR
   class loop_policy stable
   class model_policy stable
   class architecture_observatory stable
-  class learning stable
-  class chief_worker stable
+  class learning changing
+  class chief_worker changing
   class server changing
   class cli stable
-  class ui changing
-  class dsh_bundle stable
-  class evals changing
+  class ui stable
+  class dsh_bundle changing
+  class evals stable
   class sample_webapp stable

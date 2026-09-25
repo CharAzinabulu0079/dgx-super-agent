@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T21:20:43.474Z",
-  "commit": "8b7b634",
+  "generatedAt": "2026-09-25T21:24:10.799Z",
+  "commit": "c48e4c4",
   "layers": [
     "foundation",
     "capability",
@@ -210,6 +210,7 @@
       "usedBy": [
         "chief-worker",
         "cli",
+        "learning",
         "server"
       ],
       "gates": [
@@ -220,7 +221,7 @@
         "superagent/plugins/model-policy/test/policy.test.ts"
       ],
       "entry": "superagent/plugins/model-policy/src/index.ts",
-      "description": "Manual per-task model selection",
+      "description": "Layered model policy (defaults ← global ← project ← task pin), live role resolution",
       "drift": []
     },
     {
@@ -263,7 +264,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/learning",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 7,
       "declared": true,
@@ -271,6 +272,7 @@
       "dependsOn": [
         "chief-worker",
         "contracts",
+        "model-policy",
         "project-state",
         "server",
         "testkit",
@@ -297,7 +299,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/chief-worker",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 15,
       "declared": true,
@@ -410,7 +412,7 @@
       "layer": "interface",
       "root": "superagent/ui",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 13,
       "declared": true,
@@ -431,7 +433,7 @@
       "layer": "interface",
       "root": "superagent/dsh-bundle",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 5,
       "declared": true,
@@ -457,7 +459,7 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 12,
       "declared": true,
@@ -866,6 +868,16 @@
     },
     {
       "from": "learning",
+      "to": "model-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/plugins/learning/src/learning.ts → @superagent/model-policy"
+      ]
+    },
+    {
+      "from": "learning",
       "to": "project-state",
       "weight": 3,
       "typeOnly": false,
@@ -1115,25 +1127,28 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "superagent/evals/test/ui.e2e.test.ts",
+      "pnpm-lock.yaml",
+      "superagent/dsh-bundle/src/index.ts",
+      "superagent/plugins/chief-worker/src/chief-wake.ts",
+      "superagent/plugins/chief-worker/src/chief.ts",
+      "superagent/plugins/learning/package.json",
+      "superagent/plugins/learning/src/learning.ts",
+      "superagent/plugins/learning/test/learning.test.ts",
       "superagent/plugins/project-state/src/store.ts",
-      "superagent/server/src/narrate.ts",
-      "superagent/ui/src/App.tsx",
-      "superagent/ui/src/api.ts",
-      "superagent/ui/src/styles.css"
+      "superagent/plugins/project-state/test/store.test.ts",
+      "superagent/server/src/http.ts"
     ],
     "modules": [
-      "evals",
+      "chief-worker",
+      "dsh-bundle",
+      "learning",
       "project-state",
-      "server",
-      "ui"
+      "server"
     ],
     "impacted": [
       "architecture-observatory",
-      "chief-worker",
       "cli",
-      "dsh-bundle",
-      "learning",
+      "evals",
       "model-policy"
     ],
     "gates": [
@@ -1219,7 +1234,7 @@
   "stats": {
     "files": 139,
     "modules": 15,
-    "edges": 52,
-    "scanMs": 678
+    "edges": 53,
+    "scanMs": 626
   }
 }

@@ -65,7 +65,7 @@ export class WakeMonitor {
    */
   scan(projectId: string): ChiefWakeRecord[] {
     const cursor = this.store.getMeta<{ seq: number }>(projectId, CURSOR)?.seq ?? 0
-    const events = this.store.readEvents(projectId, cursor, Number.MAX_SAFE_INTEGER)
+    const events = this.store.tailEvents(projectId, cursor, Number.MAX_SAFE_INTEGER)
     const created: ChiefWakeRecord[] = []
     let last = cursor
     for (const e of events) {

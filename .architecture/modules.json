@@ -131,7 +131,7 @@
     ],
     "packageName": "@superagent/model-policy",
     "layer": "capability",
-    "description": "Manual per-task model selection",
+    "description": "Layered model policy (defaults ← global ← project ← task pin), live role resolution",
     "protected": false,
     "declared": true,
     "files": 4,

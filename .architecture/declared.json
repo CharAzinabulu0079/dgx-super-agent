@@ -96,7 +96,7 @@
         "superagent/plugins/model-policy/**"
       ],
       "layer": "capability",
-      "description": "Manual per-task model selection",
+      "description": "Layered model policy (defaults ← global ← project ← task pin), live role resolution",
       "dependsOn": [
         "contracts"
       ],
@@ -125,12 +125,13 @@
         "superagent/plugins/learning/**"
       ],
       "layer": "orchestration",
-      "description": "Reflection (rules + DSH LLM) \u2192 candidates \u2192 fresh-replay eval \u2192 compare \u2192 governed promotion",
+      "description": "Reflection (rules + DSH LLM) → candidates → fresh-replay eval → compare → governed promotion",
       "dependsOn": [
         "contracts",
         "project-state",
         "verifier",
-        "chief-worker"
+        "chief-worker",
+        "model-policy"
       ],
       "gates": [
         "unit"
@@ -242,7 +243,7 @@
     {
       "from": "chief-worker",
       "to": "verifier",
-      "label": "attempt \u2192 gates \u2192 Receipt"
+      "label": "attempt → gates → Receipt"
     },
     {
       "from": "chief-worker",

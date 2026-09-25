@@ -10,9 +10,10 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { newId, now } from '@superagent/contracts'
+import { newId, now, type PolicyLayer } from '@superagent/contracts'
+import { loadGlobalPolicy, parsePolicyLayer, saveGlobalPolicy } from '@superagent/model-policy'
 import type { StateStore } from '@superagent/project-state'
-import type { Verifier } from '@superagent/verifier'
+import { DEFAULT_VERIFICATION_POLICY, type Verifier } from '@superagent/verifier'
 import { compareArms, mayPromote, type ArmResult, type Candidate, type CandidateStatus, type EvalRecord, type Evidence, type EvolutionKind } from './evolution.ts'
 import { replayArm, type ReplayOptions } from './replay.ts'
 import type { ProposedCandidate } from './reflector.ts'
@@ -237,10 +238,61 @@ export class LearningService {
   }
 
   private promote(c: Candidate, reason: string): Candidate {
+    // Validate before anything becomes active: an unusable policy is rejected, not half-applied.
+    let activate: () => void
+    try {
+      activate = this.activator(c)
+    } catch (error) {
+      return this.reject(c, [], `invalid ${c.kind}: ${String((error as Error).message ?? error)}`)
+    }
     const next = this.learning.transition(c, { status: 'promoted', decision: reason })
     this.apply(next)
+    activate()
     this.store.emitTyped('learning/promoted', c.evidence.projectId, { candidateId: c.id, kind: c.kind, name: c.name, reason })
     return next
+  }
+
+  /**
+   * Live appliers for policy kinds (both require replay evidence AND a human):
+   * - routing-policy: a model-policy layer (models per role, attempts, strategies) merged
+   *   into the project's layer (scope project) or the global layer (scope global);
+   *   un-pinned tasks pick it up on their next attempt.
+   * - verifier-policy: can only *tighten* verification — protected paths, env roots and
+   *   lockfiles are added to the project's policy; nothing is ever removed this way.
+   * plugin-config stays a file for a human to apply (DSH plugin configuration).
+   */
+  private activator(c: Candidate): () => void {
+    const projects = c.scope === 'global' ? this.store.listProjects() : [this.store.requireProject(c.evidence.projectId)]
+    if (c.kind === 'routing-policy') {
+      const layer = parsePolicyLayer(JSON.parse(c.body), c.kind)
+      const merge = (base: PolicyLayer | undefined): PolicyLayer => ({
+        ...base, ...Object.fromEntries(Object.entries(layer).filter(([k, v]) => k !== 'models' && v !== undefined)),
+        models: { ...base?.models, ...layer.models },
+      })
+      return c.scope === 'global'
+        ? () => saveGlobalPolicy(this.store.home, merge(loadGlobalPolicy(this.store.home)))
+        : () => { for (const p of projects) this.store.updateProject(p.id, { policy: merge(p.policy) }) }
+    }
+    if (c.kind === 'verifier-policy') {
+      const raw = JSON.parse(c.body) as Record<string, unknown>
+      const list = (k: string): string[] => {
+        const v = raw[k]
+        if (v === undefined) return []
+        if (!Array.isArray(v) || v.some(x => typeof x !== 'string' || !x.trim())) throw new Error(`${k}: expected string[]`)
+        return v as string[]
+      }
+      const unknown = Object.keys(raw).filter(k => !['protectedPaths', 'envRoots', 'lockfiles'].includes(k))
+      if (unknown.length) throw new Error(`unsupported fields ${unknown.join(', ')} (only additions to protectedPaths/envRoots/lockfiles)`)
+      const add = { protectedPaths: list('protectedPaths'), envRoots: list('envRoots'), lockfiles: list('lockfiles') }
+      return () => {
+        for (const p of projects) {
+          const cur = p.verification ?? DEFAULT_VERIFICATION_POLICY
+          const union = (a: readonly string[], b: string[]) => [...new Set([...a, ...b])]
+          this.store.updateProject(p.id, { verification: { protectedPaths: union(cur.protectedPaths, add.protectedPaths), envRoots: union(cur.envRoots, add.envRoots), lockfiles: union(cur.lockfiles, add.lockfiles) } })
+        }
+      }
+    }
+    return () => {}
   }
 
   /** Kind-specific appliers: the only code that writes active knowledge. */

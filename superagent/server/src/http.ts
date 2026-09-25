@@ -271,9 +271,9 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     for (const client of sseClients) {
       const pids = client.project ? [client.project] : store.listProjects().map(p => p.id)
       for (const pid of pids) {
-        const since = client.cursor.get(pid) ?? store.readEvents(pid, 0, 1).at(-1)?.seq ?? 0
-        const events: SuperAgentEvent[] = store.readEvents(pid, since, 200)
-        if (!client.cursor.has(pid)) { client.cursor.set(pid, since); continue }
+        if (!client.cursor.has(pid)) { client.cursor.set(pid, store.lastEventSeq(pid)); continue }
+        // Oldest first, bounded per tick; a burst drains over the next ticks without gaps.
+        const events: SuperAgentEvent[] = store.tailEvents(pid, client.cursor.get(pid)!, 500)
         for (const e of events) client.res.write(`id: ${pid}:${e.seq}\nevent: superagent\ndata: ${JSON.stringify(e)}\n\n`)
         if (events.length) client.cursor.set(pid, events.at(-1)!.seq)
       }

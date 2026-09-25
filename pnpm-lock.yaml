@@ -180,6 +180,9 @@ importers:
       '@superagent/contracts':
         specifier: workspace:*
         version: link:../../contracts
+      '@superagent/model-policy':
+        specifier: workspace:*
+        version: link:../model-policy
       '@superagent/project-state':
         specifier: workspace:*
         version: link:../project-state

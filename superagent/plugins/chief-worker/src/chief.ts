@@ -167,13 +167,16 @@ export class Chief {
     const project: Project = this.store.requireProject(projectId)
     const goal = this.store.currentGoal(projectId)
     const lines = [`# ${project.name}  (${project.root})`]
+    const registry = [...gateRegistry(project).values()]
+    lines.push(`Gate registry: ${registry.map(g => `${g.id}${g.heldOut ? ' (held-out)' : ''}`).join(', ') || 'empty — ask the human to register a test gate'}`)
     if (!goal) return [...lines, 'No goal yet.'].join('\n')
     lines.push(`Goal: ${goal.objective} — **${goal.status}**${goal.blocker ? ` (blocker: ${goal.blocker})` : ''}`)
     for (const id of goal.taskIds) {
       const t = this.store.requireTask(projectId, id)
       const last = t.attempts.at(-1)
       const receipt = last?.receiptId ? this.store.getReceipt(projectId, last.receiptId) : undefined
-      lines.push(`- [${t.state}] ${t.title} — attempts ${t.attempts.length}/${t.policy.maxAttempts}, worker ${formatModel(livePolicy(this.store.home, project, t).model.worker)}${receipt ? `, last receipt ${receipt.verdict}: ${receipt.reason}` : ''}`)
+      const lastReview = t.reviews?.at(-1)
+      lines.push(`- [${t.state}] ${t.title}${t.review ? ` (review${lastReview ? `: ${lastReview.approve ? 'approved' : `changes requested — ${lastReview.comments.slice(0, 120)}`}` : ''})` : ''} — attempts ${t.attempts.length}/${t.policy.maxAttempts}, worker ${formatModel(livePolicy(this.store.home, project, t).model.worker)}${receipt ? `, last receipt ${receipt.verdict}: ${receipt.reason}` : ''}`)
     }
     const open = this.store.listHumanGates(projectId, 'open')
     if (open.length) {

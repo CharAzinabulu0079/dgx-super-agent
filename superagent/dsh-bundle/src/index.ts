@@ -146,7 +146,7 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   tools.register(defineTool({
     name: 'superagent_add_task',
-    description: 'Add a Worker task to a goal. Gates are deterministic checks the independent verifier runs (e.g. {"id":"unit","kind":"command","command":"npm test"}); omit to use project defaults. worker_model is "provider/model" or "local-default".',
+    description: 'Add a Worker task to a goal. gates: ids from the project gate registry (e.g. ["unit","e2e"]; see superagent_status), omit for project defaults — you cannot define new gate commands. review: true asks the Reviewer to inspect the change after the gates pass. worker_model is "provider/model" or "local-default".',
     parameters: {
       project: { type: 'string', required: true },
       goal: { type: 'string', required: true },
@@ -154,7 +154,8 @@ export function apply(ctx: Context, config: Config = {}): void {
       instructions: { type: 'string', required: true },
       modules: { type: 'array', items: { type: 'string' } },
       paths: { type: 'array', items: { type: 'string' } },
-      gates: { type: 'array', items: { type: 'json' } },
+      gates: { type: 'array', items: { type: 'string' } },
+      review: { type: 'boolean' },
       worker_model: { type: 'string' },
       escalation_model: { type: 'string' },
     },
@@ -164,7 +165,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       const worker = model(args.worker_model)
       const escalation = model(args.escalation_model)
       const task = await callApi(apiUrl, 'POST', `/api/projects/${encodeURIComponent(args.project)}/goals/${encodeURIComponent(args.goal)}/tasks`, {
-        title: args.title, instructions: args.instructions, scope: { modules: args.modules ?? [], paths: args.paths ?? [] }, gates: args.gates ?? [],
+        title: args.title, instructions: args.instructions, scope: { modules: args.modules ?? [], paths: args.paths ?? [] }, gates: args.gates ?? [], review: args.review === true,
         policy: worker || escalation ? { model: { ...(worker ? { worker } : {}), ...(escalation ? { escalation } : {}) } } : undefined,
       }, exec.signal)
       return { taskId: task.id, model: task.policy.model }

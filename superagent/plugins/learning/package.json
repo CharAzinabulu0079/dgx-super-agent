@@ -10,7 +10,8 @@
     "@superagent/contracts": "workspace:*",
     "@superagent/project-state": "workspace:*",
     "@superagent/verifier": "workspace:*",
-    "@superagent/chief-worker": "workspace:*"
+    "@superagent/chief-worker": "workspace:*",
+    "@superagent/model-policy": "workspace:*"
   },
   "devDependencies": {
     "@superagent/testkit": "workspace:*",
