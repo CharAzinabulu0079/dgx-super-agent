@@ -3,7 +3,7 @@
  * `sa` — SuperAgent command line. Thin shell over the same runtime the API uses.
  * Run: `node superagent/cli/src/main.ts <command>` (or `pnpm sa <command>`).
  */
-import { chmodSync, existsSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { parseGateSpec, type GateSpec } from '@superagent/contracts'
@@ -33,7 +33,7 @@ const HELP = `sa — DGX Super Agent CLI
   sa arch hook [root]                           install a git pre-commit hook that refreshes .architecture/
   sa hygiene [root]                             repo hygiene gate (secrets, large files, artifacts)
 
-Environment: SUPERAGENT_HOME (state, default ~/.superagent), SUPERAGENT_TOKEN (API auth),
+Environment: SUPERAGENT_HOME (state, default ~/.superagent),
 DSH model credentials (e.g. DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL) for DSH Workers.`
 
 function gateArg(spec: string, i: number): GateSpec {
@@ -93,7 +93,7 @@ async function main(argv: string[]): Promise<number> {
     return 0
   }
   if (cmd === 'chief') {
-    console.log(`DSH_HOME=${dshHome} node_modules/.bin/dsh --profile ${CHIEF_PROFILE} web\n(run \`sa dsh setup\` first; keep \`sa serve\` running so the Chief's superagent_* tools reach the API)`)
+    console.log(`SUPERAGENT_ROLE=chief SUPERAGENT_AGENT_TOKEN=$(cat ${join(defaultHome(), 'secrets', 'agent-token')}) DSH_HOME=${dshHome} node_modules/.bin/dsh --profile ${CHIEF_PROFILE} web\n(run \`sa dsh setup\` first; start \`sa serve\` before this so the agent token exists)`)
     return 0
   }
   const workerPatches = [...(values.browser ? [BROWSER_PATCH] : []), ...(values['worker-patch'] ?? [])]
@@ -102,11 +102,15 @@ async function main(argv: string[]): Promise<number> {
   switch (cmd) {
     case 'serve': {
       const s = await startServer({
-        runtime: rt, port: Number(values.port ?? 7788), host: values.host, token: process.env.SUPERAGENT_TOKEN,
+        runtime: rt, port: Number(values.port ?? 7788), host: values.host,
         uiDir: join(REPO_ROOT, 'superagent/ui/dist'), watch: !values['no-watch'],
       })
       for (const p of store.listProjects()) engine.recoverInterrupted(p.id)
-      console.log(`SuperAgent API + UI on ${s.url}  (state: ${store.home})`)
+      // Agent token for the Chief launcher (0600, outside any worktree). The human token
+      // is printed once and kept only in this process's memory.
+      mkdirSync(join(store.home, 'secrets'), { recursive: true, mode: 0o700 })
+      writeFileSync(join(store.home, 'secrets', 'agent-token'), s.agentToken, { mode: 0o600 })
+      console.log(`SuperAgent API + UI: ${s.url}/?token=${s.humanToken}\n  (human link — keep private; valid until restart)  state: ${store.home}`)
       await new Promise(() => {})
       return 0
     }

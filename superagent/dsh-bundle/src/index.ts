@@ -9,11 +9,19 @@
  *   superagent_architecture  module graph queries: overview, module detail, impact
  *
  * Human Gates are deliberately NOT resolvable from a model tool (Freeze §6.3).
+ *
+ * Tools are role-scoped by SUPERAGENT_ROLE (`worker` | `chief`, default `chief`).
+ * Every session also gets the SuperAgent pre-tool guard (`ctx.tools.guard`), a
+ * monotonic deny DSH evaluates after `tools/pre-execute` and before the tool runs,
+ * including nested PTC/workflow/subagent dispatches.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { parseWorkerReport } from '@superagent/contracts'
+import { readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { now, parseWorkerReport } from '@superagent/contracts'
 import { StateStore } from '@superagent/project-state'
+import { decideToolCall, type ToolPolicy } from '@superagent/loop-policy'
 
 export const name = 'superagent-tools'
 export const inject = ['tools']
@@ -25,7 +33,7 @@ export interface Config {
 const text = (value: string) => [{ type: 'text' as const, text: value }]
 
 async function callApi(apiUrl: string, method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<any> {
-  const token = process.env.SUPERAGENT_TOKEN
+  const token = process.env.SUPERAGENT_AGENT_TOKEN
   const res = await fetch(`${apiUrl}${path}`, {
     method,
     signal,
@@ -47,8 +55,39 @@ export function apply(ctx: Context, config: Config = {}): void {
     workerId: process.env.SUPERAGENT_WORKER_ID,
   }
 
-  if (worker.home && worker.projectId && worker.taskId && worker.workerId) {
-    const store = new StateStore(worker.home)
+  const role = process.env.SUPERAGENT_ROLE === 'worker' ? 'worker' : 'chief'
+  const isWorker = role === 'worker' && !!(worker.home && worker.projectId && worker.taskId && worker.workerId)
+  const store = worker.home ? new StateStore(worker.home) : undefined
+
+  // ---- pre-tool guard (all roles) ------------------------------------------
+  let policy: ToolPolicy = {
+    role, projectRoot: process.cwd(), verificationPaths: [], protectedModulePaths: [], approvedActions: [],
+    forbiddenPaths: worker.home ? [worker.home] : [], apiOrigins: [], productionWrite: false, tempRoots: [tmpdir(), '/tmp'],
+  }
+  if (process.env.SUPERAGENT_WORKER_POLICY) {
+    // Fail closed: a Worker whose policy file is unreadable must not run unguarded.
+    try {
+      policy = JSON.parse(readFileSync(process.env.SUPERAGENT_WORKER_POLICY, 'utf8')) as ToolPolicy
+    } catch (unreadable) {
+      tools.guard(() => `SuperAgent policy unavailable (${String(unreadable)}); all tools are blocked for this Worker`)
+    }
+  }
+  ctx.effect(() => tools.guard((exec: { name: string; arguments: unknown }) => {
+    const args = (exec.arguments && typeof exec.arguments === 'object' ? exec.arguments : {}) as Record<string, unknown>
+    const d = decideToolCall(policy, exec.name, args)
+    if (d.allow) return undefined
+    if (isWorker && store) {
+      const at = now()
+      store.appendBlockedAction(worker.projectId!, worker.workerId!, { fingerprint: d.fingerprint, tool: exec.name, summary: d.summary, category: d.category, rule: d.rule, workerId: worker.workerId, taskId: worker.taskId, at })
+      store.appendReport(worker.projectId!, worker.workerId!, parseWorkerReport({
+        kind: 'blocker', current_state: `blocked: ${d.rule}`, progress: 0, verification_result: 'not_run',
+        blocker: `${d.category}: ${d.summary}`, next_action: 'awaiting human approval', human_required: true, summary: `pre-tool guard blocked ${exec.name}`,
+      }, { task_id: worker.taskId!, model: { provider: process.env.SUPERAGENT_MODEL_PROVIDER ?? 'unknown', model: process.env.SUPERAGENT_MODEL ?? 'unknown' } }))
+    }
+    return `SuperAgent policy blocked this call before execution (${d.category}: ${d.rule}). A human must approve it; the request has been recorded. Do not retry or work around it — continue with other work, or finish and report human_required.`
+  }))
+
+  if (isWorker && store) {
     tools.register(defineTool({
       name: 'superagent_report',
       description: 'Report structured progress, a blocker, or your final result to the SuperAgent Chief. Your claim is recorded but an independent verifier decides PASS. Set human_required only for product-direction, irreversible-data, permission, production, or architecture-boundary decisions.',
@@ -75,6 +114,8 @@ export function apply(ctx: Context, config: Config = {}): void {
       },
     }))
   }
+
+  if (role !== 'chief') return
 
   tools.register(defineTool({
     name: 'superagent_status',

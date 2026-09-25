@@ -188,3 +188,26 @@ test('re-running a goal resumes a task the human stopped', async () => {
   const r = await chief.runGoal(project.id, goal.id)
   assert.equal(r.tasks[0]!.state, 'passed')
 })
+
+test('blocked actions open a Human Gate; approval grants exactly those fingerprints to the next attempt policy', async () => {
+  const policies: string[][] = []
+  const { store, engine, chief, project, goal } = setup(input => {
+    policies.push([...(input.toolPolicy?.approvedActions ?? [])])
+    if (input.attempt === 1) {
+      store.appendBlockedAction(input.project.id, input.worker.id, { fingerprint: 'fp-rm-data', tool: 'bash', summary: 'bash: rm -rf data', category: 'irreversible-data', rule: 'recursive delete', at: new Date().toISOString() })
+      writeFileSync(join(input.project.root, 'src/calc.js'), FIXED_CALC) // green gates do not override the block
+      return
+    }
+  })
+  const r1 = await chief.runGoal(project.id, goal.id)
+  assert.equal(r1.tasks[0]!.state, 'human_gate')
+  const gate = store.listHumanGates(project.id, 'open')[0]!
+  assert.equal(gate.reason, 'irreversible-data')
+  assert.deepEqual(gate.actions!.map(a => a.fingerprint), ['fp-rm-data'])
+  const t = engine.resolveHumanGate(project.id, gate.id, 'approved', 'fine')!
+  assert.equal(t.state, 'pending')
+  assert.match(t.steer!, /rm -rf data/)
+  const r2 = await chief.runGoal(project.id, goal.id)
+  assert.equal(r2.tasks[0]!.state, 'passed')
+  assert.deepEqual(policies, [[], ['fp-rm-data']])
+})

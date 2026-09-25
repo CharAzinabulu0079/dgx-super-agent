@@ -5,12 +5,12 @@
  * failures (build/test/lint/E2E) are retried by the loop; only the §6.3 cases
  * escalate to a Human Gate.
  */
-import type { Attempt, HumanGateReason, Receipt, RetryStrategy, Task, WorkerReport } from '@superagent/contracts'
+import type { Attempt, BlockedAction, HumanGateReason, Receipt, RetryStrategy, Task, WorkerReport } from '@superagent/contracts'
 
 export type LoopDecision =
   | { readonly action: 'pass'; readonly reason: string }
   | { readonly action: 'retry'; readonly strategy: RetryStrategy; readonly reason: string; readonly switched: boolean }
-  | { readonly action: 'human_gate'; readonly reason: HumanGateReason; readonly detail: string }
+  | { readonly action: 'human_gate'; readonly reason: HumanGateReason; readonly detail: string; readonly actions?: readonly BlockedAction[] }
 
 export interface LoopInput {
   readonly task: Task
@@ -19,6 +19,8 @@ export interface LoopInput {
   readonly receipt: Pick<Receipt, 'verdict' | 'reason' | 'changedModules' | 'integrity'>
   readonly lastReport?: WorkerReport
   readonly protectedModules: readonly string[]
+  /** Tool calls the pre-tool guard blocked during this attempt. */
+  readonly blockedActions?: readonly BlockedAction[]
 }
 
 /** Strategies usable under this policy (escalate-model requires an escalation model). */
@@ -43,6 +45,12 @@ export function decideNext(input: LoopInput): LoopDecision {
   const last = attempts.at(-1)
   if (!last) throw new Error('decideNext requires at least one completed attempt')
 
+  // Blocked dangerous actions need a human before anything else, green or not.
+  const blocked = input.blockedActions ?? []
+  if (blocked.length) {
+    const unique = [...new Map(blocked.map(a => [a.fingerprint, a])).values()]
+    return { action: 'human_gate', reason: unique[0]!.category, detail: `blocked before execution: ${unique.map(a => `[${a.category}] ${a.rule} — ${a.summary}`).join('; ')}`, actions: unique }
+  }
   const touchedProtected = receipt.changedModules.filter(m => input.protectedModules.includes(m))
   if (touchedProtected.length) {
     return { action: 'human_gate', reason: 'protected-module', detail: `attempt ${last.n} changed protected modules: ${touchedProtected.join(', ')}` }

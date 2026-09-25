@@ -21,7 +21,7 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import {
   now, newId,
-  type Goal, type GoalId, type HumanGate, type HumanGateId, type Project, type ProjectId, type Receipt, type ReceiptId,
+  type BlockedAction, type Goal, type GoalId, type HumanGate, type HumanGateId, type Project, type ProjectId, type Receipt, type ReceiptId,
   type SuperAgentEvent, type SuperAgentEventType, type Task, type TaskId, type Worker, type WorkerId, type WorkerReport,
 } from '@superagent/contracts'
 
@@ -240,6 +240,22 @@ export class StateStore {
     return stored
   }
 
+  /**
+   * Record a tool call the pre-tool guard blocked. Written by the guard inside the
+   * Worker's DSH process; kept outside the worktree (Worker sandbox cannot write it).
+   */
+  appendBlockedAction(pid: ProjectId, workerId: WorkerId, action: BlockedAction): void {
+    const dir = join(this.projectDir(pid), 'blocked')
+    mkdirSync(dir, { recursive: true })
+    appendFileSync(join(dir, `${workerId}.jsonl`), `${JSON.stringify(action)}\n`)
+  }
+
+  readBlockedActions(pid: ProjectId, workerId: WorkerId): BlockedAction[] {
+    const file = join(this.projectDir(pid), 'blocked', `${workerId}.jsonl`)
+    if (!existsSync(file)) return []
+    return readFileSync(file, 'utf8').split('\n').filter(Boolean).map(line => JSON.parse(line) as BlockedAction)
+  }
+
   readReports(pid: ProjectId, workerId: WorkerId): WorkerReport[] {
     const file = join(this.projectDir(pid), 'reports', `${workerId}.jsonl`)
     if (!existsSync(file)) return []
@@ -268,7 +284,7 @@ export class StateStore {
   openHumanGate(gate: Omit<HumanGate, 'id' | 'createdAt' | 'status'>): HumanGate {
     const record: HumanGate = { ...gate, id: newId('hg'), status: 'open', createdAt: now() }
     this.put('human-gates', record)
-    this.appendEvent({ type: 'human-gate/opened', projectId: gate.projectId, taskId: gate.taskId, data: { humanGateId: record.id, reason: gate.reason, detail: gate.detail } })
+    this.appendEvent({ type: 'human-gate/opened', projectId: gate.projectId, taskId: gate.taskId, data: { humanGateId: record.id, reason: gate.reason, detail: gate.detail, actions: gate.actions?.length ?? 0 } })
     return record
   }
   getHumanGate(pid: ProjectId, id: HumanGateId): HumanGate | undefined { return this.readJson(this.recordPath(pid, 'human-gates', id)) }

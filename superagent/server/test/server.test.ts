@@ -42,7 +42,7 @@ test('API: project → goal → task → run → PASS, SSE stream, architecture,
     }),
   })
   const token = 'test-token'
-  const server = await startServer({ runtime, port: 0, token })
+  const server = await startServer({ runtime, port: 0, humanToken: token, protectReads: true })
   try {
     await assert.rejects(api(server.url, 'GET', '/api/projects'), (e: any) => e.status === 401)
     const p = await api(server.url, 'POST', '/api/projects', { name: 'calc', root, defaultGates: [NODE_TEST_GATE] }, token)
@@ -112,6 +112,30 @@ test('API refuses cross-origin and non-JSON POSTs (CSRF guard)', async () => {
     assert.equal(foreign.status, 403)
     const same = await fetch(`${server.url}/api/projects`, { headers: { origin: server.url } })
     assert.equal(same.status, 200)
+  } finally {
+    await server.close()
+  }
+})
+
+test('privilege split: Workers (no token) and agents cannot resolve Human Gates or define gates; humans can', async () => {
+  const root = calcProject()
+  const runtime = createRuntime({ home: tempDir('sa-home-'), executor: new ScriptedExecutor(i => { i.report({ kind: 'blocker', current_state: 'q', progress: 0, changed_modules: [], verification_result: 'not_run', blocker: 'drop prod?', next_action: null, human_required: true, summary: '' }) }) })
+  const server = await startServer({ runtime, port: 0 })
+  try {
+    await assert.rejects(api(server.url, 'POST', '/api/projects', { name: 'calc', root }, server.agentToken), (e: any) => e.status === 403)
+    await api(server.url, 'POST', '/api/projects', { name: 'calc', root, defaultGates: [NODE_TEST_GATE] }, server.humanToken)
+    const goal = await api(server.url, 'POST', '/api/projects/calc/goals', { objective: 'x' }, server.agentToken)
+    await assert.rejects(api(server.url, 'POST', `/api/projects/calc/goals/${goal.id}/tasks`, { title: 't', instructions: 'i', gates: [{ id: 'pwn', kind: 'command', command: 'exit 0', required: true }] }, server.agentToken), (e: any) => e.status === 400 && /registry/.test(e.message))
+    const t = await api(server.url, 'POST', `/api/projects/calc/goals/${goal.id}/tasks`, { title: 't', instructions: 'i', gates: ['unit'], grants: { mayModifyVerification: true } }, server.agentToken)
+    assert.equal(t.grants, undefined, 'agents cannot grant themselves permissions')
+    await api(server.url, 'POST', `/api/projects/calc/goals/${goal.id}/run`, {}, server.agentToken)
+    const blocked = await until(() => api(server.url, 'GET', '/api/projects/calc'), d => d.goal?.status === 'blocked')
+    const hg = blocked.humanGates.find((g: any) => g.status === 'open')
+    await assert.rejects(api(server.url, 'POST', `/api/projects/calc/human-gates/${hg.id}`, { decision: 'approved' }), (e: any) => e.status === 401)
+    await assert.rejects(api(server.url, 'POST', `/api/projects/calc/human-gates/${hg.id}`, { decision: 'approved' }, server.agentToken), (e: any) => e.status === 403)
+    await assert.rejects(api(server.url, 'POST', `/api/projects/calc/human-gates/${hg.id}`, { decision: 'approved' }, 'guessed-token'), (e: any) => e.status === 401)
+    const ok = await api(server.url, 'POST', `/api/projects/calc/human-gates/${hg.id}`, { decision: 'rejected' }, server.humanToken)
+    assert.equal(ok.gate.status, 'rejected')
   } finally {
     await server.close()
   }

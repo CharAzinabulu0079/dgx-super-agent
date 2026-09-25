@@ -4,8 +4,10 @@
  * none of them touches the store directly.
  *
  * Binds 127.0.0.1 by default. Exposing it further is a Human Gate decision
- * (Freeze §6.3); set SUPERAGENT_TOKEN to require `Authorization: Bearer`.
+ * (Freeze §6.3). Privileges: anonymous (reads), agent token (Chief tools), human token
+ * (Human Gates, policy, registry, project registration) — see ADR-0013.
  */
+import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { existsSync, readFileSync, statSync, watch, type FSWatcher } from 'node:fs'
 import { extname, join, normalize, resolve } from 'node:path'
@@ -13,12 +15,22 @@ import type { AddressInfo } from 'node:net'
 import { parseGateSpec, type Project, type SuperAgentEvent } from '@superagent/contracts'
 import { parseModelSpec } from '@superagent/model-policy'
 import type { SuperAgentRuntime } from './runtime.ts'
+import { GateRegistryError } from '@superagent/chief-worker'
 
 export interface ServerOptions {
   readonly runtime: SuperAgentRuntime
   readonly host?: string
   readonly port?: number
-  readonly token?: string
+  /**
+   * Human credential for privileged actions (resolve Human Gates, edit policy/registry,
+   * promote memory, register projects). Defaults to a random value held only in memory,
+   * printed by `sa serve`; it is never written to disk or passed to Workers.
+   */
+  readonly humanToken?: string
+  /** Credential for Chief/agent clients (goals, tasks by registry id, runs). Default random. */
+  readonly agentToken?: string
+  /** Also require a token for reads (default: reads open on localhost). */
+  readonly protectReads?: boolean
   /** Directory with the built UI (`superagent/ui/dist`). */
   readonly uiDir?: string
   /** Watch registered project trees and rescan architecture on change. */
@@ -28,6 +40,8 @@ export interface ServerOptions {
 
 export interface RunningServer {
   readonly url: string
+  readonly humanToken: string
+  readonly agentToken: string
   readonly server: Server
   close(): Promise<void>
 }
@@ -40,7 +54,18 @@ class HttpError extends Error {
   }
 }
 
-type Handler = (ctx: { req: IncomingMessage; res: ServerResponse; params: Record<string, string>; body: any; query: URLSearchParams }) => unknown | Promise<unknown>
+export type Role = 'human' | 'agent' | 'anonymous'
+type Level = 'read' | 'agent' | 'human'
+type Handler = (ctx: { req: IncomingMessage; res: ServerResponse; params: Record<string, string>; body: any; query: URLSearchParams; role: Role }) => unknown | Promise<unknown>
+
+const RANK: Record<Role, number> = { anonymous: 0, agent: 1, human: 2 }
+const NEED: Record<Level, number> = { read: 0, agent: 1, human: 2 }
+
+function sameSecret(a: string, b: string): boolean {
+  const x = Buffer.from(a)
+  const y = Buffer.from(b)
+  return x.length === y.length && timingSafeEqual(x, y)
+}
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
@@ -50,11 +75,20 @@ const MIME: Record<string, string> = {
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
   const { runtime } = options
   const { store, engine, chief, observatory } = runtime
-  const routes: Array<{ method: string; pattern: RegExp; keys: string[]; handler: Handler }> = []
-  const route = (method: string, path: string, handler: Handler): void => {
+  const humanToken = options.humanToken ?? randomBytes(24).toString('base64url')
+  const agentToken = options.agentToken ?? randomBytes(24).toString('base64url')
+  const roleOf = (req: IncomingMessage, url: URL): Role => {
+    const header = req.headers.authorization?.replace(/^Bearer\s+/i, '')
+    const given = header ?? url.searchParams.get('token') ?? ''
+    if (given && sameSecret(given, humanToken)) return 'human'
+    if (given && sameSecret(given, agentToken)) return 'agent'
+    return 'anonymous'
+  }
+  const routes: Array<{ method: string; pattern: RegExp; keys: string[]; level: Level; handler: Handler }> = []
+  const route = (method: string, path: string, handler: Handler, level: Level = method === 'GET' ? 'read' : 'agent'): void => {
     const keys: string[] = []
     const pattern = new RegExp(`^${path.replace(/:(\w+)/g, (_, k: string) => { keys.push(k); return '([^/]+)' })}$`)
-    routes.push({ method, pattern, keys, handler })
+    routes.push({ method, pattern, keys, level, handler })
   }
   const project = (pid: string): Project => {
     const p = store.getProject(pid)
@@ -73,7 +107,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     const p = await runtime.addProject({ name: body.name, root: body.root, defaultGates: gates, protectedModules: body.protectedModules ?? [] })
     watchProject(p)
     return p
-  })
+  }, 'human')
   route('GET', '/api/projects/:pid', ({ params }) => {
     const p = project(params.pid!)
     const goal = store.currentGoal(p.id)
@@ -94,9 +128,17 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     if (typeof body?.objective !== 'string' || !body.objective.trim()) throw new HttpError(400, 'objective is required')
     return chief.createGoal(project(params.pid!).id, body.objective.trim())
   })
-  route('POST', '/api/projects/:pid/goals/:gid/tasks', ({ params, body }) => {
+  route('POST', '/api/projects/:pid/goals/:gid/tasks', ({ params, body, role }) => {
     if (typeof body?.title !== 'string' || typeof body?.instructions !== 'string') throw new HttpError(400, 'title and instructions are required')
-    return chief.addTask(project(params.pid!).id, params.gid!, body)
+    // Grants are human-only; agents may only reference registry gates (ADR-0012).
+    const { grants: _ignored, ...input } = body
+    void _ignored
+    try {
+      return chief.addTask(project(params.pid!).id, params.gid!, input, role === 'human' ? 'human' : 'agent')
+    } catch (error) {
+      if (error instanceof GateRegistryError) throw new HttpError(400, error.message)
+      throw error
+    }
   })
   route('POST', '/api/projects/:pid/goals/:gid/run', ({ params }) => {
     const p = project(params.pid!)
@@ -117,21 +159,21 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   })
   route('POST', '/api/projects/:pid/tasks/:tid/model', ({ params, body }) => {
     const p = project(params.pid!)
-    const role = body?.role ?? 'worker'
-    if (!['planner', 'worker', 'reviewer', 'escalation'].includes(role)) throw new HttpError(400, `invalid role ${role}`)
+    const modelRole = body?.role ?? 'worker'
+    if (!['planner', 'worker', 'reviewer', 'escalation'].includes(modelRole)) throw new HttpError(400, `invalid role ${modelRole}`)
     const model = parseModelSpec(String(body?.model ?? ''))
     if (!model) throw new HttpError(400, 'model must be "provider/model" or "local-default"')
     const task = store.requireTask(p.id, params.tid!)
     if (engine.isRunning(task.id)) throw new HttpError(409, 'task is running; stop it first')
-    return store.updateTask(p.id, task.id, { policy: { ...task.policy, model: { ...task.policy.model, [role]: model } } })
-  })
+    return store.updateTask(p.id, task.id, { policy: { ...task.policy, model: { ...task.policy.model, [modelRole]: model } } })
+  }, 'human')
   route('POST', '/api/projects/:pid/human-gates/:hid', ({ params, body }) => {
     const decision = body?.decision
     if (decision !== 'approved' && decision !== 'rejected') throw new HttpError(400, 'decision must be approved|rejected')
     const p = project(params.pid!)
     const task = engine.resolveHumanGate(p.id, params.hid!, decision, String(body?.resolution ?? ''))
     return { gate: store.getHumanGate(p.id, params.hid!), task: task ?? null }
-  })
+  }, 'human')
   route('GET', '/api/projects/:pid/receipts', ({ params, query }) => store.listReceipts(project(params.pid!).id, query.get('task') ?? undefined))
   route('GET', '/api/projects/:pid/workers/:wid/reports', ({ params }) => store.readReports(project(params.pid!).id, params.wid!))
   route('GET', '/api/projects/:pid/events', ({ params, query }) => store.readEvents(project(params.pid!).id, Number(query.get('since') ?? 0), Number(query.get('limit') ?? 500)))
@@ -145,7 +187,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   route('POST', '/api/learning/:cid/decide', ({ params, body }) => {
     if (typeof body?.approved !== 'boolean') throw new HttpError(400, 'approved (boolean) is required')
     return runtime.learning.decideMemory(params.cid!, body.approved, String(body.note ?? ''))
-  })
+  }, 'human')
 
   // ---------------------------------------------------------------- architecture
   route('GET', '/api/projects/:pid/architecture', async ({ params }) => {
@@ -211,8 +253,9 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
         const origin = req.headers.origin
         if (origin && origin !== `http://${req.headers.host}`) throw new HttpError(403, 'cross-origin request refused')
         if (req.method === 'POST' && !String(req.headers['content-type'] ?? '').startsWith('application/json')) throw new HttpError(415, 'POST requires application/json')
-        if (options.token && req.headers.authorization !== `Bearer ${options.token}` && url.searchParams.get('token') !== options.token) throw new HttpError(401, 'unauthorized')
+        const role = roleOf(req, url)
         if (url.pathname === '/api/events/stream') {
+          if (options.protectReads && role === 'anonymous') throw new HttpError(401, 'unauthorized')
           res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' })
           res.write(': connected\n\n')
           const client = { res, project: url.searchParams.get('project') ?? undefined, cursor: new Map<string, number>() }
@@ -225,8 +268,10 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
           const m = r.pattern.exec(url.pathname)
           if (!m) continue
           const params = Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1]!)]))
+          const need = r.level === 'read' && options.protectReads ? NEED.agent : NEED[r.level]
+          if (RANK[role] < need) throw new HttpError(role === 'anonymous' ? 401 : 403, `${r.level} credential required`)
           const body = req.method === 'POST' ? await readBody(req) : undefined
-          const result = await r.handler({ req, res, params, body, query: url.searchParams })
+          const result = await r.handler({ req, res, params, body, query: url.searchParams, role })
           sendJson(res, 200, result ?? null)
           return
         }
@@ -249,8 +294,12 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
 
   await new Promise<void>(res => server.listen(options.port ?? 7788, options.host ?? '127.0.0.1', res))
   const addr = server.address() as AddressInfo
+  const url = `http://${addr.address}:${addr.port}`
+  engine.setApiOrigins([url, `http://localhost:${addr.port}`])
   return {
-    url: `http://${addr.address}:${addr.port}`,
+    url,
+    humanToken,
+    agentToken,
     server,
     close: async () => {
       clearInterval(pump)

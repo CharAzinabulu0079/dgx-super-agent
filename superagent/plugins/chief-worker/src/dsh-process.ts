@@ -3,10 +3,23 @@ import { spawn } from 'node:child_process'
 import { appendFileSync } from 'node:fs'
 import { dshBin } from '@superagent/testkit'
 
+/** API credentials never reach a Worker process (it could otherwise resolve Human Gates over HTTP). */
+export const SCRUBBED_WORKER_ENV = ['SUPERAGENT_TOKEN', 'SUPERAGENT_HUMAN_TOKEN', 'SUPERAGENT_AGENT_TOKEN']
+
+export function workerEnv(extra: Record<string, string | undefined>): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env }
+  for (const [k, v] of Object.entries(extra)) {
+    if (v === undefined) delete env[k]
+    else env[k] = v
+  }
+  for (const k of SCRUBBED_WORKER_ENV) delete env[k]
+  return env
+}
+
 export interface DshStreamOptions {
   readonly args: readonly string[]
   readonly cwd: string
-  readonly env: Record<string, string>
+  readonly env: Record<string, string | undefined>
   readonly timeoutMs: number
   readonly signal: AbortSignal
   readonly onEvent: (event: Record<string, unknown>) => void
@@ -23,7 +36,7 @@ export function runDshStreaming(options: DshStreamOptions): Promise<DshStreamRes
   return new Promise(resolve => {
     const child = spawn(dshBin(), [...options.args], {
       cwd: options.cwd,
-      env: { ...process.env, ...options.env },
+      env: workerEnv(options.env),
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: true,
     })

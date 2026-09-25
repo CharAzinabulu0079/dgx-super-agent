@@ -333,6 +333,20 @@ export interface HumanGate {
   readonly createdAt: IsoTime
   readonly resolvedAt?: IsoTime
   readonly resolution?: string
+  /** Tool calls blocked before execution; approval authorizes exactly these fingerprints. */
+  readonly actions?: readonly BlockedAction[]
+}
+
+/** A tool call the pre-tool guard denied, pending a human decision. */
+export interface BlockedAction {
+  readonly fingerprint: string
+  readonly tool: string
+  readonly summary: string
+  readonly category: HumanGateReason
+  readonly rule: string
+  readonly workerId?: WorkerId
+  readonly taskId?: TaskId
+  readonly at: IsoTime
 }
 
 // ---------------------------------------------------------------- events

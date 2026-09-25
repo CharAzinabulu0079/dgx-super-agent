@@ -10,7 +10,11 @@
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
-  "files": ["lib/index.js", "cordis.patch.yml", "patches/*.yml"],
+  "files": [
+    "lib/index.js",
+    "cordis.patch.yml",
+    "patches/*.yml"
+  ],
   "scripts": {
     "build": "node build.mjs"
   },
@@ -30,6 +34,7 @@
   "devDependencies": {
     "@superagent/contracts": "workspace:*",
     "@superagent/project-state": "workspace:*",
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "@superagent/loop-policy": "workspace:*"
   }
 }

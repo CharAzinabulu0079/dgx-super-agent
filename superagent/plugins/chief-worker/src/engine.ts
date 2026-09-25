@@ -10,7 +10,10 @@ import type { Attempt, GateSpec, HumanGate, Project, Receipt, RetryStrategy, Tas
 import { TERMINAL_TASK_STATES, now, parseWorkerReport } from '@superagent/contracts'
 import type { StateStore } from '@superagent/project-state'
 import { checkIntegrity, createMarker, headOf, isGitWorkTree, receiptSignature, snapshotCommit, changedBetween, type Verifier } from '@superagent/verifier'
-import { availableStrategies, decideNext, type LoopDecision } from '@superagent/loop-policy'
+import { availableStrategies, decideNext, type LoopDecision, type ToolPolicy } from '@superagent/loop-policy'
+import { DEFAULT_VERIFICATION_POLICY } from '@superagent/verifier'
+import { execFileSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
 import { modelForStrategy } from '@superagent/model-policy'
 import type { AttemptFeedback, WorkerExecutor } from './executor.ts'
 import { mkdirSync } from 'node:fs'
@@ -35,6 +38,8 @@ export interface EngineOptions {
   readonly onChiefWake?: (wake: ChiefWake) => void | Promise<void>
   /** Promoted memory for a project, injected into Worker prompts. */
   readonly memory?: (projectId: string) => readonly string[]
+  /** SuperAgent API origins a Worker must not call directly (pre-tool guard). */
+  readonly apiOrigins?: readonly string[]
 }
 
 export interface ChiefWake {
@@ -58,6 +63,7 @@ export class LoopEngine {
   readonly architecture?: ArchitectureHooks
   private readonly onChiefWake?: EngineOptions['onChiefWake']
   private readonly memory?: EngineOptions['memory']
+  private apiOrigins: readonly string[]
   private readonly running = new Map<string, AbortController>()
 
   constructor(options: EngineOptions) {
@@ -67,6 +73,39 @@ export class LoopEngine {
     this.architecture = options.architecture
     this.onChiefWake = options.onChiefWake
     this.memory = options.memory
+    this.apiOrigins = options.apiOrigins ?? []
+  }
+
+  /** Tell the pre-tool guard which API origins Workers must not call (set by the server). */
+  setApiOrigins(origins: readonly string[]): void {
+    this.apiOrigins = [...new Set([...this.apiOrigins, ...origins])]
+  }
+
+  /**
+   * The pre-tool policy for one attempt, from trusted inputs only: the task baseline
+   * snapshot (not the Worker-writable tree), the store, and human grants.
+   */
+  toolPolicyFor(project: Project, task: Task): ToolPolicy {
+    const gates = this.gatesFor(project, task)
+    const verificationPaths = task.grants?.mayModifyVerification ? [] : [
+      ...(project.verification?.protectedPaths ?? DEFAULT_VERIFICATION_POLICY.protectedPaths),
+      ...gates.flatMap(g => g.assets ?? []),
+    ]
+    let declared: { modules?: Array<{ id: string; paths: string[]; protected?: boolean }> } = {}
+    if (task.baseline?.snapshot) {
+      try {
+        declared = JSON.parse(execFileSync('git', ['show', `${task.baseline.snapshot}:.architecture/declared.json`], { cwd: project.root, stdio: ['ignore', 'pipe', 'ignore'] }).toString('utf8'))
+      } catch (absent) {
+        void absent // no declared architecture at baseline
+      }
+    }
+    const protectedModulePaths = (declared.modules ?? []).filter(m => m.protected || project.protectedModules.includes(m.id)).flatMap(m => m.paths)
+    return {
+      role: 'worker', projectRoot: project.root, verificationPaths, protectedModulePaths,
+      approvedActions: (task.grants?.approvedActions ?? []).map(a => a.fingerprint),
+      forbiddenPaths: [this.store.home], apiOrigins: this.apiOrigins,
+      productionWrite: task.policy.production_write, tempRoots: [...new Set([tmpdir(), '/tmp'])],
+    }
   }
 
   gatesFor(project: Project, task: Task): GateSpec[] {
@@ -140,6 +179,7 @@ export class LoopEngine {
           previousSessionId: strategy === 'retry-with-feedback' ? previousSessionId : undefined,
           steer,
           memory: this.memory?.(projectId),
+          toolPolicy: this.toolPolicyFor(project, task),
           stateHome: this.store.home,
           report: partial => {
             const report = parseWorkerReport(partial, { task_id: taskId, model })
@@ -192,7 +232,8 @@ export class LoopEngine {
         })
         task = this.store.updateTask(projectId, taskId, { attempts: task.attempts })
 
-        const decision = decideNext({ task, attempts: task.attempts, receipt, lastReport, protectedModules: project.protectedModules })
+        const blockedActions = this.store.readBlockedActions(projectId, worker.id)
+        const decision = decideNext({ task, attempts: task.attempts, receipt, lastReport, protectedModules: project.protectedModules, blockedActions })
         this.store.emitTyped('loop/decision', projectId, { attempt: n, decision, workerExit: output.exit }, { taskId, goalId: task.goalId })
 
         const outcome = await this.apply(project, task, decision, receipts)
@@ -221,7 +262,7 @@ export class LoopEngine {
         return undefined
       }
       case 'human_gate': {
-        const gate = this.store.openHumanGate({ projectId: pid, taskId: task.id, reason: decision.reason, detail: decision.detail })
+        const gate = this.store.openHumanGate({ projectId: pid, taskId: task.id, reason: decision.reason, detail: decision.detail, actions: decision.actions })
         const blocked = this.store.updateTask(pid, task.id, { state: 'human_gate', humanGateId: gate.id })
         await this.wake({ projectId: pid, taskId: task.id, goalId: task.goalId, reason: 'human-gate', detail: `${decision.reason}: ${decision.detail}` })
         return { task: blocked, receipts, humanGate: gate }
@@ -246,6 +287,16 @@ export class LoopEngine {
     if (task.state !== 'human_gate' || task.humanGateId !== gateId) return task
     if (decision === 'rejected') return this.store.updateTask(projectId, task.id, { state: 'failed' })
     const last = task.attempts.at(-1)
+    if (gate.actions?.length) {
+      // Approval authorizes exactly the blocked tool calls (by fingerprint) for this task.
+      const approved = [...(task.grants?.approvedActions ?? []), ...gate.actions.map(a => ({ fingerprint: a.fingerprint, summary: a.summary, approvedAt: now() }))]
+      return this.store.updateTask(projectId, task.id, {
+        state: 'pending', grants: { ...task.grants, approvedActions: approved },
+        steer: [`A human approved: ${gate.actions.map(a => a.summary).join('; ')}. You may perform exactly these actions now.`, resolution].filter(Boolean).join(' '),
+        nextStrategy: availableStrategies(task)[0],
+        policy: { ...task.policy, maxAttempts: task.attempts.length + task.policy.maxAttempts },
+      })
+    }
     if ((gate.reason === 'protected-module' || gate.reason === 'verification-change') && last?.verdict === 'PASS') {
       return this.store.updateTask(projectId, task.id, { state: 'passed', grants: { ...task.grants, mayModifyVerification: gate.reason === 'verification-change' ? true : task.grants?.mayModifyVerification } })
     }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T19:51:31.363Z",
-  "commit": "3f11676",
+  "generatedAt": "2026-09-25T19:59:25.103Z",
+  "commit": "8c1ccac",
   "layers": [
     "foundation",
     "capability",
@@ -89,7 +89,7 @@
       "layer": "capability",
       "root": "superagent/plugins/project-state",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 4,
       "declared": true,
@@ -126,8 +126,7 @@
       "layer": "capability",
       "root": "superagent/plugins/verifier",
       "status": [
-        "protected",
-        "changing"
+        "protected"
       ],
       "files": 8,
       "declared": true,
@@ -165,21 +164,23 @@
       "status": [
         "changing"
       ],
-      "files": 4,
+      "files": 6,
       "declared": true,
       "protected": false,
       "dependsOn": [
         "contracts"
       ],
       "usedBy": [
-        "chief-worker"
+        "chief-worker",
+        "dsh-bundle"
       ],
       "gates": [
         "unit"
       ],
       "adrs": [],
       "tests": [
-        "superagent/plugins/loop-policy/test/policy.test.ts"
+        "superagent/plugins/loop-policy/test/policy.test.ts",
+        "superagent/plugins/loop-policy/test/tool-policy.test.ts"
       ],
       "entry": "superagent/plugins/loop-policy/src/index.ts",
       "description": "Retry / strategy switch / Human Gate decisions",
@@ -332,7 +333,7 @@
       "layer": "interface",
       "root": "superagent/server",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 6,
       "declared": true,
@@ -370,7 +371,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 2,
       "declared": true,
@@ -420,13 +421,14 @@
       "layer": "interface",
       "root": "superagent/dsh-bundle",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 5,
       "declared": true,
       "protected": false,
       "dependsOn": [
         "contracts",
+        "loop-policy",
         "project-state"
       ],
       "usedBy": [],
@@ -445,9 +447,9 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 6,
+      "files": 7,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -467,6 +469,7 @@
         "superagent/evals/test/chief-tools.integration.test.ts",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts",
         "superagent/evals/test/model-route.integration.test.ts",
+        "superagent/evals/test/pre-tool-guard.integration.test.ts",
         "superagent/evals/test/ui.e2e.test.ts"
       ],
       "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
@@ -565,11 +568,12 @@
     {
       "from": "chief-worker",
       "to": "loop-policy",
-      "weight": 1,
+      "weight": 2,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/plugins/chief-worker/src/engine.ts → @superagent/loop-policy"
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/loop-policy",
+        "superagent/plugins/chief-worker/src/executor.ts → @superagent/loop-policy"
       ]
     },
     {
@@ -704,6 +708,16 @@
     },
     {
       "from": "dsh-bundle",
+      "to": "loop-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/dsh-bundle/src/index.ts → @superagent/loop-policy"
+      ]
+    },
+    {
+      "from": "dsh-bundle",
       "to": "project-state",
       "weight": 1,
       "typeOnly": false,
@@ -715,7 +729,7 @@
     {
       "from": "evals",
       "to": "chief-worker",
-      "weight": 5,
+      "weight": 6,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -723,37 +737,39 @@
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/model-route.integration.test.ts → @superagent/chief-worker",
-        "superagent/evals/test/ui.e2e.test.ts → @superagent/chief-worker"
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/chief-worker"
       ]
     },
     {
       "from": "evals",
       "to": "project-state",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/project-state",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/project-state",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/project-state"
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/project-state",
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/project-state"
       ]
     },
     {
       "from": "evals",
       "to": "server",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/server",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server",
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/server",
         "superagent/evals/test/ui.e2e.test.ts → @superagent/server"
       ]
     },
     {
       "from": "evals",
       "to": "testkit",
-      "weight": 5,
+      "weight": 6,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -761,19 +777,20 @@
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/model-route.integration.test.ts → @superagent/testkit",
-        "superagent/evals/test/ui.e2e.test.ts → @superagent/testkit"
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/testkit"
       ]
     },
     {
       "from": "evals",
       "to": "verifier",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/verifier",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/verifier",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/verifier"
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/verifier",
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/verifier"
       ]
     },
     {
@@ -839,11 +856,12 @@
     {
       "from": "loop-policy",
       "to": "contracts",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/loop-policy/src/policy.ts → @superagent/contracts",
+        "superagent/plugins/loop-policy/src/tool-policy.ts → @superagent/contracts",
         "superagent/plugins/loop-policy/test/policy.test.ts → @superagent/contracts"
       ]
     },
@@ -910,10 +928,11 @@
     {
       "from": "server",
       "to": "chief-worker",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
+        "superagent/server/src/http.ts → @superagent/chief-worker",
         "superagent/server/src/runtime.ts → @superagent/chief-worker",
         "superagent/server/test/server.test.ts → @superagent/chief-worker"
       ]
@@ -1011,37 +1030,42 @@
     "files": [
       "DECISIONS.md",
       "pnpm-lock.yaml",
+      "superagent/cli/src/main.ts",
       "superagent/contracts/src/types.ts",
-      "superagent/contracts/src/validate.ts",
-      "superagent/plugins/chief-worker/src/chief.ts",
+      "superagent/dsh-bundle/package.json",
+      "superagent/dsh-bundle/src/index.ts",
+      "superagent/evals/test/chief-tools.integration.test.ts",
+      "superagent/evals/test/pre-tool-guard.integration.test.ts",
+      "superagent/evals/test/ui.e2e.test.ts",
+      "superagent/plugins/chief-worker/src/dsh-executor.ts",
+      "superagent/plugins/chief-worker/src/dsh-process.ts",
       "superagent/plugins/chief-worker/src/engine.ts",
       "superagent/plugins/chief-worker/src/executor.ts",
-      "superagent/plugins/chief-worker/src/git.ts",
-      "superagent/plugins/chief-worker/src/index.ts",
-      "superagent/plugins/chief-worker/src/prompt.ts",
-      "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts",
+      "superagent/plugins/chief-worker/test/loop.test.ts",
+      "superagent/plugins/loop-policy/package.json",
+      "superagent/plugins/loop-policy/src/index.ts",
       "superagent/plugins/loop-policy/src/policy.ts",
-      "superagent/plugins/verifier/package.json",
-      "superagent/plugins/verifier/src/command.ts",
-      "superagent/plugins/verifier/src/index.ts",
-      "superagent/plugins/verifier/src/integrity.ts",
-      "superagent/plugins/verifier/src/verifier.ts"
+      "superagent/plugins/loop-policy/src/tool-policy.ts",
+      "superagent/plugins/loop-policy/test/tool-policy.test.ts",
+      "superagent/plugins/project-state/src/store.ts",
+      "superagent/server/src/http.ts",
+      "superagent/server/test/server.test.ts"
     ],
     "modules": [
       "chief-worker",
+      "cli",
       "contracts",
+      "dsh-bundle",
+      "evals",
       "loop-policy",
-      "verifier"
+      "project-state",
+      "server"
     ],
     "impacted": [
       "architecture-observatory",
-      "cli",
-      "dsh-bundle",
-      "evals",
       "learning",
       "model-policy",
-      "project-state",
-      "server"
+      "verifier"
     ],
     "gates": [
       "architecture",
@@ -1125,9 +1149,9 @@
     }
   ],
   "stats": {
-    "files": 112,
+    "files": 115,
     "modules": 15,
-    "edges": 47,
-    "scanMs": 574
+    "edges": 48,
+    "scanMs": 519
   }
 }

@@ -38,7 +38,7 @@ test('UI: projects, goal, tasks with model selection, live loop, human gate, arc
   const consoleErrors: string[] = []
   page.on('pageerror', e => consoleErrors.push(String(e)))
   try {
-    await page.goto(server.url)
+    await page.goto(`${server.url}/?token=${server.humanToken}`)
     // Add the project through the UI.
     await page.getByTestId('new-project-name').fill('Calc')
     await page.getByTestId('new-project-root').fill(root)

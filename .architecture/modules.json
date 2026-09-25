@@ -109,13 +109,14 @@
     "description": "Retry / strategy switch / Human Gate decisions",
     "protected": false,
     "declared": true,
-    "files": 4,
+    "files": 6,
     "gates": [
       "unit"
     ],
     "adrs": [],
     "tests": [
-      "superagent/plugins/loop-policy/test/policy.test.ts"
+      "superagent/plugins/loop-policy/test/policy.test.ts",
+      "superagent/plugins/loop-policy/test/tool-policy.test.ts"
     ],
     "entry": "superagent/plugins/loop-policy/src/index.ts",
     "externalDeps": []
@@ -317,7 +318,7 @@
     "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
     "protected": false,
     "declared": true,
-    "files": 6,
+    "files": 7,
     "gates": [
       "evals"
     ],
@@ -327,6 +328,7 @@
       "superagent/evals/test/chief-tools.integration.test.ts",
       "superagent/evals/test/dsh-browser-worker.integration.test.ts",
       "superagent/evals/test/model-route.integration.test.ts",
+      "superagent/evals/test/pre-tool-guard.integration.test.ts",
       "superagent/evals/test/ui.e2e.test.ts"
     ],
     "externalDeps": []

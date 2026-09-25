@@ -69,11 +69,12 @@
     {
       "from": "chief-worker",
       "to": "loop-policy",
-      "weight": 1,
+      "weight": 2,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
-        "superagent/plugins/chief-worker/src/engine.ts → @superagent/loop-policy"
+        "superagent/plugins/chief-worker/src/engine.ts → @superagent/loop-policy",
+        "superagent/plugins/chief-worker/src/executor.ts → @superagent/loop-policy"
       ]
     },
     {
@@ -208,6 +209,16 @@
     },
     {
       "from": "dsh-bundle",
+      "to": "loop-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/dsh-bundle/src/index.ts → @superagent/loop-policy"
+      ]
+    },
+    {
+      "from": "dsh-bundle",
       "to": "project-state",
       "weight": 1,
       "typeOnly": false,
@@ -219,7 +230,7 @@
     {
       "from": "evals",
       "to": "chief-worker",
-      "weight": 5,
+      "weight": 6,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -227,37 +238,39 @@
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/model-route.integration.test.ts → @superagent/chief-worker",
-        "superagent/evals/test/ui.e2e.test.ts → @superagent/chief-worker"
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/chief-worker"
       ]
     },
     {
       "from": "evals",
       "to": "project-state",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/project-state",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/project-state",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/project-state"
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/project-state",
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/project-state"
       ]
     },
     {
       "from": "evals",
       "to": "server",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/server",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server",
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/server",
         "superagent/evals/test/ui.e2e.test.ts → @superagent/server"
       ]
     },
     {
       "from": "evals",
       "to": "testkit",
-      "weight": 5,
+      "weight": 6,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -265,19 +278,20 @@
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/model-route.integration.test.ts → @superagent/testkit",
-        "superagent/evals/test/ui.e2e.test.ts → @superagent/testkit"
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/testkit"
       ]
     },
     {
       "from": "evals",
       "to": "verifier",
-      "weight": 3,
+      "weight": 4,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/verifier",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/verifier",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/verifier"
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/verifier",
+        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/verifier"
       ]
     },
     {
@@ -343,11 +357,12 @@
     {
       "from": "loop-policy",
       "to": "contracts",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/plugins/loop-policy/src/policy.ts → @superagent/contracts",
+        "superagent/plugins/loop-policy/src/tool-policy.ts → @superagent/contracts",
         "superagent/plugins/loop-policy/test/policy.test.ts → @superagent/contracts"
       ]
     },
@@ -414,10 +429,11 @@
     {
       "from": "server",
       "to": "chief-worker",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
+        "superagent/server/src/http.ts → @superagent/chief-worker",
         "superagent/server/src/runtime.ts → @superagent/chief-worker",
         "superagent/server/test/server.test.ts → @superagent/chief-worker"
       ]

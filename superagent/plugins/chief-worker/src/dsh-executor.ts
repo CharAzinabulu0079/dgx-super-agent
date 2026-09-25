@@ -87,6 +87,7 @@ export class DshHeadlessExecutor implements WorkerExecutor {
     const gates = input.task.gates.length ? input.task.gates : input.project.defaultGates
     const prompt = buildWorkerPrompt(input, gates)
     writeFileSync(join(runDir, 'prompt.md'), prompt)
+    if (input.toolPolicy) writeFileSync(join(runDir, 'policy.json'), JSON.stringify(input.toolPolicy, null, 2))
     args.push(prompt)
 
     let sessionId: string | undefined
@@ -96,6 +97,8 @@ export class DshHeadlessExecutor implements WorkerExecutor {
       args,
       cwd: input.project.root,
       env: {
+        SUPERAGENT_ROLE: 'worker',
+        SUPERAGENT_WORKER_POLICY: input.toolPolicy ? join(runDir, 'policy.json') : undefined,
         DSH_HOME: dshHome,
         SUPERAGENT_HOME: input.stateHome,
         SUPERAGENT_PROJECT_ID: input.project.id,

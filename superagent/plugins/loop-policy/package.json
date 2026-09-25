@@ -7,9 +7,11 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@superagent/contracts": "workspace:*"
+    "@superagent/contracts": "workspace:*",
+    "picomatch": "^4.0.7"
   },
   "devDependencies": {
-    "@superagent/testkit": "workspace:*"
+    "@superagent/testkit": "workspace:*",
+    "@types/picomatch": "^4.0.3"
   }
 }

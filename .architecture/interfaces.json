@@ -5,6 +5,7 @@
     "exports": [
       "ApprovedAction",
       "Attempt",
+      "BlockedAction",
       "ContractError",
       "GateId",
       "GateKind",
@@ -144,8 +145,12 @@
     "exports": [
       "LoopDecision",
       "LoopInput",
+      "ToolDecision",
+      "ToolPolicy",
+      "actionFingerprint",
       "availableStrategies",
       "decideNext",
+      "decideToolCall",
       "trailingSameFailures"
     ]
   },
@@ -248,6 +253,7 @@
       "ModelRoutes",
       "REPORT_FENCE",
       "RunTaskResult",
+      "SCRUBBED_WORKER_ENV",
       "ScriptedExecutor",
       "TaskInput",
       "WorkerExecutor",
@@ -261,7 +267,8 @@
       "resolveGates",
       "resolveRoute",
       "runDshStreaming",
-      "workerClaim"
+      "workerClaim",
+      "workerEnv"
     ]
   },
   {
@@ -271,6 +278,7 @@
       "BROWSER_PATCH",
       "BUNDLE_DIR",
       "CHIEF_PROFILE",
+      "Role",
       "RunningServer",
       "RuntimeOptions",
       "ServerOptions",

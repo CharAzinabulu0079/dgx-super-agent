@@ -3,6 +3,7 @@
  * (Freeze §6.2). Executors run one attempt; they never decide PASS.
  */
 import type { ModelRef, Project, Receipt, RetryStrategy, Task, Worker, WorkerReport } from '@superagent/contracts'
+import type { ToolPolicy } from '@superagent/loop-policy'
 
 export interface AttemptFeedback {
   readonly attempt: number
@@ -30,6 +31,8 @@ export interface WorkerRunInput {
   readonly steer?: string
   /** Human-approved project memory (promoted Learning items). */
   readonly memory?: readonly string[]
+  /** Pre-tool policy the Worker's tool calls are judged by (enforced inside DSH by the bundle guard). */
+  readonly toolPolicy?: ToolPolicy
   /** SuperAgent state home, so out-of-process Workers can report into the store. */
   readonly stateHome: string
   /** Record a structured report (in-process executors). */

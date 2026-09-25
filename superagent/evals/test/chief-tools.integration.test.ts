@@ -36,7 +36,7 @@ test('Chief DSH session drives goal → task → run → status through superage
   try {
     const run = await runDsh({
       args: ['--profile', WORKER_PROFILE, 'Please fix add() in the calc project'], cwd: root, timeoutMs: 180_000,
-      env: { DSH_HOME: dshHome, DEEPSEEK_BASE_URL: mock.baseUrl, DEEPSEEK_API_KEY: 'mock-key', SUPERAGENT_API_URL: server.url },
+      env: { DSH_HOME: dshHome, DEEPSEEK_BASE_URL: mock.baseUrl, DEEPSEEK_API_KEY: 'mock-key', SUPERAGENT_API_URL: server.url, SUPERAGENT_ROLE: 'chief', SUPERAGENT_AGENT_TOKEN: server.agentToken },
     })
     assert.equal(run.exitCode, 0, run.stderr.slice(-800))
     assert.match(goalId, /^goal_/)
@@ -50,7 +50,7 @@ test('Chief DSH session drives goal → task → run → status through superage
       if (!req.tools?.length) return text('Chief')
       return req.messages.some(m => m.role === 'assistant') ? text('reported') : toolCall('superagent_status', { project: 'calc' })
     })
-    const status = await runDsh({ args: ['--profile', WORKER_PROFILE, '--json', 'report progress'], cwd: root, timeoutMs: 120_000, env: { DSH_HOME: dshHome, DEEPSEEK_BASE_URL: mock2.baseUrl, DEEPSEEK_API_KEY: 'k', SUPERAGENT_API_URL: server.url } })
+    const status = await runDsh({ args: ['--profile', WORKER_PROFILE, '--json', 'report progress'], cwd: root, timeoutMs: 120_000, env: { DSH_HOME: dshHome, DEEPSEEK_BASE_URL: mock2.baseUrl, DEEPSEEK_API_KEY: 'k', SUPERAGENT_API_URL: server.url, SUPERAGENT_ROLE: 'chief', SUPERAGENT_AGENT_TOKEN: server.agentToken } })
     await mock2.close()
     assert.match(status.stdout, /\[passed\] fix add/)
     const toolNames = (mock2.requests.find(r => r.tools?.length)?.tools ?? []).map(t => t.name)

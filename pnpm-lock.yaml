@@ -71,6 +71,9 @@ importers:
       '@superagent/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@superagent/loop-policy':
+        specifier: workspace:*
+        version: link:../plugins/loop-policy
       '@superagent/project-state':
         specifier: workspace:*
         version: link:../plugins/project-state
@@ -190,10 +193,16 @@ importers:
       '@superagent/contracts':
         specifier: workspace:*
         version: link:../../contracts
+      picomatch:
+        specifier: ^4.0.7
+        version: 4.0.7
     devDependencies:
       '@superagent/testkit':
         specifier: workspace:*
         version: link:../../testkit
+      '@types/picomatch':
+        specifier: ^4.0.3
+        version: 4.0.3
 
   superagent/plugins/model-policy:
     dependencies:
