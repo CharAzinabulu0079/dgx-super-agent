@@ -95,8 +95,11 @@
     "entry": "superagent/plugins/project-state/src/index.ts",
     "exports": [
       "NewEvent",
+      "StateCorruptError",
       "StateStore",
+      "TaskLease",
       "defaultHome",
+      "processAlive",
       "slug"
     ]
   },

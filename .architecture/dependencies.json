@@ -235,15 +235,15 @@
     {
       "from": "evals",
       "to": "chief-worker",
-      "weight": 8,
+      "weight": 10,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts → @superagent/chief-worker",
+        "superagent/evals/redteam/redteam.test.ts → @superagent/chief-worker",
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/chief-worker",
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/chief-worker",
-        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/chief-worker",
-        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/chief-worker",
-        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/chief-worker"
+        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/chief-worker"
       ]
     },
     {
@@ -259,55 +259,57 @@
     {
       "from": "evals",
       "to": "project-state",
-      "weight": 4,
+      "weight": 6,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts → @superagent/project-state",
+        "superagent/evals/redteam/redteam.test.ts → @superagent/project-state",
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/project-state",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/project-state",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/project-state",
-        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/project-state"
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/project-state"
       ]
     },
     {
       "from": "evals",
       "to": "server",
-      "weight": 6,
+      "weight": 8,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts → @superagent/server",
+        "superagent/evals/redteam/redteam.test.ts → @superagent/server",
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/server",
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/server",
-        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server",
-        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/server",
-        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/server"
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server"
       ]
     },
     {
       "from": "evals",
       "to": "testkit",
-      "weight": 8,
+      "weight": 10,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts → @superagent/testkit",
+        "superagent/evals/redteam/redteam.test.ts → @superagent/testkit",
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/testkit",
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/testkit",
-        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/testkit",
-        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/testkit",
-        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/testkit"
+        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/testkit"
       ]
     },
     {
       "from": "evals",
       "to": "verifier",
-      "weight": 4,
+      "weight": 6,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts → @superagent/verifier",
+        "superagent/evals/redteam/redteam.test.ts → @superagent/verifier",
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/verifier",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/verifier",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/verifier",
-        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/verifier"
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/verifier"
       ]
     },
     {

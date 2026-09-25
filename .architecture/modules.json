@@ -319,12 +319,14 @@
     "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
     "protected": false,
     "declared": true,
-    "files": 9,
+    "files": 11,
     "gates": [
       "evals"
     ],
     "adrs": [],
     "tests": [
+      "superagent/evals/redteam/redteam-dsh.integration.test.ts",
+      "superagent/evals/redteam/redteam.test.ts",
       "superagent/evals/test/browser-e2e-gate.test.ts",
       "superagent/evals/test/chief-autowake.integration.test.ts",
       "superagent/evals/test/chief-tools.integration.test.ts",

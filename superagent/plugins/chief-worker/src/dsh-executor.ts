@@ -112,6 +112,7 @@ export class DshHeadlessExecutor implements WorkerExecutor {
       timeoutMs: this.options.timeoutMs ?? 30 * 60_000,
       signal: input.signal,
       logFile: join(runDir, 'events.jsonl'),
+      onSpawn: input.onSpawn,
       onEvent: event => {
         if (event.type === 'session' && typeof event.sessionId === 'string') sessionId = event.sessionId
         else if (event.type === 'final' && typeof event.text === 'string') finalText = event.text

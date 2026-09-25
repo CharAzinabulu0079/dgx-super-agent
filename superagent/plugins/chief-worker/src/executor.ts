@@ -40,6 +40,8 @@ export interface WorkerRunInput {
   /** Record a structured report (in-process executors). */
   readonly report: (report: Omit<WorkerReport, 'task_id' | 'model'> & Partial<Pick<WorkerReport, 'task_id' | 'model'>>) => void
   readonly signal: AbortSignal
+  /** Out-of-process executors report their process-group leader pid for crash recovery. */
+  readonly onSpawn?: (pid: number) => void
 }
 
 export interface WorkerRunOutput {

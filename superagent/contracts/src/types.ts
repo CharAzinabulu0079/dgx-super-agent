@@ -209,6 +209,8 @@ export interface Worker {
   readonly endedAt?: IsoTime
   /** DSH session id when the executor is DSH-backed. */
   readonly sessionId?: string
+  /** OS process (group leader) of an out-of-process Worker, for recovery. */
+  readonly pid?: number
   /** Modules the Worker last reported changing (drives Observatory "Worker Active"). */
   readonly activeModules: readonly string[]
   readonly lastReport?: WorkerReport

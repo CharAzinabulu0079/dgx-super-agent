@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T20:16:25.969Z",
-  "commit": "d2e963e",
+  "generatedAt": "2026-09-25T20:23:44.596Z",
+  "commit": "16d0622",
   "layers": [
     "foundation",
     "capability",
@@ -89,7 +89,7 @@
       "layer": "capability",
       "root": "superagent/plugins/project-state",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 4,
       "declared": true,
@@ -194,7 +194,7 @@
       "layer": "capability",
       "root": "superagent/plugins/model-policy",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 4,
       "declared": true,
@@ -228,7 +228,7 @@
       "layer": "capability",
       "root": "superagent/plugins/architecture-observatory",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 10,
       "declared": true,
@@ -262,7 +262,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/learning",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 7,
       "declared": true,
@@ -339,7 +339,7 @@
       "layer": "interface",
       "root": "superagent/server",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 6,
       "declared": true,
@@ -377,7 +377,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 2,
       "declared": true,
@@ -406,7 +406,7 @@
       "layer": "interface",
       "root": "superagent/ui",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 13,
       "declared": true,
@@ -455,7 +455,7 @@
       "status": [
         "changing"
       ],
-      "files": 9,
+      "files": 11,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -472,6 +472,8 @@
       ],
       "adrs": [],
       "tests": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts",
+        "superagent/evals/redteam/redteam.test.ts",
         "superagent/evals/test/browser-e2e-gate.test.ts",
         "superagent/evals/test/chief-autowake.integration.test.ts",
         "superagent/evals/test/chief-tools.integration.test.ts",
@@ -743,15 +745,15 @@
     {
       "from": "evals",
       "to": "chief-worker",
-      "weight": 8,
+      "weight": 10,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts → @superagent/chief-worker",
+        "superagent/evals/redteam/redteam.test.ts → @superagent/chief-worker",
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/chief-worker",
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/chief-worker",
-        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/chief-worker",
-        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/chief-worker",
-        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/chief-worker"
+        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/chief-worker"
       ]
     },
     {
@@ -767,55 +769,57 @@
     {
       "from": "evals",
       "to": "project-state",
-      "weight": 4,
+      "weight": 6,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts → @superagent/project-state",
+        "superagent/evals/redteam/redteam.test.ts → @superagent/project-state",
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/project-state",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/project-state",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/project-state",
-        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/project-state"
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/project-state"
       ]
     },
     {
       "from": "evals",
       "to": "server",
-      "weight": 6,
+      "weight": 8,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts → @superagent/server",
+        "superagent/evals/redteam/redteam.test.ts → @superagent/server",
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/server",
         "superagent/evals/test/chief-tools.integration.test.ts → @superagent/server",
-        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server",
-        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/server",
-        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/server"
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server"
       ]
     },
     {
       "from": "evals",
       "to": "testkit",
-      "weight": 8,
+      "weight": 10,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts → @superagent/testkit",
+        "superagent/evals/redteam/redteam.test.ts → @superagent/testkit",
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/testkit",
         "superagent/evals/test/chief-autowake.integration.test.ts → @superagent/testkit",
-        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/testkit",
-        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/testkit",
-        "superagent/evals/test/learning-replay.integration.test.ts → @superagent/testkit"
+        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/testkit"
       ]
     },
     {
       "from": "evals",
       "to": "verifier",
-      "weight": 4,
+      "weight": 6,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/redteam/redteam-dsh.integration.test.ts → @superagent/verifier",
+        "superagent/evals/redteam/redteam.test.ts → @superagent/verifier",
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/verifier",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/verifier",
-        "superagent/evals/test/model-route.integration.test.ts → @superagent/verifier",
-        "superagent/evals/test/pre-tool-guard.integration.test.ts → @superagent/verifier"
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/verifier"
       ]
     },
     {
@@ -1084,47 +1088,32 @@
     "base": "HEAD",
     "files": [
       "DECISIONS.md",
-      "pnpm-lock.yaml",
-      "superagent/cli/src/main.ts",
+      "REDTEAM_REPORT.md",
+      "package.json",
+      "scripts/redteam-report.ts",
       "superagent/contracts/src/types.ts",
-      "superagent/evals/test/ui.e2e.test.ts",
-      "superagent/plugins/architecture-observatory/src/adapters.ts",
-      "superagent/plugins/architecture-observatory/src/discover.ts",
-      "superagent/plugins/architecture-observatory/src/index.ts",
-      "superagent/plugins/architecture-observatory/src/observatory.ts",
-      "superagent/plugins/architecture-observatory/src/scan.ts",
-      "superagent/plugins/architecture-observatory/src/schema.ts",
-      "superagent/plugins/architecture-observatory/test/observatory.test.ts",
-      "superagent/plugins/chief-worker/src/chief-wake.ts",
-      "superagent/plugins/chief-worker/src/chief.ts",
+      "superagent/evals/redteam/redteam-dsh.integration.test.ts",
+      "superagent/evals/redteam/redteam.test.ts",
+      "superagent/plugins/chief-worker/src/dsh-executor.ts",
+      "superagent/plugins/chief-worker/src/dsh-process.ts",
       "superagent/plugins/chief-worker/src/engine.ts",
-      "superagent/plugins/learning/src/reflector.ts",
-      "superagent/plugins/learning/test/learning.test.ts",
-      "superagent/plugins/model-policy/package.json",
-      "superagent/plugins/model-policy/src/policy.ts",
-      "superagent/plugins/model-policy/test/policy.test.ts",
-      "superagent/server/src/http.ts",
-      "superagent/server/src/runtime.ts",
-      "superagent/ui/src/App.tsx",
-      "superagent/ui/src/Panels.tsx",
-      "superagent/ui/src/api.ts",
-      "superagent/ui/src/styles.css"
+      "superagent/plugins/chief-worker/src/executor.ts",
+      "superagent/plugins/project-state/src/store.ts"
     ],
     "modules": [
-      "architecture-observatory",
       "chief-worker",
-      "cli",
       "contracts",
       "evals",
-      "learning",
-      "model-policy",
-      "server",
-      "ui"
+      "project-state"
     ],
     "impacted": [
+      "architecture-observatory",
+      "cli",
       "dsh-bundle",
+      "learning",
       "loop-policy",
-      "project-state",
+      "model-policy",
+      "server",
       "verifier"
     ],
     "gates": [
@@ -1209,9 +1198,9 @@
     }
   ],
   "stats": {
-    "files": 125,
+    "files": 129,
     "modules": 15,
     "edges": 51,
-    "scanMs": 567
+    "scanMs": 585
   }
 }

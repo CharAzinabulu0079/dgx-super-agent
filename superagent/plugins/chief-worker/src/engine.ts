@@ -8,7 +8,7 @@
  */
 import type { Attempt, GateSpec, HumanGate, Project, Receipt, RetryStrategy, Task, WorkerClaim, WorkerReport } from '@superagent/contracts'
 import { TERMINAL_TASK_STATES, now, parseWorkerReport } from '@superagent/contracts'
-import type { StateStore } from '@superagent/project-state'
+import { processAlive, type StateStore } from '@superagent/project-state'
 import { checkIntegrity, createMarker, headOf, isGitWorkTree, receiptSignature, snapshotCommit, changedBetween, type Verifier } from '@superagent/verifier'
 import { availableStrategies, decideNext, type LoopDecision, type ToolPolicy } from '@superagent/loop-policy'
 import { DEFAULT_VERIFICATION_POLICY } from '@superagent/verifier'
@@ -151,6 +151,12 @@ export class LoopEngine {
    */
   async runTask(projectId: string, taskId: string): Promise<RunTaskResult> {
     if (this.running.has(taskId)) throw new Error(`task ${taskId} is already running`)
+    // Cross-process exclusion: two engines (e.g. a restarted server and a CLI) must never
+    // run the same task concurrently.
+    if (!this.store.acquireLease(projectId, taskId)) {
+      const holder = this.store.readLease(projectId, taskId)
+      throw new Error(`task ${taskId} is already running in process ${holder?.pid ?? '?'}`)
+    }
     const controller = new AbortController()
     this.running.set(taskId, controller)
     const receipts: Receipt[] = []
@@ -196,6 +202,7 @@ export class LoopEngine {
           memory: this.memory?.(projectId),
           skills: this.skills?.(projectId),
           toolPolicy: this.toolPolicyFor(project, task),
+          onSpawn: pid => { this.store.updateWorker(projectId, worker.id, { pid }) },
           stateHome: this.store.home,
           report: partial => {
             const report = parseWorkerReport(partial, { task_id: taskId, model })
@@ -260,6 +267,7 @@ export class LoopEngine {
       }
     } finally {
       this.running.delete(taskId)
+      this.store.releaseLease(projectId, taskId)
     }
   }
 
@@ -325,16 +333,33 @@ export class LoopEngine {
     })
   }
 
-  /** Startup recovery: Workers that were running when the process died are marked killed. */
+  /**
+   * Startup recovery. Tasks whose lease is held by a live process are left alone (another
+   * engine is running them). Otherwise orphaned Worker process groups are killed — so a
+   * Worker from the dead run cannot keep editing while the next attempt starts — and the
+   * interrupted attempt is closed; the task resumes from its persisted attempts.
+   */
   recoverInterrupted(projectId: string): Task[] {
     const recovered: Task[] = []
+    const liveElsewhere = (taskId: string): boolean => {
+      const lease = this.store.readLease(projectId, taskId)
+      return !!lease && lease.pid !== process.pid && processAlive(lease.pid)
+    }
     for (const worker of this.store.listWorkers(projectId)) {
-      if (worker.status === 'running' || worker.status === 'starting') {
+      if ((worker.status === 'running' || worker.status === 'starting') && !this.running.has(worker.taskId) && !liveElsewhere(worker.taskId)) {
+        if (worker.pid && processAlive(worker.pid)) {
+          try {
+            process.kill(-worker.pid, 'SIGKILL')
+          } catch (notGroup) {
+            void notGroup
+            try { process.kill(worker.pid, 'SIGKILL') } catch (gone) { void gone }
+          }
+        }
         this.store.updateWorker(projectId, worker.id, { status: 'killed', endedAt: now() })
       }
     }
     for (const task of this.store.listTasks(projectId)) {
-      if ((task.state === 'executing' || task.state === 'verifying') && !this.running.has(task.id)) {
+      if ((task.state === 'executing' || task.state === 'verifying') && !this.running.has(task.id) && !liveElsewhere(task.id)) {
         const closed = this.closeAttempt(task, { endedAt: now() })
         recovered.push(this.store.updateTask(projectId, task.id, { state: 'retrying', attempts: closed.attempts }))
       }

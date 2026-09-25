@@ -14,7 +14,7 @@
  */
 import { EventEmitter } from 'node:events'
 import {
-  appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync,
+  appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync,
   openSync, readSync, closeSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
@@ -24,6 +24,23 @@ import {
   type BlockedAction, type Goal, type GoalId, type HumanGate, type HumanGateId, type Project, type ProjectId, type Receipt, type ReceiptId,
   type SuperAgentEvent, type SuperAgentEventType, type Task, type TaskId, type Worker, type WorkerId, type WorkerReport,
 } from '@superagent/contracts'
+
+/** A durable record exists but cannot be parsed: never treat it as absent (fail closed). */
+export class StateCorruptError extends Error {
+  readonly path: string
+  constructor(path: string, cause: unknown) {
+    super(`corrupted state record ${path}: ${String((cause as Error).message ?? cause)} — refusing to continue; restore or remove it deliberately`)
+    this.path = path
+    this.name = 'StateCorruptError'
+  }
+}
+
+/** Held while a process runs a task's loop; prevents duplicate execution across processes. */
+export interface TaskLease {
+  readonly pid: number
+  readonly acquiredAt: string
+  readonly owner: string
+}
 
 export function defaultHome(): string {
   return resolve(process.env.SUPERAGENT_HOME ?? join(homedir(), '.superagent'))
@@ -66,7 +83,12 @@ export class StateStore {
 
   private readJson<T>(path: string): T | undefined {
     if (!existsSync(path)) return undefined
-    return JSON.parse(readFileSync(path, 'utf8')) as T
+    const text = readFileSync(path, 'utf8')
+    try {
+      return JSON.parse(text) as T
+    } catch (error) {
+      throw new StateCorruptError(path, error)
+    }
   }
 
   private list<T>(pid: ProjectId, collection: Collection): T[] {
@@ -75,7 +97,7 @@ export class StateStore {
     return readdirSync(dir)
       .filter(f => f.endsWith('.json'))
       .sort()
-      .map(f => JSON.parse(readFileSync(join(dir, f), 'utf8')) as T)
+      .map(f => this.readJson<T>(join(dir, f))!)
   }
 
   private put<T extends { id: string; projectId: ProjectId }>(collection: Collection, record: T): T {
@@ -305,6 +327,57 @@ export class StateStore {
     return next
   }
 
+  // ------------------------------------------------------------ task leases
+
+  /**
+   * Acquire the run lease for a task (O_EXCL lock file). A lease whose holder process no
+   * longer exists is taken over; a live holder (this or another process) wins.
+   * @returns true when this process now holds the lease.
+   */
+  acquireLease(pid: ProjectId, taskId: TaskId, owner = 'engine'): boolean {
+    const dir = join(this.projectDir(pid), 'leases')
+    mkdirSync(dir, { recursive: true })
+    const file = join(dir, `${taskId}.lock`)
+    const lease: TaskLease = { pid: process.pid, acquiredAt: now(), owner }
+    for (let tries = 0; tries < 2; tries++) {
+      try {
+        writeFileSync(file, JSON.stringify(lease), { flag: 'wx' })
+        return true
+      } catch (exists) {
+        void exists
+        const holder = this.readLease(pid, taskId)
+        if (holder && processAlive(holder.pid)) return false
+        try {
+          unlinkSync(file) // stale lease from a dead process
+        } catch (raced) {
+          void raced // another process removed it first; retry the exclusive create
+        }
+      }
+    }
+    return false
+  }
+
+  readLease(pid: ProjectId, taskId: TaskId): TaskLease | undefined {
+    const file = join(this.projectDir(pid), 'leases', `${taskId}.lock`)
+    if (!existsSync(file)) return undefined
+    try {
+      return JSON.parse(readFileSync(file, 'utf8')) as TaskLease
+    } catch (torn) {
+      void torn
+      return { pid: -1, acquiredAt: '', owner: 'torn' }
+    }
+  }
+
+  releaseLease(pid: ProjectId, taskId: TaskId): void {
+    const holder = this.readLease(pid, taskId)
+    if (holder?.pid !== process.pid) return
+    try {
+      unlinkSync(join(this.projectDir(pid), 'leases', `${taskId}.lock`))
+    } catch (gone) {
+      void gone
+    }
+  }
+
   // ------------------------------------------------------------ generic records (wakes, meta)
 
   /** Durable per-project record in a named collection (e.g. Chief wakes). */
@@ -373,7 +446,16 @@ export class StateStore {
     const out: SuperAgentEvent[] = []
     for (let i = since; i < lines.length; i++) {
       if (!lines[i]) continue
-      out.push({ seq: i + 1, ...(JSON.parse(lines[i]!) as Omit<SuperAgentEvent, 'seq'>) } as SuperAgentEvent)
+      let parsed: Omit<SuperAgentEvent, 'seq'>
+      try {
+        parsed = JSON.parse(lines[i]!) as Omit<SuperAgentEvent, 'seq'>
+      } catch (partial) {
+        // A crash mid-append leaves a torn last line. Skip it (seq stays = line number);
+        // a torn line in the middle is corruption and must not be silently ignored.
+        if (i >= lines.length - 2) continue
+        throw new StateCorruptError(`${file}:${i + 1}`, partial)
+      }
+      out.push({ seq: i + 1, ...parsed } as SuperAgentEvent)
     }
     return out.length > limit ? out.slice(-limit) : out
   }
@@ -394,4 +476,15 @@ export class StateStore {
 export function slug(name: string): string {
   const s = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
   return s || newId('proj')
+}
+
+/** Whether a process exists (signal 0 probes without delivering anything). */
+export function processAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM'
+  }
 }

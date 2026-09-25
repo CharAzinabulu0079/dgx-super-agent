@@ -26,6 +26,7 @@ export interface DshStreamOptions {
   readonly logFile?: string
   /** Only the Chief channel passes its agent token through; Workers never do. */
   readonly keepCredentials?: boolean
+  readonly onSpawn?: (pid: number) => void
 }
 
 export interface DshStreamResult {
@@ -42,6 +43,7 @@ export function runDshStreaming(options: DshStreamOptions): Promise<DshStreamRes
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: true,
     })
+    if (child.pid) options.onSpawn?.(child.pid)
     let buffer = ''
     let stderr = ''
     let timedOut = false
