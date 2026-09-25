@@ -316,14 +316,16 @@
     "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
     "protected": false,
     "declared": true,
-    "files": 4,
+    "files": 6,
     "gates": [
       "evals"
     ],
     "adrs": [],
     "tests": [
       "superagent/evals/test/browser-e2e-gate.test.ts",
+      "superagent/evals/test/chief-tools.integration.test.ts",
       "superagent/evals/test/dsh-browser-worker.integration.test.ts",
+      "superagent/evals/test/model-route.integration.test.ts",
       "superagent/evals/test/ui.e2e.test.ts"
     ],
     "externalDeps": []

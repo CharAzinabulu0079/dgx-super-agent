@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T17:11:46.954Z",
-  "commit": "d84e5ca",
+  "generatedAt": "2026-09-25T17:18:32.087Z",
+  "commit": "cc3959f",
   "layers": [
     "foundation",
     "capability",
@@ -53,7 +53,7 @@
       "layer": "foundation",
       "root": "superagent/testkit",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 6,
       "declared": true,
@@ -288,7 +288,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/chief-worker",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 11,
       "declared": true,
@@ -442,9 +442,9 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 4,
+      "files": 6,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -461,7 +461,9 @@
       "adrs": [],
       "tests": [
         "superagent/evals/test/browser-e2e-gate.test.ts",
+        "superagent/evals/test/chief-tools.integration.test.ts",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts",
+        "superagent/evals/test/model-route.integration.test.ts",
         "superagent/evals/test/ui.e2e.test.ts"
       ],
       "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
@@ -707,33 +709,37 @@
     {
       "from": "evals",
       "to": "chief-worker",
-      "weight": 3,
+      "weight": 5,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/chief-worker",
+        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/chief-worker",
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/ui.e2e.test.ts → @superagent/chief-worker"
       ]
     },
     {
       "from": "evals",
       "to": "project-state",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/project-state",
-        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/project-state"
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/project-state",
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/project-state"
       ]
     },
     {
       "from": "evals",
       "to": "server",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/server",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server",
         "superagent/evals/test/ui.e2e.test.ts → @superagent/server"
       ]
@@ -741,24 +747,27 @@
     {
       "from": "evals",
       "to": "testkit",
-      "weight": 3,
+      "weight": 5,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/testkit",
+        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/testkit",
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/ui.e2e.test.ts → @superagent/testkit"
       ]
     },
     {
       "from": "evals",
       "to": "verifier",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/verifier",
-        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/verifier"
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/verifier",
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/verifier"
       ]
     },
     {
@@ -993,22 +1002,32 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "superagent/plugins/chief-worker/src/chief.ts",
-      "superagent/plugins/chief-worker/src/engine.ts",
-      "superagent/plugins/chief-worker/test/loop.test.ts",
-      "superagent/server/src/http.ts",
-      "superagent/server/test/server.test.ts"
+      "ARCHITECTURE.md",
+      "CURRENT_STATE.md",
+      "DECISIONS.md",
+      "NEXT_STEPS.md",
+      "README.md",
+      "SETUP_DGX.md",
+      "THIRD_PARTY_NOTICES.md",
+      "superagent/evals/test/chief-tools.integration.test.ts",
+      "superagent/evals/test/model-route.integration.test.ts",
+      "superagent/server/src/dsh-setup.ts",
+      "superagent/testkit/src/mock-llm.ts"
     ],
     "modules": [
-      "chief-worker",
-      "server"
+      "evals",
+      "server",
+      "testkit"
     ],
     "impacted": [
       "architecture-observatory",
+      "chief-worker",
       "cli",
-      "evals",
+      "dsh-bundle",
       "learning",
-      "model-policy"
+      "model-policy",
+      "project-state",
+      "verifier"
     ],
     "gates": [
       "architecture",
@@ -1091,9 +1110,9 @@
     }
   ],
   "stats": {
-    "files": 103,
+    "files": 110,
     "modules": 15,
     "edges": 47,
-    "scanMs": 530
+    "scanMs": 480
   }
 }

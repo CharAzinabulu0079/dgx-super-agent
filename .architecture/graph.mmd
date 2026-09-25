@@ -21,7 +21,7 @@ flowchart LR
     dsh_bundle["dsh-bundle<br/><small>5 files</small>"]
   end
   subgraph layer_verification["verification"]
-    evals["evals<br/><small>4 files</small>"]
+    evals["evals<br/><small>6 files</small>"]
   end
   sample_webapp["sample-webapp<br/><small>7 files</small>"]
   architecture_observatory --> contracts
@@ -61,17 +61,17 @@ flowchart LR
   classDef gate_failed fill:#ffebee,stroke:#c62828
   classDef protected stroke:#6a1b9a,stroke-width:3px
   class contracts stable
-  class testkit stable
+  class testkit changing
   class project_state stable
   class verifier stable
   class loop_policy stable
   class model_policy stable
   class architecture_observatory stable
   class learning stable
-  class chief_worker changing
+  class chief_worker stable
   class server changing
   class cli stable
   class ui stable
   class dsh_bundle stable
-  class evals stable
+  class evals changing
   class sample_webapp stable

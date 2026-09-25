@@ -21,7 +21,7 @@ const BROWSER_PACKAGES = [`@deepseek-ai/dsh-browser-use@${DSH_VERSION}`, `@deeps
 const MARKER = '# superagent:managed'
 
 const PROFILE_PATCH = `${MARKER}
-# Private deployment: no remote telemetry export (DSH default posts OTLP logs to deepseeksvc.com).
+# Private deployment: no off-box telemetry path (DSH default: OTLP exporter to deepseeksvc.com, mode FEEDBACK_ONLY).
 - id: session-telemetry-otel
   disabled: true
 `

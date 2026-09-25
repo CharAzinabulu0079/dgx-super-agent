@@ -216,33 +216,37 @@
     {
       "from": "evals",
       "to": "chief-worker",
-      "weight": 3,
+      "weight": 5,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/chief-worker",
+        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/chief-worker",
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/chief-worker",
         "superagent/evals/test/ui.e2e.test.ts → @superagent/chief-worker"
       ]
     },
     {
       "from": "evals",
       "to": "project-state",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/project-state",
-        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/project-state"
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/project-state",
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/project-state"
       ]
     },
     {
       "from": "evals",
       "to": "server",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
+        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/server",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/server",
         "superagent/evals/test/ui.e2e.test.ts → @superagent/server"
       ]
@@ -250,24 +254,27 @@
     {
       "from": "evals",
       "to": "testkit",
-      "weight": 3,
+      "weight": 5,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/testkit",
+        "superagent/evals/test/chief-tools.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/testkit",
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/testkit",
         "superagent/evals/test/ui.e2e.test.ts → @superagent/testkit"
       ]
     },
     {
       "from": "evals",
       "to": "verifier",
-      "weight": 2,
+      "weight": 3,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
         "superagent/evals/test/browser-e2e-gate.test.ts → @superagent/verifier",
-        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/verifier"
+        "superagent/evals/test/dsh-browser-worker.integration.test.ts → @superagent/verifier",
+        "superagent/evals/test/model-route.integration.test.ts → @superagent/verifier"
       ]
     },
     {

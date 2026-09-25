@@ -55,7 +55,7 @@ export async function startMockLlm(script: readonly MockTurn[] | MockResponder):
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const chunks: Buffer[] = []
     for await (const chunk of req) chunks.push(chunk as Buffer)
-    if (req.method !== 'POST' || !(req.url ?? '').endsWith('/messages')) {
+    if (req.method !== 'POST' || !(req.url ?? '').split('?')[0]!.endsWith('/messages')) {
       res.writeHead(404, { 'content-type': 'application/json' })
       res.end(JSON.stringify({ error: { type: 'not_found', message: `no route ${req.method} ${req.url}` } }))
       return
@@ -95,7 +95,8 @@ export async function startMockLlm(script: readonly MockTurn[] | MockResponder):
 
 function writeTurn(res: ServerResponse, turn: MockTurn, index: number): void {
   res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' })
-  const sse = (payload: unknown): void => { res.write(`data: ${JSON.stringify(payload)}\n\n`) }
+  // Spec-compliant frames (`event:` + `data:`): the official Anthropic SDK needs the event name.
+  const sse = (payload: { type: string } & Record<string, unknown>): void => { res.write(`event: ${payload.type}\ndata: ${JSON.stringify(payload)}\n\n`) }
   sse({
     type: 'message_start',
     message: { id: `mock-msg-${index}`, type: 'message', role: 'assistant', model: 'mock-model', content: [], usage: { input_tokens: 10, output_tokens: 0 } },
