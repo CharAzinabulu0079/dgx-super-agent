@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-25T21:31:28.945Z",
-  "commit": "e8d6cc5",
+  "generatedAt": "2026-09-25T21:36:05.280Z",
+  "commit": "78301e4",
   "layers": [
     "foundation",
     "capability",
@@ -1128,9 +1128,8 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "scripts/redteam-report.ts",
-      "superagent/plugins/verifier/src/heldout.ts",
-      "superagent/plugins/verifier/test/heldout.test.ts"
+      "superagent/plugins/verifier/src/command.ts",
+      "superagent/plugins/verifier/test/verifier.test.ts"
     ],
     "modules": [
       "verifier"
@@ -1228,6 +1227,6 @@
     "files": 140,
     "modules": 15,
     "edges": 53,
-    "scanMs": 645
+    "scanMs": 715
   }
 }

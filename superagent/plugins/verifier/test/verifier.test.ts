@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { calcProject, gitRepo, FIXED_CALC, NODE_TEST_GATE } from '@superagent/testkit'
 import type { GateResult } from '@superagent/contracts'
@@ -60,4 +60,12 @@ test('hygiene gate blocks secrets, env files and model weights; ignores gitignor
   const findings = scanHygiene(root)
   const rules = findings.map(f => `${f.rule}:${f.file}`).sort()
   assert.deepEqual(rules, ['env-file:.env', 'forbidden-extension:weights.gguf', 'secret:config.js'])
+})
+
+test('timed-out gates get SIGTERM first so runners can stop their own servers', async () => {
+  const root = calcProject()
+  const marker = join(root, 'cleaned-up')
+  const res = await runCommandGate({ id: 'srv', kind: 'command', command: `trap 'echo ok > ${marker}; exit 0' TERM; sleep 30 & wait`, required: true, timeoutMs: 300 }, root)
+  assert.equal(res.failureSignature, 'srv:timeout')
+  assert.equal(existsSync(marker), true, 'the TERM handler ran')
 })

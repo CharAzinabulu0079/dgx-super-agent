@@ -26,9 +26,11 @@ The last release built in Claude Cloud. Everything that can be implemented and v
 - **`StateStore.tailEvents`.** Followers now read the event log gap-free from a cached byte offset. Before this, the SSE pump could skip events during a burst. The wake monitor uses it too (ADR-0022).
 - **Live policy appliers.** Promoted `routing-policy` candidates update the model-policy layers. Promoted `verifier-policy` candidates can only tighten verification. Invalid policies are rejected before anything is applied.
 - **`goal/updated` events** now carry the previous status.
+- **Graceful gate termination.** Timed-out or stopped gates get SIGTERM, then SIGKILL after 5 s, so runners such as Playwright can stop the web servers they start in their own process groups (an immediate SIGKILL left them holding their ports).
+- **Held-out mount paths** are checked for symlinks; a link fails the gate closed.
 
 ### Verification
-- `pnpm check`: 88 tests, 0 architecture drift, 0 hygiene blocks.
+- `pnpm check`: 89 tests, 0 architecture drift, 0 hygiene blocks.
 - `pnpm smoke:dsh`: 6/6.
 - `pnpm test:evals`: 10/10 (new: DSH planner + reviewer, UI one-box).
 - `pnpm redteam`: 19/19 scenarios fail closed (new: RT-18 held-out, RT-19 planner/reviewer abuse).

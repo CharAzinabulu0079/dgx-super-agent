@@ -49,13 +49,20 @@ export function execShell(command: string, cwd: string, timeoutMs: number, env: 
     }
     child.stdout.on('data', onData)
     child.stderr.on('data', onData)
-    const kill = (): void => {
+    const signalGroup = (sig: NodeJS.Signals): void => {
       try {
-        process.kill(-child.pid!, 'SIGKILL')
+        process.kill(-child.pid!, sig)
       } catch (alreadyExited) {
         // The process group is gone; nothing left to kill.
         void alreadyExited
       }
+    }
+    // SIGTERM first: runners like Playwright start their webServer in its own process
+    // group and only tear it down on a graceful exit; an immediate SIGKILL orphans it
+    // (and its port). SIGKILL follows after a grace period.
+    const kill = (): void => {
+      signalGroup('SIGTERM')
+      setTimeout(() => signalGroup('SIGKILL'), 5_000).unref()
     }
     const timer = setTimeout(() => { timedOut = true; kill() }, timeoutMs)
     signal?.addEventListener('abort', kill, { once: true })
