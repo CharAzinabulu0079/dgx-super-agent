@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "project": "dgx-super-agent",
-  "generatedAt": "2026-09-26T12:50:59.136Z",
-  "commit": "4e9ac07",
+  "project": "fresh",
+  "generatedAt": "2026-09-26T13:22:43.070Z",
+  "commit": "0e96cfb",
   "layers": [
     "foundation",
     "capability",
@@ -17,8 +17,7 @@
       "layer": "foundation",
       "root": "superagent/contracts",
       "status": [
-        "protected",
-        "changing"
+        "protected"
       ],
       "files": 5,
       "declared": true,
@@ -89,7 +88,7 @@
       "layer": "capability",
       "root": "superagent/plugins/project-state",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 5,
       "declared": true,
@@ -345,7 +344,7 @@
       "layer": "interface",
       "root": "superagent/server",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 18,
       "declared": true,
@@ -418,7 +417,7 @@
       "layer": "interface",
       "root": "superagent/ui",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 22,
       "declared": true,
@@ -465,7 +464,7 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 15,
       "declared": true,
@@ -1084,7 +1083,7 @@
     {
       "from": "server",
       "to": "project-state",
-      "weight": 8,
+      "weight": 9,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1148,60 +1147,10 @@
   "drift": [],
   "changes": {
     "base": "HEAD",
-    "files": [
-      "ARCHITECTURE.md",
-      "CHANGELOG.md",
-      "CURRENT_STATE.md",
-      "REDTEAM_REPORT.md",
-      "SETUP_DGX.md",
-      "scripts/redteam-report.ts",
-      "superagent/contracts/src/types.ts",
-      "superagent/evals/test/ui-appearance.e2e.test.ts",
-      "superagent/evals/test/ui-mobile.e2e.test.ts",
-      "superagent/plugins/project-state/src/store.ts",
-      "superagent/server/src/appearance.ts",
-      "superagent/server/src/commands.ts",
-      "superagent/server/src/http.ts",
-      "superagent/server/src/narrate.ts",
-      "superagent/server/test/appearance.test.ts",
-      "superagent/server/test/commands.test.ts",
-      "superagent/ui/src/App.tsx",
-      "superagent/ui/src/Appearance.tsx",
-      "superagent/ui/src/Background.tsx",
-      "superagent/ui/src/Chat.tsx",
-      "superagent/ui/src/Markdown.tsx",
-      "superagent/ui/src/Run.tsx",
-      "superagent/ui/src/Terminal.tsx",
-      "superagent/ui/src/Transcript.tsx",
-      "superagent/ui/src/api.ts",
-      "superagent/ui/src/styles.css",
-      "superagent/ui/src/theme.ts"
-    ],
-    "modules": [
-      "contracts",
-      "evals",
-      "project-state",
-      "server",
-      "ui"
-    ],
-    "impacted": [
-      "architecture-observatory",
-      "chief-worker",
-      "cli",
-      "dsh-bundle",
-      "learning",
-      "loop-policy",
-      "model-policy",
-      "verifier"
-    ],
-    "gates": [
-      "architecture",
-      "e2e-ui",
-      "evals",
-      "smoke-dsh",
-      "typecheck",
-      "unit"
-    ]
+    "files": [],
+    "modules": [],
+    "impacted": [],
+    "gates": []
   },
   "services": [
     {
@@ -1276,9 +1225,9 @@
     }
   ],
   "stats": {
-    "files": 161,
+    "files": 162,
     "modules": 15,
     "edges": 54,
-    "scanMs": 802
+    "scanMs": 747
   }
 }
