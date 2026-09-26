@@ -6,6 +6,7 @@ import { runHealthCheck, type HealthContext } from './ops/health.ts'
 import { PROVIDER_APIS, ProviderError, listProviders, probeProvider, removeProvider, saveProvider, storedConnection, testModel, type ProviderApi } from './ops/providers.ts'
 import { PresetError, applyPreset, presetViews, savePresets } from './ops/presets.ts'
 import { UpdateError, isSupervised, scheduleRestart, type UpdateManager } from './ops/update.ts'
+import { ScanError, initGit, listDirs, scanProject } from './ops/project-scan.ts'
 import { BackupError, createBackup, deleteBackup, importBackup, listBackups, restoreBackup } from './ops/backup.ts'
 
 type Role = 'human' | 'agent' | 'anonymous'
@@ -86,6 +87,11 @@ export function registerSystemRoutes(route: RouteFn, deps: SystemDeps): void {
     const r = restoreBackup(store.home, params.id!, deps.appVersion())
     return { ...r, backups: backups() }
   }, BackupError), 'human')
+
+  // Project Add wizard (human: browses the server's folders).
+  route('GET', '/api/system/dirs', ({ query }) => as400(() => listDirs(query.get('path') ?? undefined, query.get('hidden') === '1'), ScanError), 'human')
+  route('POST', '/api/system/scan', ({ body }) => as400(() => scanProject(String(body?.root ?? ''), store), ScanError), 'human')
+  route('POST', '/api/system/scan/git-init', ({ body }) => as400(() => { initGit(String(body?.root ?? '')); return scanProject(String(body.root), store) }, ScanError), 'human')
 
   // Update / Rollback / Restart.
   const supervised = () => isSupervised() || !!deps.restart

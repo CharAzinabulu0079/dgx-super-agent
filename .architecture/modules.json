@@ -234,7 +234,7 @@
     "description": "Headless HTTP/SSE Realtime API",
     "protected": false,
     "declared": true,
-    "files": 29,
+    "files": 31,
     "gates": [
       "unit",
       "e2e-ui"
@@ -246,6 +246,7 @@
       "superagent/server/test/commands.test.ts",
       "superagent/server/test/files.test.ts",
       "superagent/server/test/ops.test.ts",
+      "superagent/server/test/project-scan.test.ts",
       "superagent/server/test/project-setup.test.ts",
       "superagent/server/test/requests.test.ts",
       "superagent/server/test/server.test.ts",

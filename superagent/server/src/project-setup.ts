@@ -47,6 +47,10 @@ export function detectGates(root: string): GateSpec[] {
     if (readdirSync(root).some(n => /^playwright\.config\.(m?[jt]s)$/.test(n))) {
       gates.push(parseGateSpec({ id: 'e2e', kind: 'e2e', command: 'npx playwright test --reporter=json', parser: 'playwright-json', timeoutMs: 600_000 }))
     }
+  } else if (existsSync(join(root, 'go.mod'))) {
+    gates.push(parseGateSpec({ id: 'unit', kind: 'command', command: 'go test ./...', timeoutMs: 900_000 }))
+  } else if (existsSync(join(root, 'Cargo.toml'))) {
+    gates.push(parseGateSpec({ id: 'unit', kind: 'command', command: 'cargo test --quiet', timeoutMs: 1_800_000 }))
   } else if (existsSync(join(root, 'pyproject.toml')) || existsSync(join(root, 'pytest.ini')) || existsSync(join(root, 'tests'))) {
     gates.push(parseGateSpec({ id: 'unit', kind: 'command', command: 'python3 -m pytest -q', timeoutMs: 600_000 }))
   }

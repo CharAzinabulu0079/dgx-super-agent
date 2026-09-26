@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-26T14:25:14.823Z",
-  "commit": "834a2a7",
+  "generatedAt": "2026-09-26T14:27:15.382Z",
+  "commit": "e023296",
   "layers": [
     "foundation",
     "capability",
@@ -346,7 +346,7 @@
       "status": [
         "changing"
       ],
-      "files": 29,
+      "files": 31,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -376,6 +376,7 @@
         "superagent/server/test/commands.test.ts",
         "superagent/server/test/files.test.ts",
         "superagent/server/test/ops.test.ts",
+        "superagent/server/test/project-scan.test.ts",
         "superagent/server/test/project-setup.test.ts",
         "superagent/server/test/requests.test.ts",
         "superagent/server/test/server.test.ts",
@@ -391,7 +392,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 2,
       "declared": true,
@@ -1027,7 +1028,7 @@
     {
       "from": "server",
       "to": "chief-worker",
-      "weight": 13,
+      "weight": 14,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1041,7 +1042,7 @@
     {
       "from": "server",
       "to": "contracts",
-      "weight": 9,
+      "weight": 10,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1088,7 +1089,7 @@
     {
       "from": "server",
       "to": "project-state",
-      "weight": 13,
+      "weight": 14,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1102,7 +1103,7 @@
     {
       "from": "server",
       "to": "testkit",
-      "weight": 13,
+      "weight": 14,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1153,18 +1154,17 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "superagent/cli/src/main.ts",
-      "superagent/server/src/http.ts",
       "superagent/server/src/ops/index.ts",
-      "superagent/server/src/ops/update.ts",
+      "superagent/server/src/ops/project-scan.ts",
+      "superagent/server/src/project-setup.ts",
       "superagent/server/src/system-routes.ts",
-      "superagent/server/test/update.test.ts"
+      "superagent/server/test/project-scan.test.ts"
     ],
     "modules": [
-      "cli",
       "server"
     ],
     "impacted": [
+      "cli",
       "evals",
       "learning"
     ],
@@ -1247,9 +1247,9 @@
     }
   ],
   "stats": {
-    "files": 173,
+    "files": 175,
     "modules": 15,
     "edges": 54,
-    "scanMs": 741
+    "scanMs": 708
   }
 }

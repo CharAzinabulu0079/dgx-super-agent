@@ -498,7 +498,7 @@
     {
       "from": "server",
       "to": "chief-worker",
-      "weight": 13,
+      "weight": 14,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -512,7 +512,7 @@
     {
       "from": "server",
       "to": "contracts",
-      "weight": 9,
+      "weight": 10,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -559,7 +559,7 @@
     {
       "from": "server",
       "to": "project-state",
-      "weight": 13,
+      "weight": 14,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -573,7 +573,7 @@
     {
       "from": "server",
       "to": "testkit",
-      "weight": 13,
+      "weight": 14,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
