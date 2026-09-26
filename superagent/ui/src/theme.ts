@@ -15,10 +15,28 @@ export const GRADIENTS: Record<string, string> = {
   sunrise: 'linear-gradient(160deg, #fdf2e9 0%, #f7c9a9 45%, #d97757 100%)',
 }
 
+/** An embeddable background page: http(s) without credentials (same rule as the server). */
+export function embedOrigin(url: string | undefined): string | null {
+  try {
+    const u = new URL(String(url ?? ''))
+    return (u.protocol === 'http:' || u.protocol === 'https:') && !u.username && !u.password ? u.origin : null
+  } catch (invalid) {
+    void invalid
+    return null
+  }
+}
+
+/** A device-only appearance is not checked by the server: never let a bad one break the UI. */
+function usableLocal(a: Appearance | null): Appearance | null {
+  if (!a || typeof a !== 'object' || !a.background || typeof a.background !== 'object') return null
+  if (a.background.kind === 'embed' && !embedOrigin(a.background.url)) return null
+  return a
+}
+
 function readLocal(): Appearance | null {
   try {
     const v = localStorage.getItem(LOCAL_KEY)
-    return v ? (JSON.parse(v) as Appearance) : null
+    return v ? usableLocal(JSON.parse(v) as Appearance) : null
   } catch (unavailable) {
     void unavailable
     return null
@@ -51,6 +69,7 @@ export function useAppearance(onError: (e: string) => void) {
   /** Save for all devices (server) or only this one (localStorage). */
   const save = async (next: Appearance, scope: 'all' | 'device'): Promise<void> => {
     if (scope === 'device') {
+      if (!usableLocal(next)) throw new Error('background.url: expected an http(s) URL without credentials')
       try { localStorage.setItem(LOCAL_KEY, JSON.stringify(next)) } catch (unavailable) { void unavailable }
       setLocal(next)
       return

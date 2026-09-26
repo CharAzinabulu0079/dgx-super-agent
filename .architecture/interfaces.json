@@ -419,6 +419,7 @@
       "ensureBundleBuilt",
       "findBackground",
       "isLoopbackHost",
+      "isLoopbackHostHeader",
       "knownProviders",
       "listBackgrounds",
       "listProjectDir",

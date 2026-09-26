@@ -1,7 +1,7 @@
 {
   "name": "@superagent/dsh-bundle",
   "description": "DGX Super Agent tools for DSH sessions: Worker structured reports, Chief project/goal/task/architecture tools",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "main": "lib/index.js",

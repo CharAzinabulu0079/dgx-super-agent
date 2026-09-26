@@ -10,8 +10,9 @@
  * a script inside a shared file cannot read the UI's token from this origin.
  */
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
-import { createReadStream, readdirSync, statSync } from 'node:fs'
+import { closeSync, createReadStream, fstatSync, openSync, readdirSync, statSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { pipeline } from 'node:stream'
 import { mimeOf, resolveProjectFile } from '@superagent/project-state'
 
 export interface LinkPayload {
@@ -64,7 +65,23 @@ const ACTIVE = /^(text\/html|image\/svg\+xml|application\/xml|text\/xml)/
 
 /** Stream a file with safe headers and single-range support (needed for video on iOS). */
 export function sendFile(req: IncomingMessage, res: ServerResponse, abs: string, name: string, download: boolean, mime = mimeOf(name)): void {
-  const size = statSync(abs).size
+  // Open first: an unreadable, vanished or swapped file fails here as an ordinary error
+  // response, and the size comes from the very file that is streamed.
+  const fd = openSync(abs, 'r')
+  let size: number
+  try {
+    const st = fstatSync(fd)
+    if (!st.isFile()) throw new Error(`not a regular file: ${name}`)
+    size = st.size
+  } catch (error) {
+    closeSync(fd)
+    throw error
+  }
+  const stream = (opts: { start?: number; end?: number } = {}): void => {
+    if (req.method === 'HEAD') { closeSync(fd); res.end(); return }
+    // A read error mid-response ends the connection; it must never become an uncaught error.
+    pipeline(createReadStream('', { fd, ...opts }), res, error => { if (error) res.destroy() })
+  }
   const type = mime.startsWith('text/') || mime === 'application/json' || mime === 'image/svg+xml' ? `${mime}; charset=utf-8` : mime
   const headers: Record<string, string> = {
     'content-type': download ? 'application/octet-stream' : type,
@@ -82,18 +99,17 @@ export function sendFile(req: IncomingMessage, res: ServerResponse, abs: string,
     start = Math.max(0, start)
     end = Math.min(size - 1, end)
     if (start > end || start >= size) {
+      closeSync(fd)
       res.writeHead(416, { 'content-range': `bytes */${size}` })
       res.end()
       return
     }
     res.writeHead(206, { ...headers, 'content-range': `bytes ${start}-${end}/${size}`, 'content-length': String(end - start + 1) })
-    if (req.method === 'HEAD') { res.end(); return }
-    createReadStream(abs, { start, end }).pipe(res)
+    stream({ start, end })
     return
   }
   res.writeHead(200, { ...headers, 'content-length': String(size) })
-  if (req.method === 'HEAD') { res.end(); return }
-  createReadStream(abs).pipe(res)
+  stream()
 }
 
 export interface TreeEntry { readonly name: string; readonly path: string; readonly type: 'dir' | 'file'; readonly size?: number; readonly mime?: string }

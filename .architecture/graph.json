@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-26T14:16:35.312Z",
-  "commit": "633f45d",
+  "generatedAt": "2026-09-26T14:18:11.319Z",
+  "commit": "57b3450",
   "layers": [
     "foundation",
     "capability",
@@ -17,7 +17,8 @@
       "layer": "foundation",
       "root": "superagent/contracts",
       "status": [
-        "protected"
+        "protected",
+        "changing"
       ],
       "files": 5,
       "declared": true,
@@ -53,7 +54,7 @@
       "layer": "foundation",
       "root": "superagent/testkit",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 6,
       "declared": true,
@@ -126,7 +127,8 @@
       "layer": "capability",
       "root": "superagent/plugins/verifier",
       "status": [
-        "protected"
+        "protected",
+        "changing"
       ],
       "files": 10,
       "declared": true,
@@ -164,7 +166,7 @@
       "layer": "capability",
       "root": "superagent/plugins/loop-policy",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 7,
       "declared": true,
@@ -196,7 +198,7 @@
       "layer": "capability",
       "root": "superagent/plugins/model-policy",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 4,
       "declared": true,
@@ -231,7 +233,7 @@
       "layer": "capability",
       "root": "superagent/plugins/architecture-observatory",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 10,
       "declared": true,
@@ -265,7 +267,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/learning",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 7,
       "declared": true,
@@ -389,7 +391,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 2,
       "declared": true,
@@ -418,7 +420,7 @@
       "layer": "interface",
       "root": "superagent/ui",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 22,
       "declared": true,
@@ -439,7 +441,7 @@
       "layer": "interface",
       "root": "superagent/dsh-bundle",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 5,
       "declared": true,
@@ -465,7 +467,7 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 15,
       "declared": true,
@@ -1086,7 +1088,7 @@
     {
       "from": "server",
       "to": "project-state",
-      "weight": 10,
+      "weight": 11,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1151,35 +1153,66 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "superagent/plugins/chief-worker/src/chief.ts",
-      "superagent/plugins/project-state/src/store.ts",
+      "CHANGELOG.md",
+      "CURRENT_STATE.md",
+      "README.md",
+      "REDTEAM_REPORT.md",
+      "SETUP_DGX.md",
+      "docs/RELEASE_AUDIT_cloud-v1.1.md",
+      "package.json",
+      "scripts/redteam-report.ts",
+      "superagent/cli/package.json",
+      "superagent/cli/src/main.ts",
+      "superagent/contracts/package.json",
+      "superagent/dsh-bundle/package.json",
+      "superagent/evals/package.json",
+      "superagent/evals/test/ui-appearance.e2e.test.ts",
+      "superagent/plugins/architecture-observatory/package.json",
+      "superagent/plugins/chief-worker/package.json",
+      "superagent/plugins/chief-worker/src/dsh-process.ts",
+      "superagent/plugins/chief-worker/test/chief-wake.test.ts",
+      "superagent/plugins/learning/package.json",
+      "superagent/plugins/loop-policy/package.json",
+      "superagent/plugins/model-policy/package.json",
+      "superagent/plugins/project-state/package.json",
+      "superagent/plugins/project-state/src/files.ts",
+      "superagent/plugins/verifier/package.json",
+      "superagent/server/package.json",
+      "superagent/server/src/commands.ts",
+      "superagent/server/src/files-http.ts",
       "superagent/server/src/http.ts",
-      "superagent/server/src/index.ts",
-      "superagent/server/src/ops/health.ts",
-      "superagent/server/src/ops/index.ts",
-      "superagent/server/src/ops/presets.ts",
-      "superagent/server/src/ops/providers.ts",
-      "superagent/server/src/system-routes.ts",
-      "superagent/server/test/ops.test.ts"
+      "superagent/server/test/commands.test.ts",
+      "superagent/server/test/files.test.ts",
+      "superagent/server/test/server.test.ts",
+      "superagent/testkit/package.json",
+      "superagent/ui/package.json",
+      "superagent/ui/src/Background.tsx",
+      "superagent/ui/src/api.ts",
+      "superagent/ui/src/theme.ts"
     ],
     "modules": [
-      "chief-worker",
-      "project-state",
-      "server"
-    ],
-    "impacted": [
       "architecture-observatory",
+      "chief-worker",
       "cli",
+      "contracts",
       "dsh-bundle",
       "evals",
       "learning",
-      "model-policy"
+      "loop-policy",
+      "model-policy",
+      "project-state",
+      "server",
+      "testkit",
+      "ui",
+      "verifier"
     ],
+    "impacted": [],
     "gates": [
       "architecture",
       "e2e-ui",
       "evals",
       "smoke-dsh",
+      "typecheck",
       "unit"
     ]
   },
@@ -1256,7 +1289,7 @@
     }
   ],
   "stats": {
-    "files": 167,
+    "files": 168,
     "modules": 15,
     "edges": 54,
     "scanMs": 708

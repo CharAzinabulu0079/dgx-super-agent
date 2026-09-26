@@ -48,7 +48,8 @@ export function resolveProjectFile(projectRoot: string, path: string, home: stri
   if (rel.startsWith('..') || isAbsolute(rel)) throw new ShareError(`outside the project: ${path}`)
   const realHome = existsSync(home) ? realpathSync(home) : resolve(home)
   if (abs === realHome || abs.startsWith(realHome + sep)) throw new ShareError('SuperAgent state is not shareable')
-  if (rel === '.git' || rel.startsWith(`.git${sep}`)) throw new ShareError('.git is not shareable')
+  // Any repository metadata, nested repos included (.git/config can hold remote credentials).
+  if (rel.split(sep).includes('.git')) throw new ShareError('.git is not shareable')
   const st = statSync(abs)
   if (st.isDirectory()) {
     if (!opts.allowDir) throw new ShareError(`is a directory: ${path}`)

@@ -45,7 +45,26 @@ test('UI appearance: image background for all devices; Digital Human embed bridg
   try {
     await page.goto(`${server.url}/?token=${server.humanToken}`)
     await page.getByTestId('project-calc').click()
+    assert.doesNotMatch(page.url(), /token=/, 'the human token is removed from the address bar and history (regression: token leak)')
     assert.equal(await page.evaluate(() => document.documentElement.dataset.style), 'solid', 'clean style by default')
+
+    // Regression: a device-only embed URL is not checked by the server; a bad one must be
+    // refused on save and, if already stored, ignored instead of crashing the UI on every load.
+    await page.getByTestId('open-appearance').click()
+    await page.getByTestId('bg-kind-embed').click()
+    await page.getByTestId('embed-url').fill('10.8.0.1:8080/avatar')
+    await page.getByTestId('scope-device').click()
+    await page.getByTestId('appearance-save').click()
+    await page.getByTestId('error').filter({ hasText: 'http(s) URL' }).waitFor()
+    await page.getByRole('button', { name: 'Cancel' }).click()
+    await page.evaluate(() => localStorage.setItem('superagent-appearance-local', JSON.stringify({ style: 'solid', theme: 'auto', accent: '#d97757', panelOpacity: 0.72, background: { kind: 'embed', url: '10.8.0.1:8080/avatar', blur: 0, dim: 0 } })))
+    await page.reload()
+    await page.getByTestId('project-title').waitFor()
+    assert.equal(await page.getByTestId('bg-embed').count(), 0)
+    assert.deepEqual(errors, [], 'no crash from a stored bad appearance')
+    await page.evaluate(() => localStorage.removeItem('superagent-appearance-local'))
+    await page.reload()
+    await page.getByTestId('project-title').waitFor()
 
     // Upload an image background for all devices.
     await page.getByTestId('open-appearance').click()

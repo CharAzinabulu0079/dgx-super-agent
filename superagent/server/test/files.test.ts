@@ -2,10 +2,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { setTimeout as sleep } from 'node:timers/promises'
 import { ScriptedExecutor } from '@superagent/chief-worker'
 import { StateStore, shareFile, ShareError } from '@superagent/project-state'
 import { calcProject, tempDir, NODE_TEST_GATE } from '@superagent/testkit'
-import { LinkSigner, createRuntime, startServer } from '../src/index.ts'
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
+import { LinkSigner, createRuntime, sendFile, startServer } from '../src/index.ts'
 
 async function api(base: string, method: string, path: string, body?: unknown, token?: string): Promise<any> {
   const res = await fetch(`${base}${path}`, {
@@ -31,7 +34,9 @@ test('shareFile: only regular files inside the project; never state, .git or esc
   const outside = tempDir('sa-outside-')
   writeFileSync(join(outside, 'secret.txt'), 'x')
   symlinkSync(join(outside, 'secret.txt'), join(root, 'link.txt'))
-  for (const bad of ['link.txt', join(outside, 'secret.txt'), '../etc/passwd', '.git/config', 'src', join(home, 'projects', p.id, 'project.json')]) {
+  mkdirSync(join(root, 'vendor', 'lib', '.git'), { recursive: true })
+  writeFileSync(join(root, 'vendor', 'lib', '.git', 'config'), '[remote "origin"]\n\turl = https://user:ghp_secret@github.com/x/y\n')
+  for (const bad of ['link.txt', join(outside, 'secret.txt'), '../etc/passwd', '.git/config', 'vendor/lib/.git/config', 'src', join(home, 'projects', p.id, 'project.json')]) {
     assert.throws(() => shareFile(store, p.id, bad, { role: 'chief' }), ShareError, bad)
   }
   // State home inside the project tree is still refused.
@@ -123,5 +128,38 @@ test('remote bind (LAN/WireGuard): no anonymous reads; signed links still open w
     assert.equal(link.url.includes('h'.repeat(24)), false, 'the human token is not in the link')
   } finally {
     await server.close()
+  }
+})
+
+test('sendFile: an unreadable or vanished file is an error response, never an uncaught stream error (regression: server crash)', async () => {
+  const dir = tempDir('sa-serve-')
+  writeFileSync(join(dir, 'ok.txt'), 'hello')
+  const crashes: unknown[] = []
+  const onCrash = (e: unknown) => { crashes.push(e) }
+  process.on('uncaughtException', onCrash)
+  const srv = createServer((req, res) => {
+    try {
+      sendFile(req, res, join(dir, decodeURIComponent(req.url!.slice(1))), 'x.txt', false)
+    } catch (error) {
+      res.writeHead(500).end(String((error as Error).message))
+    }
+  })
+  await new Promise<void>(r => srv.listen(0, '127.0.0.1', r))
+  const base = `http://127.0.0.1:${(srv.address() as AddressInfo).port}`
+  try {
+    // A directory (stat succeeds, reading fails with EISDIR) and a file gone since the link was made.
+    const d = await fetch(`${base}/`)
+    assert.equal(d.status, 500)
+    assert.match(await d.text(), /not a regular file/)
+    assert.equal((await fetch(`${base}/gone.txt`)).status, 500)
+    const ok = await fetch(`${base}/ok.txt`, { headers: { range: 'bytes=1-' } })
+    assert.equal(ok.status, 206)
+    assert.equal(await ok.text(), 'ello')
+    assert.equal((await fetch(`${base}/ok.txt`, { method: 'HEAD' })).status, 200)
+    await sleep(200)
+    assert.deepEqual(crashes, [])
+  } finally {
+    process.off('uncaughtException', onCrash)
+    srv.close()
   }
 })

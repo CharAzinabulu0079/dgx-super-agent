@@ -137,12 +137,14 @@ async function main(argv: string[]): Promise<number> {
       const host = values.host ?? '127.0.0.1'
       const envToken = process.env.SUPERAGENT_HUMAN_TOKEN
       if (envToken !== undefined && envToken.length < 24) throw new Error('SUPERAGENT_HUMAN_TOKEN must be at least 24 characters (e.g. `openssl rand -base64 24`)')
+      // Held only in memory from here on: nothing this process spawns (Chief, Workers, gates, ▷ Run) inherits it.
+      delete process.env.SUPERAGENT_HUMAN_TOKEN
       const chiefProfile = existsSync(join(dshHome, 'profiles', 'superagent-chief-cli', 'package.json'))
       const s = await startServer({
         runtime: rt, port: Number(values.port ?? 7788), host, humanToken: envToken, chiefChat: chiefProfile,
         uiDir: join(REPO_ROOT, 'superagent/ui/dist'), watch: !values['no-watch'],
         chiefWake: !values['no-chief'] && chiefProfile,
-        resumeGoals: true,
+        resumeGoals: true, stableToken: !!envToken,
       })
       // Agent token for the Chief launcher (0600, outside any worktree). The human token
       // is printed once and kept only in this process's memory.

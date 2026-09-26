@@ -1,11 +1,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
+import { request } from 'node:http'
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { ScriptedExecutor } from '@superagent/chief-worker'
 import { calcProject, tempDir, FIXED_CALC, NODE_TEST_GATE } from '@superagent/testkit'
-import { createRuntime, startServer } from '../src/index.ts'
+import { createRuntime, isLoopbackHostHeader, startServer } from '../src/index.ts'
 
 async function api(base: string, method: string, path: string, body?: unknown, token?: string): Promise<any> {
   const res = await fetch(`${base}${path}`, {
@@ -113,6 +114,72 @@ test('API refuses cross-origin and non-JSON POSTs (CSRF guard)', async () => {
     const same = await fetch(`${server.url}/api/projects`, { headers: { origin: server.url } })
     assert.equal(same.status, 200)
   } finally {
+    await server.close()
+  }
+})
+
+/** Raw GET with an arbitrary Host header (fetch does not let a caller set one). */
+function rawGet(base: string, path: string, host: string): Promise<{ status: number; body: string }> {
+  const u = new URL(base)
+  return new Promise((resolve, reject) => {
+    const req = request({ host: u.hostname, port: u.port, path, headers: { host } }, res => {
+      let body = ''
+      res.on('data', c => { body += c })
+      res.on('end', () => resolve({ status: res.statusCode ?? 0, body }))
+    })
+    req.on('error', reject)
+    req.end()
+  })
+}
+
+test('loopback server refuses foreign Host headers (regression: DNS rebinding reads projects and files)', async () => {
+  for (const ok of ['127.0.0.1:7788', 'localhost', 'LOCALHOST:1', '[::1]:7788', 'app.localhost:7788', '127.1.2.3']) assert.ok(isLoopbackHostHeader(ok), ok)
+  for (const bad of [undefined, '', 'evil.example', 'evil.example:7788', '127.0.0.1.evil.example', 'localhost.evil.example', '10.8.0.1:7788', '[::1]evil']) assert.equal(isLoopbackHostHeader(bad), false, String(bad))
+  const root = calcProject()
+  writeFileSync(join(root, '.env'), 'API_KEY=secret\n')
+  const runtime = createRuntime({ home: tempDir('sa-home-'), executor: new ScriptedExecutor(() => {}) })
+  const server = await startServer({ runtime, port: 0 })
+  try {
+    await api(server.url, 'POST', '/api/projects', { name: 'calc', root, defaultGates: [NODE_TEST_GATE] }, server.humanToken)
+    const port = new URL(server.url).port
+    for (const path of ['/api/projects', '/api/projects/calc/tree', '/api/events/stream']) {
+      const r = await rawGet(server.url, path, `rebind.evil.example:${port}`)
+      assert.equal(r.status, 403, path)
+      assert.doesNotMatch(r.body, /calc/)
+    }
+    assert.equal((await rawGet(server.url, '/api/projects', `localhost:${port}`)).status, 200)
+    assert.equal((await rawGet(server.url, '/api/projects', `127.0.0.1:${port}`)).status, 200)
+  } finally {
+    await server.close()
+  }
+  // A remote bind (every request needs the token) keeps answering to its own address.
+  const remote = await startServer({ runtime: createRuntime({ home: tempDir('sa-home-'), executor: new ScriptedExecutor(() => {}) }), host: '0.0.0.0', port: 0 })
+  try {
+    const port = new URL(remote.url).port
+    const r = await rawGet(`http://127.0.0.1:${port}`, `/api/projects?token=${remote.humanToken}`, `10.8.0.1:${port}`)
+    assert.equal(r.status, 200)
+  } finally {
+    await remote.close()
+  }
+})
+
+test('SSE: a bad project filter is refused and can never crash the server (regression: uncaught timer exception)', async () => {
+  const runtime = createRuntime({ home: tempDir('sa-home-'), executor: new ScriptedExecutor(() => {}) })
+  const server = await startServer({ runtime, port: 0 })
+  const crashes: unknown[] = []
+  const onCrash = (e: unknown) => { crashes.push(e) }
+  process.on('uncaughtException', onCrash)
+  try {
+    for (const bad of ['bad%2Fid', '..', 'missing']) {
+      const r = await fetch(`${server.url}/api/events/stream?project=${bad}`)
+      assert.equal(r.status, 404, bad)
+      await r.body?.cancel()
+    }
+    await sleep(1_000) // several pump ticks
+    assert.deepEqual(crashes, [])
+    assert.equal((await fetch(`${server.url}/api/health`)).status, 200)
+  } finally {
+    process.off('uncaughtException', onCrash)
     await server.close()
   }
 })

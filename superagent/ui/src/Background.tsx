@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef } from 'react'
 import type { ActivityEvent, Appearance } from './api.ts'
-import { GRADIENTS } from './theme.ts'
+import { GRADIENTS, embedOrigin } from './theme.ts'
 
 export interface BridgeFeed {
   /** Latest items to forward; the layer tracks what it already sent. */
@@ -26,7 +26,7 @@ export function BackgroundLayer({ a, url, theme, feed, onChat, onNotice }: {
       {b.kind === 'gradient' && <div className="bg-fill" style={{ background: GRADIENTS[b.preset ?? 'aurora'] ?? GRADIENTS.aurora, filter }} />}
       {b.kind === 'image' && url && <div className="bg-fill" style={{ backgroundImage: `url("${url}")`, backgroundSize: 'cover', backgroundPosition: 'center', filter, transform: b.blur ? 'scale(1.05)' : undefined }} />}
       {b.kind === 'video' && url && <video className="bg-fill" src={url} autoPlay muted loop playsInline style={{ objectFit: 'cover', filter }} />}
-      {b.kind === 'embed' && b.url && <EmbedBridge a={a} theme={theme} feed={feed} onChat={onChat} onNotice={onNotice} />}
+      {b.kind === 'embed' && embedOrigin(b.url) && <EmbedBridge a={a} theme={theme} feed={feed} onChat={onChat} onNotice={onNotice} />}
       {b.dim > 0 && <div className="bg-dim" style={{ background: `rgba(0,0,0,${b.dim})` }} />}
     </div>
   )
@@ -37,7 +37,7 @@ function EmbedBridge({ a, theme, feed, onChat, onNotice }: { a: Appearance; them
   const frame = useRef<HTMLIFrameElement>(null)
   const ready = useRef(false)
   const sent = useRef({ activity: 0, chief: 0 })
-  const origin = new URL(b.url!).origin
+  const origin = embedOrigin(b.url)!
   const sameOrigin = origin === location.origin
   // A sandboxed same-origin frame has an opaque origin, so it can only be addressed with '*' (its window is still exact).
   const post = (type: string, data: unknown) => frame.current?.contentWindow?.postMessage({ source: 'superagent', version: 1, type, data }, sameOrigin ? '*' : origin)
