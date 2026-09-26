@@ -1,3 +1,5 @@
 export * from './providers.ts'
 export * from './presets.ts'
 export * from './health.ts'
+export * from './backup.ts'
+export * from './version.ts'

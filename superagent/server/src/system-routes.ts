@@ -5,14 +5,20 @@ import { HttpError } from './http.ts'
 import { runHealthCheck, type HealthContext } from './ops/health.ts'
 import { PROVIDER_APIS, ProviderError, listProviders, probeProvider, removeProvider, saveProvider, storedConnection, testModel, type ProviderApi } from './ops/providers.ts'
 import { PresetError, applyPreset, presetViews, savePresets } from './ops/presets.ts'
+import { BackupError, createBackup, deleteBackup, importBackup, listBackups, restoreBackup } from './ops/backup.ts'
 
 type Role = 'human' | 'agent' | 'anonymous'
 type Handler = (ctx: { req: IncomingMessage; res: ServerResponse; params: Record<string, string>; body: any; query: URLSearchParams; role: Role }) => unknown | Promise<unknown>
-export type RouteFn = (method: string, path: string, handler: Handler, level?: 'read' | 'agent' | 'human') => void
+export type RouteFn = (method: string, path: string, handler: Handler, level?: 'read' | 'agent' | 'human', raw?: { types: RegExp; maxBytes: number }) => void
 
 export interface SystemDeps {
   readonly store: StateStore
   readonly healthCtx: () => HealthContext
+  /** Why state must not be swapped right now (a goal or command is running), if so. */
+  readonly busy: () => string | undefined
+  /** Short-lived download link for a backup archive. */
+  readonly backupLink: (id: string) => string
+  readonly appVersion: () => { appVersion?: string; commit?: string }
 }
 
 const as400 = async <T>(fn: () => T | Promise<T>, ...types: Array<new (...a: any[]) => Error>): Promise<T> => {
@@ -56,5 +62,25 @@ export function registerSystemRoutes(route: RouteFn, deps: SystemDeps): void {
   // Model presets.
   route('GET', '/api/system/presets', () => ({ presets: presetViews(store.home) }))
   route('POST', '/api/system/presets', ({ body }) => as400(() => { savePresets(store.home, body?.presets); return { presets: presetViews(store.home) } }, PresetError), 'human')
+  // Backup / Restore (human only: archives hold all project state).
+  const backups = () => listBackups(store.home).map(b => ({ ...b, url: deps.backupLink(b.id) }))
+  route('GET', '/api/system/backups', () => ({ backups: backups() }), 'human')
+  route('POST', '/api/system/backups', ({ body }) => as400(() => {
+    createBackup(store.home, { label: typeof body?.label === 'string' ? body.label : 'manual', includeSecrets: body?.includeSecrets === true, includeSessions: body?.includeSessions === true, ...deps.appVersion() })
+    return { backups: backups() }
+  }, BackupError), 'human')
+  route('POST', '/api/system/backups/upload', ({ body }) => as400(() => {
+    if (!Buffer.isBuffer(body)) throw new BackupError('send the .tar.gz file')
+    importBackup(store.home, body)
+    return { backups: backups() }
+  }, BackupError), 'human', { types: /^application\/(gzip|x-gzip|octet-stream)\b/, maxBytes: 1024 ** 3 })
+  route('POST', '/api/system/backups/:id/delete', ({ params }) => as400(() => { deleteBackup(store.home, params.id!); return { backups: backups() } }, BackupError), 'human')
+  route('POST', '/api/system/backups/:id/restore', ({ params }) => as400(() => {
+    const busy = deps.busy()
+    if (busy) throw new BackupError(`cannot restore while ${busy}; stop it first`)
+    const r = restoreBackup(store.home, params.id!, deps.appVersion())
+    return { ...r, backups: backups() }
+  }, BackupError), 'human')
+
   route('POST', '/api/system/presets/:id/apply', ({ params }) => as400(() => { const policy = applyPreset(store.home, params.id!); return { policy, presets: presetViews(store.home) } }, PresetError), 'human')
 }

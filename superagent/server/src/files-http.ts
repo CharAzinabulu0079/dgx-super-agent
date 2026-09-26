@@ -25,7 +25,7 @@ export interface LinkPayload {
   /** 1 = download (attachment), 0 = inline preview */
   readonly d: 0 | 1
   /** `bg` = a UI background asset (then `f` is its id and `p` is unused) */
-  readonly k?: 'bg'
+  readonly k?: 'bg' | 'backup'
   /** expiry, ms since epoch */
   readonly e: number
 }

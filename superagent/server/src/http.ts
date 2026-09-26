@@ -22,6 +22,8 @@ import type { ChiefMessage, SharedFile } from '@superagent/contracts'
 import { workerTranscript } from './transcript.ts'
 import { CommandError, CommandRunner } from './commands.ts'
 import { registerSystemRoutes } from './system-routes.ts'
+import { backupFile } from './ops/backup.ts'
+import { appVersion } from './ops/version.ts'
 import { preflightChecks, type HealthContext } from './ops/health.ts'
 import { REPO_ROOT } from '@superagent/testkit'
 import { presetViews } from './ops/presets.ts'
@@ -383,7 +385,15 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     return appearanceView()
   }), 'human')
 
-  registerSystemRoutes(route, { store, healthCtx })
+  registerSystemRoutes(route, {
+    store, healthCtx,
+    busy: () => {
+      const goal = store.listProjects().map(p => goals.running(p.id)).find(Boolean)
+      return goal ? `goal ${goal} is running` : commands.anyRunning() ? 'a command is running' : undefined
+    },
+    backupLink: id => `/dl/${links.sign({ p: '', f: id, d: 1, k: 'backup' }).token}`,
+    appVersion: () => appVersion(),
+  })
 
   // ---------------------------------------------------------------- human-run commands (▷ on code blocks)
   const commandErrors = <T>(fn: () => T): T => {
@@ -546,6 +556,12 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
       if (url.pathname.startsWith('/dl/') && (req.method === 'GET' || req.method === 'HEAD')) {
         const link = links.verify(url.pathname.slice(4))
         if (!link) throw new HttpError(403, 'link expired or invalid — open the file again from SuperAgent')
+        if (link.k === 'backup') {
+          const file = backupFile(store.home, link.f ?? '')
+          if (!existsSync(file)) throw new HttpError(404, 'backup not found')
+          sendFile(req, res, file, `${link.f}.tar.gz`, true, 'application/gzip')
+          return
+        }
         if (link.k === 'bg') {
           const a = findBackground(store.home, link.f ?? '')
           if (!a) throw new HttpError(404, 'background not found')

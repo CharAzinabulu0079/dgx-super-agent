@@ -167,6 +167,11 @@ export class CommandRunner {
     return this.store.listRecords<CommandRecord>(projectId, 'commands').sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, limit)
   }
 
+  /** Whether any human-run command is still running. */
+  anyRunning(): boolean {
+    return this.running.size > 0
+  }
+
   stopAll(): void {
     for (const r of this.running.values()) r.kill()
   }

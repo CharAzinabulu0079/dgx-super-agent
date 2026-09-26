@@ -498,7 +498,7 @@
     {
       "from": "server",
       "to": "chief-worker",
-      "weight": 11,
+      "weight": 12,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -559,7 +559,7 @@
     {
       "from": "server",
       "to": "project-state",
-      "weight": 11,
+      "weight": 12,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -567,21 +567,21 @@
         "superagent/server/src/files-http.ts → @superagent/project-state",
         "superagent/server/src/goal-runner.ts → @superagent/project-state",
         "superagent/server/src/http.ts → @superagent/project-state",
-        "superagent/server/src/ops/health.ts → @superagent/project-state"
+        "superagent/server/src/ops/backup.ts → @superagent/project-state"
       ]
     },
     {
       "from": "server",
       "to": "testkit",
-      "weight": 10,
+      "weight": 12,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/server/src/dsh-setup.ts → @superagent/testkit",
         "superagent/server/src/http.ts → @superagent/testkit",
         "superagent/server/src/ops/health.ts → @superagent/testkit",
-        "superagent/server/test/appearance.test.ts → @superagent/testkit",
-        "superagent/server/test/commands.test.ts → @superagent/testkit"
+        "superagent/server/src/ops/version.ts → @superagent/testkit",
+        "superagent/server/test/appearance.test.ts → @superagent/testkit"
       ]
     },
     {

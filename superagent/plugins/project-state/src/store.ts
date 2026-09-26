@@ -52,6 +52,12 @@ export type RecordCollection = 'wakes' | 'files' | 'chief-chat' | 'commands'
 
 export type NewEvent = Omit<SuperAgentEvent, 'seq' | 'ts'> & { ts?: string }
 
+/**
+ * Version of the on-disk state layout. Bump it (with a migration) whenever a stored record
+ * changes shape incompatibly; backups and updates refuse to move state to an older version.
+ */
+export const STATE_SCHEMA_VERSION = 1
+
 export class StateStore {
   readonly home: string
   private readonly emitter = new EventEmitter()
@@ -62,6 +68,19 @@ export class StateStore {
     this.home = resolve(home)
     mkdirSync(join(this.home, 'projects'), { recursive: true })
     this.emitter.setMaxListeners(0)
+    // Record the on-disk format so backups/updates can tell which state layout they hold.
+    const version = join(this.home, 'state-version.json')
+    if (!existsSync(version)) writeFileSync(version, `${JSON.stringify({ schema: STATE_SCHEMA_VERSION })}\n`)
+  }
+
+  /** On-disk state format of this home (1 when unrecorded). */
+  stateSchema(): number {
+    try {
+      return (JSON.parse(readFileSync(join(this.home, 'state-version.json'), 'utf8')) as { schema?: number }).schema ?? 1
+    } catch (absent) {
+      void absent
+      return 1
+    }
   }
 
   // ------------------------------------------------------------ primitives
