@@ -120,6 +120,14 @@ export interface ProviderView {
   readonly isLocalDefault: boolean
 }
 
+/**
+ * DSH's llm-pi-ai refuses to call a provider without a key ("No API key for provider"),
+ * but a local server (llama.cpp, vLLM) usually needs none. Keyless providers therefore
+ * point at this shared placeholder, which is not reported or sent back as a real key.
+ */
+export const KEYLESS_ENV = 'SA_KEYLESS'
+const isRealKeyEnv = (v: string | undefined): v is string => !!v && v !== KEYLESS_ENV
+
 type PiAiProvider = { api?: string; baseURL?: string; apiKeyEnv?: string; models?: Array<{ id: string; contextWindow?: number }>; displayName?: string }
 
 export function listProviders(home: string): ProviderView[] {
@@ -127,7 +135,7 @@ export function listProviders(home: string): ProviderView[] {
   const local = r.aliases?.['local-default']
   return Object.entries((r.piAiProviders ?? {}) as Record<string, PiAiProvider>).map(([name, p]) => ({
     name, api: p.api, baseURL: p.baseURL, models: (p.models ?? []).map(m => m.id),
-    hasKey: !!(p.apiKeyEnv && (r.env?.[p.apiKeyEnv] || process.env[p.apiKeyEnv])),
+    hasKey: !!(isRealKeyEnv(p.apiKeyEnv) && (r.env?.[p.apiKeyEnv] || process.env[p.apiKeyEnv])),
     isLocalDefault: local?.provider === name,
   }))
 }
@@ -158,7 +166,8 @@ export function saveProvider(home: string, input: SaveProviderInput): ProviderVi
     else delete env[keyEnv]
   }
   const providers = { ...(r.piAiProviders as Record<string, PiAiProvider> | undefined) }
-  providers[input.name] = { api: input.api, baseURL, ...(env[keyEnv] ? { apiKeyEnv: keyEnv } : {}), models }
+  if (!env[keyEnv]) env[KEYLESS_ENV] = 'no-key'
+  providers[input.name] = { api: input.api, baseURL, apiKeyEnv: env[keyEnv] ? keyEnv : KEYLESS_ENV, models }
   const aliases = { ...r.aliases }
   if (input.makeLocalDefault) aliases['local-default'] = { provider: input.name, model: models[0]!.id }
   writeRoutes(home, { ...r, piAiProviders: providers, env, aliases })
@@ -172,7 +181,7 @@ export function removeProvider(home: string, name: string): void {
   const keyEnv = providers[name]!.apiKeyEnv
   delete providers[name]
   const env = { ...r.env }
-  if (keyEnv) delete env[keyEnv]
+  if (isRealKeyEnv(keyEnv)) delete env[keyEnv]
   const aliases = Object.fromEntries(Object.entries(r.aliases ?? {}).filter(([, a]) => a.provider !== name))
   writeRoutes(home, { ...r, piAiProviders: providers, env, aliases })
 }
@@ -182,5 +191,5 @@ export function storedConnection(home: string, name: string): { api: ProviderApi
   const r = readRoutes(home)
   const p = (r.piAiProviders as Record<string, PiAiProvider> | undefined)?.[name]
   if (!p?.baseURL || !PROVIDER_APIS.includes(p.api as ProviderApi)) return undefined
-  return { api: p.api as ProviderApi, baseURL: p.baseURL, apiKey: p.apiKeyEnv ? r.env?.[p.apiKeyEnv] ?? process.env[p.apiKeyEnv] : undefined }
+  return { api: p.api as ProviderApi, baseURL: p.baseURL, apiKey: isRealKeyEnv(p.apiKeyEnv) ? r.env?.[p.apiKeyEnv] ?? process.env[p.apiKeyEnv] : undefined }
 }

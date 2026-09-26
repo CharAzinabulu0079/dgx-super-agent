@@ -8,6 +8,7 @@ import { ScriptedExecutor } from '@superagent/chief-worker'
 import { loadModelRoutes } from '@superagent/chief-worker'
 import { calcProject, gitRepo, tempDir, NODE_TEST_GATE } from '@superagent/testkit'
 import { createRuntime, startServer } from '../src/index.ts'
+import { KEYLESS_ENV, removeProvider, saveProvider, storedConnection } from '../src/ops/providers.ts'
 
 /** Minimal OpenAI-compatible server: /v1/models and /v1/chat/completions, key "sk-good". */
 async function fakeProvider() {
@@ -87,6 +88,20 @@ test('provider wizard → presets → health: probe, test, save (key write-only)
     await server.close()
     prov.close()
   }
+})
+
+test('a keyless local server (llama.cpp) still gets a key reference, or DSH refuses to call it', () => {
+  const home = tempDir('sa-home-')
+  const view = saveProvider(home, { name: 'llamacpp', api: 'openai-completions', baseURL: 'http://127.0.0.1:30021/v1', models: [{ id: 'm' }], makeLocalDefault: true })
+  assert.equal(view.hasKey, false, 'the placeholder is not reported as a key')
+  const routes = loadModelRoutes(home)
+  const env = (routes.piAiProviders as any).llamacpp.apiKeyEnv
+  assert.equal(env, KEYLESS_ENV)
+  assert.ok(routes.env![env], 'pi-ai: "No API key for provider" without it')
+  assert.equal(storedConnection(home, 'llamacpp')!.apiKey, undefined, 'probes send no placeholder key')
+  saveProvider(home, { name: 'other', api: 'openai-completions', baseURL: 'http://127.0.0.1:1/v1', models: [{ id: 'x' }] })
+  removeProvider(home, 'other')
+  assert.ok(loadModelRoutes(home).env![KEYLESS_ENV], 'removing one keyless provider keeps the shared placeholder')
 })
 
 test('health goes red on real problems, and red blocks starting work unless forced', async () => {

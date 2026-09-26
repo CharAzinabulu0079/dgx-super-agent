@@ -241,7 +241,8 @@ async function main(argv: string[]): Promise<number> {
       const request = rest.join(' ').trim()
       if (!sub || !request) throw new Error('usage: sa do <project|path> "<what you want>"')
       let pid = sub
-      if (!store.getProject(sub)) {
+      // A path is not a valid project id (getProject would throw on the slashes).
+      if (!/^[\w.-]+$/.test(sub) || !store.getProject(sub)) {
         const root = resolve(sub)
         if (!existsSync(root)) throw new Error(`no project or directory named ${sub}`)
         const existing = store.listProjects().find(p => p.root === root)
