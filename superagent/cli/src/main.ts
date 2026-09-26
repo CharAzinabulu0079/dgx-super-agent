@@ -3,7 +3,8 @@
  * `sa` — SuperAgent command line. Thin shell over the same runtime the API uses.
  * Run: `node superagent/cli/src/main.ts <command>` (or `pnpm sa <command>`).
  */
-import { chmodSync, existsSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
 import { basename, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { parseGateSpec, type GateSpec } from '@superagent/contracts'
@@ -28,6 +29,7 @@ const HELP = `sa — DGX Super Agent CLI
   sa project list
   sa install --dir ~/superagent [--from <git url|path>] [--ref <tag>]
                                                 managed install (releases + current symlink) for one-click Update/Rollback
+  sa link [--host <ip>] [--port 7788]           print the browser link of the service (its stable token)
   sa service unit|install [--dir ~/superagent] [--host <ip>] [--browser]
                                                 systemd user service (auto start, restart after update)
   sa update status|check|apply <tag>|rollback [--dir ~/superagent]
@@ -117,6 +119,15 @@ async function main(argv: string[]): Promise<number> {
     console.log(`Installed ${m.state().current}. Run it from ${join(base, 'current')}:\n  node ${join(base, 'current', 'superagent/cli/src/main.ts')} dsh setup\n  node ${join(base, 'current', 'superagent/cli/src/main.ts')} service install --dir ${base}`)
     return 0
   }
+  if (cmd === 'link') {
+    // The service's human link, for when it has scrolled out of the journal (stable token only).
+    const envFile = join(homedir(), '.config', 'superagent', 'env')
+    const m = existsSync(envFile) ? /^SUPERAGENT_HUMAN_TOKEN=(\S+)/m.exec(readFileSync(envFile, 'utf8')) : null
+    if (!m) throw new Error(`no SUPERAGENT_HUMAN_TOKEN in ${envFile}: the token changes on every start; see  journalctl --user -u superagent | grep token`)
+    const host = values.host ?? '127.0.0.1'
+    console.log(`http://${host.includes(':') ? `[${host}]` : host}:${values.port ?? 7788}/?token=${m[1]}`)
+    return 0
+  }
   if (cmd === 'service') {
     const base = resolve(values.dir ?? managedBase(REPO_ROOT) ?? join(homedir(), 'superagent'))
     const unit = systemdUnit({ base, home: process.env.SUPERAGENT_HOME, host: values.host, port: values.port ? Number(values.port) : undefined, browser: values.browser })
@@ -126,8 +137,9 @@ async function main(argv: string[]): Promise<number> {
     writeFileSync(join(dir, 'superagent.service'), unit)
     const envDir = join(homedir(), '.config', 'superagent')
     mkdirSync(envDir, { recursive: true, mode: 0o700 })
-    if (!existsSync(join(envDir, 'env'))) writeFileSync(join(envDir, 'env'), '# SUPERAGENT_HUMAN_TOKEN=<24+ random characters>\n', { mode: 0o600 })
-    console.log(`Wrote ${join(dir, 'superagent.service')}. Next:\n  systemctl --user daemon-reload && systemctl --user enable --now superagent\n  loginctl enable-linger $USER   # keep it running after logout\n  (optional) put SUPERAGENT_HUMAN_TOKEN in ${join(envDir, 'env')} for a stable phone link`)
+    // A stable human token by default, so the browser link survives restarts (`sa link` prints it).
+    if (!existsSync(join(envDir, 'env'))) writeFileSync(join(envDir, 'env'), `SUPERAGENT_HUMAN_TOKEN=${randomBytes(24).toString('hex')}\n`, { mode: 0o600 })
+    console.log(`Wrote ${join(dir, 'superagent.service')}. Next:\n  systemctl --user daemon-reload && systemctl --user enable --now superagent\n  loginctl enable-linger $USER   # keep it running after logout\n  sa link   # prints the browser link (stable token in ${join(envDir, 'env')})`)
     return 0
   }
   if (cmd === 'update') {

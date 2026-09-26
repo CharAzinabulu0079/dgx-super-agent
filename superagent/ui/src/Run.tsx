@@ -1,6 +1,7 @@
 /** Confirm → run → live output for a human-run command on the server (project root). */
 import { useEffect, useRef, useState } from 'react'
 import { api, type CommandRecord } from './api.ts'
+import { t, tState } from './i18n.ts'
 
 export function RunSheet({ projectId, command, onClose }: { projectId: string; command: string; onClose: () => void }) {
   const [text, setText] = useState(command)
@@ -17,21 +18,21 @@ export function RunSheet({ projectId, command, onClose }: { projectId: string; c
   return (
     <div className="modal" role="dialog" data-testid="run-sheet" onClick={onClose}>
       <div className="modal-body" onClick={e => e.stopPropagation()}>
-        <header><strong>{running ? 'Command' : 'Run this command?'}</strong><span className="spacer" /><button className="icon" onClick={onClose} data-testid="run-close">✕</button></header>
+        <header><strong>{running ? t('Command') : t('Run this command?')}</strong><span className="spacer" /><button className="icon" onClick={onClose} data-testid="run-close">✕</button></header>
         <div className="modal-content">
           {running ? <CommandOutput projectId={projectId} record={running} /> : <>
-            <p className="muted">Runs with bash in the project directory on the server, as you. Review it — commands written by agents can be wrong or manipulated.</p>
+            <p className="muted">{t('Runs with bash in the project directory on the server, as you. Review it — commands written by agents can be wrong or manipulated.')}</p>
             <textarea className="mono" rows={Math.min(8, text.split('\n').length + 1)} value={text} onChange={e => setText(e.target.value)} data-testid="run-command" />
             {check && !check.allowWithoutConfirm && (
               <label className="danger-box" data-testid="run-danger">
                 <input type="checkbox" checked={ack} onChange={e => setAck(e.target.checked)} data-testid="run-ack" />
-                <span><strong>Flagged: {check.category}</strong> — {check.rule}. I understand and want to run it anyway.</span>
+                <span><strong>{t('Flagged: {c}', { c: check.category })}</strong> — {check.rule}{t('. I understand and want to run it anyway.')}</span>
               </label>
             )}
             {error && <p className="error-text">{error}</p>}
             <div className="row-end">
-              <button onClick={onClose}>Cancel</button>
-              <button className="primary" disabled={!check || !text.trim() || (!check.allowWithoutConfirm && !ack)} onClick={start} data-testid="run-confirm">▷ Run</button>
+              <button onClick={onClose}>{t('Cancel')}</button>
+              <button className="primary" disabled={!check || !text.trim() || (!check.allowWithoutConfirm && !ack)} onClick={start} data-testid="run-confirm">{t('▷ Run')}</button>
             </div>
           </>}
         </div>
@@ -66,11 +67,11 @@ export function CommandOutput({ projectId, record }: { projectId: string; record
       <div className="cmd-head">
         <code className="mono">$ {r.command}</code>
         <span className={`state ${r.status === 'exited' && r.exitCode === 0 ? 'passed' : r.status === 'running' ? 'running' : 'failed'}`} data-testid="command-status">
-          {r.status === 'running' ? 'running' : r.status === 'exited' ? `exit ${r.exitCode}` : r.status}
+          {r.status === 'running' ? t('running') : r.status === 'exited' ? t('exit {n}', { n: r.exitCode ?? '' }) : tState(r.status)}
         </span>
-        {r.status === 'running' && <button className="small" onClick={() => api('POST', `/api/projects/${projectId}/commands/${r.id}/stop`, {})} data-testid="command-stop">■ Stop</button>}
+        {r.status === 'running' && <button className="small" onClick={() => api('POST', `/api/projects/${projectId}/commands/${r.id}/stop`, {})} data-testid="command-stop">{t('■ Stop')}</button>}
       </div>
-      <pre ref={pre} className="terminal">{out || (r.status === 'running' ? '…' : '(no output)')}</pre>
+      <pre ref={pre} className="terminal">{out || (r.status === 'running' ? '…' : t('(no output)'))}</pre>
     </div>
   )
 }

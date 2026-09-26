@@ -15,7 +15,7 @@ import type { AddressInfo } from 'node:net'
 import { parseGateSpec, type Project, type SuperAgentEvent } from '@superagent/contracts'
 import { effectiveModels, loadGlobalPolicy, parseModelSpec, parsePolicyLayer, roleModel, saveGlobalPolicy } from '@superagent/model-policy'
 import type { SuperAgentRuntime } from './runtime.ts'
-import { narrate } from './narrate.ts'
+import { narrate, narrateLang, type NarrateLang } from './narrate.ts'
 import { LinkSigner, listProjectDir, sendFile } from './files-http.ts'
 import { ShareError, mimeOf as mimeOfName, resolveProjectFile, shareFile, sharedFilePath } from '@superagent/project-state'
 import type { ChiefMessage, SharedFile } from '@superagent/contracts'
@@ -316,7 +316,8 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     const p = project(params.pid!)
     const titles = new Map(store.listTasks(p.id).map(t => [t.id, t.title]))
     const limit = Math.min(Number(query.get('limit') ?? 100), 500)
-    return store.readEvents(p.id, 0, 5_000).map(e => narrate(e, id => titles.get(id))).filter(Boolean).slice(-limit)
+    const lang = narrateLang(query.get('lang'))
+    return store.readEvents(p.id, 0, 5_000).map(e => narrate(e, id => titles.get(id), lang)).filter(Boolean).slice(-limit)
   })
   // ---------------------------------------------------------------- files (share, browse, preview/download links)
   const sharedFile = (pid: string, fid: string): SharedFile => {
@@ -478,7 +479,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
   })
 
   // ---------------------------------------------------------------- SSE
-  const sseClients = new Set<{ res: ServerResponse; project?: string; cursor: Map<string, number> }>()
+  const sseClients = new Set<{ res: ServerResponse; project?: string; lang: NarrateLang; cursor: Map<string, number> }>()
   const pump = setInterval(() => {
     for (const client of sseClients) {
       // A failure while serving one client (e.g. its project was removed) ends that stream;
@@ -492,7 +493,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
           for (const e of events) {
             client.res.write(`id: ${pid}:${e.seq}\nevent: superagent\ndata: ${JSON.stringify(e)}\n\n`)
             // Plain-language line for voice/avatar clients (Digital Human) and the UI's embed bridge.
-            const line = narrate(e, id => store.getTask(pid, id)?.title)
+            const line = narrate(e, id => store.getTask(pid, id)?.title, client.lang)
             if (line) client.res.write(`event: activity\ndata: ${JSON.stringify({ projectId: pid, ...line })}\n\n`)
           }
           if (events.length) client.cursor.set(pid, events.at(-1)!.seq)
@@ -546,7 +547,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
           if (only !== null) project(only)
           res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' })
           res.write(': connected\n\n')
-          const client = { res, project: url.searchParams.get('project') ?? undefined, cursor: new Map<string, number>() }
+          const client = { res, project: url.searchParams.get('project') ?? undefined, lang: narrateLang(url.searchParams.get('lang')), cursor: new Map<string, number>() }
           sseClients.add(client)
           req.on('close', () => sseClients.delete(client))
           return

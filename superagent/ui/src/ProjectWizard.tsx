@@ -1,6 +1,7 @@
 /** Add a project: pick a folder on the server → scan → review the proposed checks → create. */
 import { useEffect, useState } from 'react'
 import { api, type ProjectScan } from './api.ts'
+import { t } from './i18n.ts'
 
 type Dirs = { path: string; parent?: string; home: string; entries: Array<{ name: string; path: string; git: boolean }> }
 
@@ -31,48 +32,48 @@ export function ProjectWizard({ onClose, onCreated, onError }: { onClose: () => 
   return (
     <div className="modal" role="dialog" data-testid="project-wizard" onClick={onClose}>
       <div className="modal-body" onClick={e => e.stopPropagation()}>
-        <header><strong>Add a project</strong><span className="spacer" /><button className="icon" onClick={onClose}>✕</button></header>
+        <header><strong>{t('Add a project')}</strong><span className="spacer" /><button className="icon" onClick={onClose}>✕</button></header>
         <div className="modal-content settings">
-          <div className="field"><div className="field-label">Folder on the server</div>
+          <div className="field"><div className="field-label">{t('Folder on the server')}</div>
             <div className="row">
               <input className="grow mono" placeholder="/home/you/code/my-app" value={root} onChange={e => { setRoot(e.target.value); setScan(null) }} onKeyDown={e => { if (e.key === 'Enter') doScan() }} data-testid="new-project-root" />
-              <button className="primary" disabled={busy || !root.trim()} onClick={() => doScan()} data-testid="scan-project">Scan</button>
+              <button className="primary" disabled={busy || !root.trim()} onClick={() => doScan()} data-testid="scan-project">{t('Scan')}</button>
             </div>
           </div>
           {!scan && dirs && (
             <div className="picker" data-testid="dir-picker">
-              <div className="picker-head"><code>{dirs.path}</code>{dirs.parent && <button className="small" onClick={() => browse(dirs.parent)}>↑ up</button>}<button className="small" onClick={() => browse(dirs.home)}>~</button></div>
+              <div className="picker-head"><code>{dirs.path}</code>{dirs.parent && <button className="small" onClick={() => browse(dirs.parent)}>{t('↑ up')}</button>}<button className="small" onClick={() => browse(dirs.home)}>~</button></div>
               <ul>{dirs.entries.map(d => (
                 <li key={d.path}>
                   <button className="link" onClick={() => browse(d.path)}>📁 {d.name}</button>{d.git && <span className="badge">git</span>}
-                  <button className="small" onClick={() => { setRoot(d.path); doScan(d.path) }} data-testid={`pick-${d.name}`}>Use</button>
+                  <button className="small" onClick={() => { setRoot(d.path); doScan(d.path) }} data-testid={`pick-${d.name}`}>{t('Use')}</button>
                 </li>
               ))}</ul>
             </div>
           )}
           {scan && <>
-            {scan.warnings.map(w => <div key={w} className="warn-box">⚠ {w}{/not a git repository/.test(w) && <button className="small" onClick={gitInit} disabled={busy} data-testid="git-init">Initialize git</button>}</div>)}
-            <div className="field"><div className="field-label">Name</div><input value={name} onChange={e => setName(e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-'))} data-testid="new-project-name" /></div>
-            <div className="field"><div className="field-label">Found</div>
+            {scan.warnings.map(w => <div key={w} className="warn-box">⚠ {w}{/not a git repository/.test(w) && <button className="small" onClick={gitInit} disabled={busy} data-testid="git-init">{t('Initialize git')}</button>}</div>)}
+            <div className="field"><div className="field-label">{t('Name')}</div><input value={name} onChange={e => setName(e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-'))} data-testid="new-project-name" /></div>
+            <div className="field"><div className="field-label">{t('Found')}</div>
               <div className="muted">
-                {scan.languages.slice(0, 4).map(l => `${l.name} (${l.files})`).join(', ') || 'no source files'}
+                {scan.languages.slice(0, 4).map(l => `${l.name} (${l.files})`).join(', ') || t('no source files')}
                 {scan.packageManager && ` · ${scan.packageManager}`}
-                {scan.git.isRepo && ` · git ${scan.git.branch ?? ''}${scan.git.dirty ? ` (${scan.git.dirty} uncommitted)` : ''}`}
-                {scan.architecture.declared && ' · declared architecture'}
+                {scan.git.isRepo && ` · git ${scan.git.branch ?? ''}${scan.git.dirty ? t(' ({n} uncommitted)', { n: scan.git.dirty }) : ''}`}
+                {scan.architecture.declared && t(' · declared architecture')}
                 {scan.browser.reason && ` · ${scan.browser.reason}`}
               </div>
             </div>
-            <div className="field"><div className="field-label">Checks that decide “done”</div>
+            <div className="field"><div className="field-label">{t('Checks that decide “done”')}</div>
               <ul className="gate-list" data-testid="proposed-gates">{scan.gates.map(g => (
                 <li key={g.spec.id}>
                   <label><input type="checkbox" checked={chosen.has(g.spec.id)} onChange={() => toggle(g.spec.id)} data-testid={`gate-${g.spec.id}`} /> <strong>{g.spec.id}</strong> {g.spec.command && <code>{g.spec.command}</code>}</label>
-                  <div className="muted">{g.reason}{g.recommended ? '' : ' (optional)'}</div>
+                  <div className="muted">{g.reason}{g.recommended ? '' : t(' (optional)')}</div>
                 </li>
               ))}</ul>
             </div>
             <div className="row-end">
-              <button onClick={() => setScan(null)}>Back</button>
-              <button className="primary" disabled={busy || !name || !scan.git.isRepo || !!scan.registeredAs} onClick={create} data-testid="add-project">Create project</button>
+              <button onClick={() => setScan(null)}>{t('Back')}</button>
+              <button className="primary" disabled={busy || !name || !scan.git.isRepo || !!scan.registeredAs} onClick={create} data-testid="add-project">{t('Create project')}</button>
             </div>
           </>}
         </div>

@@ -1,3 +1,4 @@
+import { lang } from './i18n.ts'
 /** Thin client over the SuperAgent Realtime/API gateway. */
 
 export interface ModelRef { provider: string; model: string }
@@ -36,6 +37,14 @@ if (new URLSearchParams(location.search).has('token')) {
   history.replaceState(history.state, '', `${location.pathname}${rest.size ? `?${rest}` : ''}${location.hash}`)
 }
 
+/** Opening the bare address (no token yet, or a stale one) is the usual first-run stumble. */
+const NO_LINK_EN = (token ? 'This browser\'s saved link is no longer valid. ' : 'Open SuperAgent with its link, which carries your access token. ')
+  + 'On the server run  node ~/superagent/current/superagent/cli/src/main.ts link  to print it; the browser remembers it afterwards.'
+const LINK_CMD = 'node ~/superagent/current/superagent/cli/src/main.ts link'
+const NO_LINK = lang === 'zh'
+  ? (token ? '这个浏览器保存的链接已失效。' : '请用带访问令牌的链接打开 SuperAgent。') + `在服务器上运行  ${LINK_CMD}  就会打印出链接，打开一次后浏览器会记住。`
+  : NO_LINK_EN
+
 export async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
     method,
@@ -43,7 +52,7 @@ export async function api<T>(method: string, path: string, body?: unknown): Prom
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const json = await res.json()
-  if (!res.ok) throw new Error(json.error ?? res.statusText)
+  if (!res.ok) throw new Error(res.status === 401 ? NO_LINK : json.error ?? res.statusText)
   return json as T
 }
 
@@ -82,7 +91,7 @@ export interface ActivityEvent { projectId: string; seq: number; ts: string; tas
 export async function upload<T>(path: string, file: File): Promise<T> {
   const res = await fetch(path, { method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: file })
   const json = await res.json()
-  if (!res.ok) throw new Error(json.error ?? res.statusText)
+  if (!res.ok) throw new Error(res.status === 401 ? NO_LINK : json.error ?? res.statusText)
   return json as T
 }
 
@@ -91,6 +100,7 @@ export function activityStream(project: string | undefined, onLine: (a: Activity
   const qs = new URLSearchParams()
   if (project) qs.set('project', project)
   if (token) qs.set('token', token)
+  qs.set('lang', lang)
   const es = new EventSource(`/api/events/stream?${qs}`)
   es.addEventListener('activity', m => onLine(JSON.parse((m as MessageEvent).data)))
   return () => es.close()

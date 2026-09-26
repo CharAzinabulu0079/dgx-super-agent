@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api, type CommandRecord } from './api.ts'
 import { CommandOutput, RunSheet } from './Run.tsx'
+import { t } from './i18n.ts'
 
 export function TerminalPanel({ projectId, root, refreshKey, onError }: { projectId: string; root: string; refreshKey: number; onError: (e: string) => void }) {
   const [cmd, setCmd] = useState('')
@@ -12,7 +13,7 @@ export function TerminalPanel({ projectId, root, refreshKey, onError }: { projec
   const submit = (e: FormEvent) => { e.preventDefault(); if (cmd.trim()) setSheet(cmd.trim()) }
   return (
     <section className="card" data-testid="terminal">
-      <h3>Terminal <span className="muted">— {root}</span></h3>
+      <h3>{t('Terminal')} <span className="muted">— {root}</span></h3>
       <form className="term-input" onSubmit={submit}>
         <span className="prompt">$</span>
         <input className="mono" placeholder="npm test, git status, ls -la …" value={cmd} onChange={e => setCmd(e.target.value)} autoCapitalize="off" autoCorrect="off" spellCheck={false} data-testid="term-input" />
@@ -24,7 +25,7 @@ export function TerminalPanel({ projectId, root, refreshKey, onError }: { projec
             <button className="link mono" onClick={() => setOpen(open === h.id ? null : h.id)}>
               <span className={`dot ${h.status === 'running' ? 'run' : h.status === 'exited' && h.exitCode === 0 ? 'ok' : 'bad'}`} />$ {h.command}
             </button>
-            <span className="muted"> {new Date(h.startedAt).toLocaleTimeString()}{h.flagged ? ' · flagged' : ''}</span>
+            <span className="muted"> {new Date(h.startedAt).toLocaleTimeString()}{h.flagged ? t(' · flagged') : ''}</span>
             {open === h.id && <CommandOutput projectId={projectId} record={h} />}
           </li>
         ))}

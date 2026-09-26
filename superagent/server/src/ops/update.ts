@@ -143,7 +143,10 @@ export class UpdateManager {
     const tags = git(this.source, ['tag', '--list']).split('\n').filter(t => /\d+\.\d+/.test(t))
     const available = tags.map(t => {
       const commit = git(this.source, ['rev-parse', `${t}^{commit}`])
-      return { ref: t, commit, version: t.replace(/^[^\d]*/, ''), newer: !cur || (commit !== cur.commit && versionKey(t) > versionKey(cur.version ?? cur.ref ?? '0')) }
+      // A tag already contained in the running release is never "newer", whatever its name says
+      // (e.g. a v1.2 tag whose package.json still said 1.1.0, running a later commit).
+      const behind = !!cur && isAncestor(this.source, commit, cur.commit)
+      return { ref: t, commit, version: t.replace(/^[^\d]*/, ''), newer: !cur || (commit !== cur.commit && !behind && versionKey(t) > versionKey(cur.version ?? cur.ref ?? '0')) }
     }).sort((a, b) => versionKey(b.ref).localeCompare(versionKey(a.ref)))
     return { current: cur, available }
   }
@@ -332,6 +335,16 @@ export class UpdateManager {
     const s = this.state()
     delete s.releases[id]
     this.save(s)
+  }
+}
+
+function isAncestor(repo: string, maybeAncestor: string, of: string): boolean {
+  try {
+    execFileSync('git', ['merge-base', '--is-ancestor', maybeAncestor, of], { cwd: repo, stdio: 'ignore' })
+    return true
+  } catch (notAncestor) {
+    void notAncestor
+    return false
   }
 }
 

@@ -4,6 +4,7 @@
  */
 import { Fragment, useState, type ReactNode } from 'react'
 import { RunSheet } from './Run.tsx'
+import { t } from './i18n.ts'
 
 const SHELL = /^(bash|sh|shell|zsh|console|terminal|cmd)?$/i
 
@@ -69,8 +70,8 @@ export function CodeBlock({ lang, code, projectId }: { lang: string; code: strin
       <div className="codeblock-bar">
         <span className="lang">{lang || 'text'}</span>
         <span className="spacer" />
-        {runnable && <button className="icon" title="Run in the project on the server" aria-label="Run" onClick={() => setRun(true)} data-testid="code-run">▷</button>}
-        <button className="icon" title="Copy" aria-label="Copy" onClick={copy} data-testid="code-copy">{copied ? '✓' : '⧉'}</button>
+        {runnable && <button className="icon" title={t('Run in the project on the server')} aria-label="Run" onClick={() => setRun(true)} data-testid="code-run">▷</button>}
+        <button className="icon" title={t('Copy')} aria-label="Copy" onClick={copy} data-testid="code-copy">{copied ? '✓' : '⧉'}</button>
       </div>
       <pre><code>{code}</code></pre>
       {run && projectId && <RunSheet projectId={projectId} command={commandOf(code)} onClose={() => setRun(false)} />}

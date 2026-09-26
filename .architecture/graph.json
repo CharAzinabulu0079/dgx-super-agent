@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-26T18:05:46.265Z",
-  "commit": "9cd2753",
+  "generatedAt": "2026-09-26T18:42:04.787Z",
+  "commit": "af37a86",
   "layers": [
     "foundation",
     "capability",
@@ -265,7 +265,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/learning",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 7,
       "declared": true,
@@ -300,9 +300,9 @@
       "layer": "orchestration",
       "root": "superagent/plugins/chief-worker",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 15,
+      "files": 16,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -331,6 +331,7 @@
         "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts",
         "superagent/plugins/chief-worker/test/advisor.test.ts",
         "superagent/plugins/chief-worker/test/chief-wake.test.ts",
+        "superagent/plugins/chief-worker/test/dsh-process.test.ts",
         "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts",
         "superagent/plugins/chief-worker/test/loop.test.ts"
       ],
@@ -344,7 +345,7 @@
       "layer": "interface",
       "root": "superagent/server",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 33,
       "declared": true,
@@ -393,7 +394,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 2,
       "declared": true,
@@ -422,9 +423,9 @@
       "layer": "interface",
       "root": "superagent/ui",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 24,
+      "files": 25,
       "declared": true,
       "protected": false,
       "dependsOn": [],
@@ -640,7 +641,7 @@
     {
       "from": "chief-worker",
       "to": "testkit",
-      "weight": 6,
+      "weight": 7,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -648,7 +649,7 @@
         "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts → @superagent/testkit",
         "superagent/plugins/chief-worker/test/advisor.test.ts → @superagent/testkit",
         "superagent/plugins/chief-worker/test/chief-wake.test.ts → @superagent/testkit",
-        "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts → @superagent/testkit"
+        "superagent/plugins/chief-worker/test/dsh-process.test.ts → @superagent/testkit"
       ]
     },
     {
@@ -1030,15 +1031,15 @@
     {
       "from": "server",
       "to": "chief-worker",
-      "weight": 16,
+      "weight": 17,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/server/src/commands.ts → @superagent/chief-worker",
         "superagent/server/src/goal-runner.ts → @superagent/chief-worker",
         "superagent/server/src/http.ts → @superagent/chief-worker",
-        "superagent/server/src/ops/providers.ts → @superagent/chief-worker",
-        "superagent/server/src/runtime.ts → @superagent/chief-worker"
+        "superagent/server/src/ops/health.ts → @superagent/chief-worker",
+        "superagent/server/src/ops/providers.ts → @superagent/chief-worker"
       ]
     },
     {
@@ -1156,12 +1157,51 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "CURRENT_STATE.md",
-      "NEXT_STEPS.md"
+      "package.json",
+      "superagent/cli/src/main.ts",
+      "superagent/plugins/chief-worker/src/dsh-process.ts",
+      "superagent/plugins/chief-worker/test/dsh-process.test.ts",
+      "superagent/plugins/learning/src/reflector.ts",
+      "superagent/server/src/http.ts",
+      "superagent/server/src/narrate.ts",
+      "superagent/server/src/ops/health.ts",
+      "superagent/server/src/ops/update.ts",
+      "superagent/server/test/update.test.ts",
+      "superagent/ui/src/App.tsx",
+      "superagent/ui/src/Appearance.tsx",
+      "superagent/ui/src/ArchitectureView.tsx",
+      "superagent/ui/src/Background.tsx",
+      "superagent/ui/src/Chat.tsx",
+      "superagent/ui/src/Files.tsx",
+      "superagent/ui/src/Markdown.tsx",
+      "superagent/ui/src/Panels.tsx",
+      "superagent/ui/src/ProjectWizard.tsx",
+      "superagent/ui/src/Run.tsx",
+      "superagent/ui/src/System.tsx",
+      "superagent/ui/src/Terminal.tsx",
+      "superagent/ui/src/Transcript.tsx",
+      "superagent/ui/src/api.ts",
+      "superagent/ui/src/i18n.ts"
     ],
-    "modules": [],
-    "impacted": [],
-    "gates": []
+    "modules": [
+      "chief-worker",
+      "cli",
+      "learning",
+      "server",
+      "ui"
+    ],
+    "impacted": [
+      "architecture-observatory",
+      "evals",
+      "model-policy"
+    ],
+    "gates": [
+      "architecture",
+      "e2e-ui",
+      "evals",
+      "smoke-dsh",
+      "unit"
+    ]
   },
   "services": [
     {
@@ -1236,9 +1276,9 @@
     }
   ],
   "stats": {
-    "files": 180,
+    "files": 182,
     "modules": 15,
     "edges": 54,
-    "scanMs": 336
+    "scanMs": 635
   }
 }

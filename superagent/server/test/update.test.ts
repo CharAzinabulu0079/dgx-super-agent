@@ -115,3 +115,16 @@ test('update refuses what would break: failing build, state from a newer format,
     await server.close()
   }
 })
+
+test('check: a tag already contained in the running release is not offered as newer, whatever its name', () => {
+  const src = upstream()
+  // A "v1.2" tag on a commit whose package.json still says 1.1.0 (found on DGX), then later work.
+  git(src, 'tag', 'app-v1.2')
+  writeFileSync(join(src, 'fix.txt'), 'x')
+  git(src, 'add', '-A')
+  git(src, 'commit', '-qm', 'fixes after v1.2')
+  const base = join(tempDir('sa-install-'), 'superagent')
+  const m = UpdateManager.install(base, src, 'HEAD', OK_STEPS)
+  const offered = m.check().available.filter(a => a.newer).map(a => a.ref)
+  assert.deepEqual(offered, [], 'app-v1.2 is behind the running commit')
+})

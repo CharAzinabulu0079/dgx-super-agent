@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Background, Controls, MarkerType, MiniMap, ReactFlow, type Edge, type Node } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { api, type ArchitectureGraph, type GraphNode } from './api.ts'
+import { t as tr } from './i18n.ts'
 
 const STATUS_COLOR: Record<string, string> = {
   'gate-failed': '#ef4444', 'worker-active': '#3b82f6', changing: '#f59e0b', stable: '#22c55e', protected: '#a855f7',
@@ -77,7 +78,7 @@ export function ArchitectureView({ projectId, refreshKey }: { projectId: string;
   }, [graph, selected, showImpact])
 
   if (error) return <div className="error">{error}</div>
-  if (!graph) return <div className="muted">Scanning architecture…</div>
+  if (!graph) return <div className="muted">{tr('Scanning architecture…')}</div>
   const node = graph.nodes.find(n => n.id === selected)
   const rescan = () => api<ArchitectureGraph>('POST', `/api/projects/${projectId}/architecture/scan`).then(setGraph, e => setError(String(e)))
 
@@ -85,8 +86,8 @@ export function ArchitectureView({ projectId, refreshKey }: { projectId: string;
     <div className="arch" data-testid="architecture-view">
       <div className="arch-toolbar">
         <span>{graph.stats.modules} modules · {graph.stats.edges} edges · {graph.stats.files} files · commit {graph.commit ?? '—'} · scanned {new Date(graph.generatedAt).toLocaleTimeString()}</span>
-        <label><input type="checkbox" checked={showImpact} onChange={e => setShowImpact(e.target.checked)} /> change impact</label>
-        <button onClick={rescan}>Rescan</button>
+        <label><input type="checkbox" checked={showImpact} onChange={e => setShowImpact(e.target.checked)} /> {tr('Change impact')}</label>
+        <button onClick={rescan}>{tr('Rescan')}</button>
         <span className="legend">{Object.entries(STATUS_COLOR).map(([k, c]) => <span key={k}><i style={{ background: c }} />{k}</span>)}</span>
       </div>
       <div className="arch-body">
@@ -98,7 +99,7 @@ export function ArchitectureView({ projectId, refreshKey }: { projectId: string;
         <aside className="arch-side">
           {graph.changes.modules.length > 0 && (
             <section data-testid="impact-panel">
-              <h4>Change impact</h4>
+              <h4>{tr('Change impact')}</h4>
               <div>changing: {graph.changes.modules.join(', ')}</div>
               <div>impacted: {graph.changes.impacted.join(', ') || '—'}</div>
               <div>gates to run: {graph.changes.gates.join(', ') || '—'}</div>
@@ -106,7 +107,7 @@ export function ArchitectureView({ projectId, refreshKey }: { projectId: string;
           )}
           {graph.drift.length > 0 && (
             <section>
-              <h4>Architecture drift</h4>
+              <h4>{tr('Architecture drift')}</h4>
               <ul>{graph.drift.map((d, i) => <li key={i} className={d.severity}>{d.severity} {d.kind}: {d.detail}</li>)}</ul>
             </section>
           )}
@@ -115,17 +116,17 @@ export function ArchitectureView({ projectId, refreshKey }: { projectId: string;
               <h4>{node.id}</h4>
               {node.description && <p className="muted">{node.description}</p>}
               <dl>
-                <dt>Location</dt><dd><code>{node.root || '.'}</code>{node.entry && <> · entry <code>{node.entry}</code></>}</dd>
-                <dt>Status</dt><dd>{node.status.join(', ')}</dd>
-                <dt>Depends on</dt><dd>{node.dependsOn.join(', ') || '—'}</dd>
-                <dt>Used by</dt><dd>{node.usedBy.join(', ') || '—'}</dd>
-                <dt>Gates</dt><dd>{node.gates.join(', ') || '—'}</dd>
+                <dt>{tr('Location')}</dt><dd><code>{node.root || '.'}</code>{node.entry && <> · {tr('entry')} <code>{node.entry}</code></>}</dd>
+                <dt>{tr('Status')}</dt><dd>{node.status.join(', ')}</dd>
+                <dt>{tr('Depends on')}</dt><dd>{node.dependsOn.join(', ') || '—'}</dd>
+                <dt>{tr('Used by')}</dt><dd>{node.usedBy.join(', ') || '—'}</dd>
+                <dt>{tr('Gates')}</dt><dd>{node.gates.join(', ') || '—'}</dd>
                 <dt>ADRs</dt><dd>{node.adrs.join(', ') || '—'}</dd>
-                <dt>Tests</dt><dd>{node.tests.length ? node.tests.map(t => <div key={t}><code>{t}</code></div>) : '—'}</dd>
-                <dt>Drift</dt><dd>{node.drift.join(', ') || 'none'}</dd>
+                <dt>{tr('Tests')}</dt><dd>{node.tests.length ? node.tests.map(t => <div key={t}><code>{t}</code></div>) : '—'}</dd>
+                <dt>{tr('Drift')}</dt><dd>{node.drift.join(', ') || tr('none')}</dd>
               </dl>
             </section>
-          ) : <p className="muted">Click a module to inspect location, dependencies, users, ADRs and tests.</p>}
+          ) : <p className="muted">{tr('Click a module to inspect location, dependencies, users, ADRs and tests.')}</p>}
         </aside>
       </div>
     </div>

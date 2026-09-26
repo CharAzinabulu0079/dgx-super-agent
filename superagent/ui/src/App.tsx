@@ -10,6 +10,7 @@ import { SystemPanel, type SystemTab } from './System.tsx'
 import { ProjectWizard } from './ProjectWizard.tsx'
 import type { HealthReport, PresetView } from './api.ts'
 import { ArchitectureView } from './ArchitectureView.tsx'
+import { lang, setLang, t, tState, tx } from './i18n.ts'
 import { HealthPanel, LearningPanel, PolicyPanel } from './Panels.tsx'
 import { ChiefChat } from './Chat.tsx'
 import { FilesPanel } from './Files.tsx'
@@ -97,43 +98,44 @@ export function App() {
       <aside className="sidebar">
         <div className="brand">
           <h1><span className="brand-mark">✳</span> SuperAgent</h1>
-          {health && <button className={`health-dot ${health}`} title={`System health: ${health}`} aria-label={`System health ${health}`} onClick={() => setSystem('health')} data-testid="health-dot" />}
-          <button className="icon" title="System" aria-label="System" onClick={() => setSystem('health')} data-testid="open-system">⚙</button>
-          <button className="icon" title="Appearance" aria-label="Appearance" onClick={() => setShowAppearance(true)} data-testid="open-appearance">◐</button>
+          {health && <button className={`health-dot ${health}`} title={t('System health: {h}', { h: t(health) })} aria-label={`System health ${health}`} onClick={() => setSystem('health')} data-testid="health-dot" />}
+          <button className="icon" title={t('System')} aria-label="System" onClick={() => setSystem('health')} data-testid="open-system">⚙</button>
+          <button className="icon" title={t('Appearance')} aria-label="Appearance" onClick={() => setShowAppearance(true)} data-testid="open-appearance">◐</button>
+          <button className="icon lang" title={t('Language')} aria-label="Language" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} data-testid="toggle-lang">{lang === 'zh' ? 'EN' : '中'}</button>
         </div>
         <nav data-testid="project-list">
           {projects.map(p => (
             <button key={p.id} className={p.id === current ? 'active' : ''} onClick={() => setCurrent(p.id)} data-testid={`project-${p.id}`}>
               <span>{p.name}</span>
-              <small>{p.goal?.status ?? 'no goal'}{p.openHumanGates ? ` · ${p.openHumanGates} decision(s)` : ''}</small>
+              <small>{p.goal?.status ? tState(p.goal.status) : t('no goal')}{p.openHumanGates ? t(' · {n} decision(s)', { n: p.openHumanGates }) : ''}</small>
             </button>
           ))}
         </nav>
-        <button className="add-project-btn" onClick={() => setWizard(true)} data-testid="add-project-toggle">＋ Add project</button>
+        <button className="add-project-btn" onClick={() => setWizard(true)} data-testid="add-project-toggle">{t('＋ Add project')}</button>
       </aside>
       <main>
         {error && <div className="error" onClick={() => setError(null)} data-testid="error">{error}</div>}
-        {!detail ? <p className="muted">Add or select a project.</p> : (
+        {!detail ? <p className="muted">{t('Add or select a project.')}</p> : (
           <>
             <header className="project-header">
               <h2 data-testid="project-title">{detail.project.name}</h2>
               <code>{detail.project.root}</code>
               <div className="tabs" role="tablist">
-                {TABS.map(([t, label]) => (
-                  <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={() => go(t)} data-testid={`tab-${t}`}>{label}</button>
+                {TABS.map(([k, label]) => (
+                  <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'active' : ''} onClick={() => go(k)} data-testid={`tab-${k}`}>{t(label)}</button>
                 ))}
               </div>
             </header>
             <nav className="bottom-bar" aria-label="sections">
-              {TABS.filter(([t]) => PRIMARY.includes(t)).map(([t, label, icon]) => (
-                <button key={t} className={tab === t ? 'active' : ''} onClick={() => go(t)} data-testid={`nav-${t}`}><span className="nav-icon">{icon}</span>{label}</button>
+              {TABS.filter(([k]) => PRIMARY.includes(k)).map(([k, label, icon]) => (
+                <button key={k} className={tab === k ? 'active' : ''} onClick={() => go(k)} data-testid={`nav-${k}`}><span className="nav-icon">{icon}</span>{t(label)}</button>
               ))}
-              <button className={!PRIMARY.includes(tab) ? 'active' : ''} onClick={() => setMore(m => !m)} data-testid="nav-more"><span className="nav-icon">⋯</span>More</button>
+              <button className={!PRIMARY.includes(tab) ? 'active' : ''} onClick={() => setMore(m => !m)} data-testid="nav-more"><span className="nav-icon">⋯</span>{t('More')}</button>
               {more && (
                 <div className="more-sheet" data-testid="more-sheet">
-                  {TABS.filter(([t]) => !PRIMARY.includes(t)).map(([t, label, icon]) => <button key={t} onClick={() => go(t)} data-testid={`more-${t}`}><span className="nav-icon">{icon}</span>{label}</button>)}
-                  <button onClick={() => { setMore(false); setShowAppearance(true) }} data-testid="more-appearance"><span className="nav-icon">◐</span>Appearance</button>
-                  <button onClick={() => { setMore(false); setSystem('health') }} data-testid="more-system"><span className="nav-icon">⚙</span>System</button>
+                  {TABS.filter(([k]) => !PRIMARY.includes(k)).map(([k, label, icon]) => <button key={k} onClick={() => go(k)} data-testid={`more-${k}`}><span className="nav-icon">{icon}</span>{t(label)}</button>)}
+                  <button onClick={() => { setMore(false); setShowAppearance(true) }} data-testid="more-appearance"><span className="nav-icon">◐</span>{t('Appearance')}</button>
+                  <button onClick={() => { setMore(false); setSystem('health') }} data-testid="more-system"><span className="nav-icon">⚙</span>{t('System')}</button>
                 </div>
               )}
             </nav>
@@ -175,17 +177,17 @@ function Ask({ detail, act, onHealth }: { detail: ProjectDetail; act: (p: Promis
   const submit = (e: FormEvent) => { e.preventDefault(); send() }
   return (
     <form className="card ask" onSubmit={submit} data-testid="ask">
-      <h3>What do you want?</h3>
-      <textarea placeholder="Describe the change in plain words, e.g. “the signup form should reject emails without an @”" value={request} onChange={e => setRequest(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e) }} data-testid="ask-input" rows={3} />
+      <h3>{t('What do you want?')}</h3>
+      <textarea placeholder={t('Describe the change in plain words, e.g. “the signup form should reject emails without an @”')} value={request} onChange={e => setRequest(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e) }} data-testid="ask-input" rows={3} />
       <div className="ask-row">
-        <label><input type="checkbox" checked={review} onChange={e => setReview(e.target.checked)} data-testid="ask-review" /> also have a reviewer check the change</label>
-        {presets.length > 0 && <select value={preset} onChange={e => setPreset(e.target.value)} title="Models for this request only" data-testid="ask-preset">
-          <option value="">models: current</option>{presets.map(p => <option key={p.id} value={p.id}>this time: {p.name}</option>)}
+        <label><input type="checkbox" checked={review} onChange={e => setReview(e.target.checked)} data-testid="ask-review" /> {t('also have a reviewer check the change')}</label>
+        {presets.length > 0 && <select value={preset} onChange={e => setPreset(e.target.value)} title={t('Models for this request only')} data-testid="ask-preset">
+          <option value="">{t('models: current')}</option>{presets.map(p => <option key={p.id} value={p.id}>{t('this time: {name}', { name: t(p.name) })}</option>)}
         </select>}
-        <span className="muted">checks: {gates.length ? gates.map(g => g.id + (g.heldOut ? ' (hidden)' : '')).join(', ') : 'none — add a test gate'}</span>
-        <button type="submit" disabled={busy || !request.trim()} data-testid="ask-submit">{busy ? 'Planning…' : 'Go'}</button>
+        <span className="muted">{t('checks: ')}{gates.length ? gates.map(g => g.id + (g.heldOut ? t(' (hidden)') : '')).join(', ') : t('none — add a test gate')}</span>
+        <button type="submit" disabled={busy || !request.trim()} data-testid="ask-submit">{busy ? t('Planning…') : t('Go')}</button>
       </div>
-      {blocked && <div className="warn-box" data-testid="ask-blocked">{blocked}<div className="row"><button type="button" onClick={onHealth}>Open Health</button><button type="button" className="danger" onClick={() => send(true)} data-testid="ask-force">Run anyway</button></div></div>}
+      {blocked && <div className="warn-box" data-testid="ask-blocked">{tx(blocked)}<div className="row"><button type="button" onClick={onHealth}>{t('Open Health')}</button><button type="button" className="danger" onClick={() => send(true)} data-testid="ask-force">{t('Run anyway')}</button></div></div>}
     </form>
   )
 }
@@ -193,13 +195,13 @@ function Ask({ detail, act, onHealth }: { detail: ProjectDetail; act: (p: Promis
 function Activity({ projectId, refreshKey }: { projectId: string; refreshKey: number }) {
   const [lines, setLines] = useState<ActivityLine[]>([])
   useEffect(() => {
-    const t = window.setTimeout(() => { api<ActivityLine[]>('GET', `/api/projects/${projectId}/activity?limit=30`).then(setLines, () => {}) }, 200)
-    return () => window.clearTimeout(t)
+    const timer = window.setTimeout(() => { api<ActivityLine[]>('GET', `/api/projects/${projectId}/activity?limit=30&lang=${lang}`).then(setLines, () => {}) }, 200)
+    return () => window.clearTimeout(timer)
   }, [projectId, refreshKey])
   if (!lines.length) return null
   return (
     <section className="card">
-      <h3>Activity</h3>
+      <h3>{t('Activity')}</h3>
       <ol className="activity" data-testid="activity">{[...lines].reverse().map(l => (
         <li key={l.seq} className={`tone-${l.tone}`}><time>{new Date(l.ts).toLocaleTimeString()}</time> {inline(l.text)}</li>
       ))}</ol>
@@ -222,30 +224,30 @@ function Overview({ detail, act }: { detail: ProjectDetail; act: (p: Promise<unk
     <div className="overview">
       {openGates.length > 0 && (
         <section className="card attention" data-testid="human-gates">
-          <h3>Needs your decision</h3>
+          <h3>{t('Needs your decision')}</h3>
           {openGates.map(g => <HumanGateCard key={g.id} gate={g} task={detail.tasks.find(t => t.id === g.taskId)} onDecide={(d, note) => act(api('POST', `/api/projects/${pid}/human-gates/${g.id}`, { decision: d, resolution: note }))} />)}
         </section>
       )}
       <section className="card">
-        <h3>Goal</h3>
+        <h3>{t('Goal')}</h3>
         {goal ? (
           <div data-testid="goal">
-            <p><strong>{goal.objective}</strong> <span className={`state ${goal.status}`} data-testid="goal-status">{goal.status}</span>{goal.runRequested && !running && <span className="badge" data-testid="goal-queued">queued</span>}</p>
-            {goal.request && goal.request !== goal.objective && <p className="muted">asked: {goal.request}</p>}
-            {goal.blocker && <p className="muted">{goal.blocker}</p>}
-            <button disabled={running || tasks.length === 0} onClick={() => act(api('POST', `/api/projects/${pid}/goals/${goal.id}/run`, {}))} data-testid="run-goal">{running ? 'Running…' : 'Start / continue'}</button>
+            <p><strong>{goal.objective}</strong> <span className={`state ${goal.status}`} data-testid="goal-status">{tState(goal.status)}</span>{goal.runRequested && !running && <span className="badge" data-testid="goal-queued">{t('queued')}</span>}</p>
+            {goal.request && goal.request !== goal.objective && <p className="muted">{t('asked: {r}', { r: goal.request })}</p>}
+            {goal.blocker && <p className="muted">{tx(goal.blocker)}</p>}
+            <button disabled={running || tasks.length === 0} onClick={() => act(api('POST', `/api/projects/${pid}/goals/${goal.id}/run`, {}))} data-testid="run-goal">{running ? t('Running…') : t('Start / continue')}</button>
           </div>
-        ) : <p className="muted">No goal yet.</p>}
+        ) : <p className="muted">{t('No goal yet.')}</p>}
         <form className="inline" onSubmit={e => { e.preventDefault(); if (objective) act(api('POST', `/api/projects/${pid}/goals`, { objective })); setObjective('') }}>
-          <input placeholder="New goal objective" value={objective} onChange={e => setObjective(e.target.value)} data-testid="new-goal" />
-          <button type="submit" data-testid="create-goal">Create goal</button>
+          <input placeholder={t('New goal objective')} value={objective} onChange={e => setObjective(e.target.value)} data-testid="new-goal" />
+          <button type="submit" data-testid="create-goal">{t('Create goal')}</button>
         </form>
       </section>
       {goal && (
         <section className="card">
-          <h3>Tasks</h3>
+          <h3>{t('Tasks')}</h3>
           <table className="tasks" data-testid="tasks">
-            <thead><tr><th>Task</th><th>State</th><th>Attempts</th><th>Worker model</th><th>Last verdict</th><th /></tr></thead>
+            <thead><tr><th>{t('Task')}</th><th>{t('State')}</th><th>{t('Attempts')}</th><th>{t('Worker model')}</th><th>{t('Last verdict')}</th><th /></tr></thead>
             <tbody>{tasks.map(t => <TaskRow key={t.id} task={t} pid={pid} act={act} />)}</tbody>
           </table>
           <form className="new-task" onSubmit={e => {
@@ -254,14 +256,14 @@ function Overview({ detail, act }: { detail: ProjectDetail; act: (p: Promise<unk
             act(api('POST', `/api/projects/${pid}/goals/${goal.id}/tasks`, { title, instructions, policy: model ? { model: { worker: parseModel(model) } } : undefined }))
             setTitle(''); setInstructions('')
           }}>
-            <input placeholder="Task title" value={title} onChange={e => setTitle(e.target.value)} data-testid="new-task-title" />
-            <textarea placeholder="Instructions for the Worker" value={instructions} onChange={e => setInstructions(e.target.value)} data-testid="new-task-instructions" />
+            <input placeholder={t('Task title')} value={title} onChange={e => setTitle(e.target.value)} data-testid="new-task-title" />
+            <textarea placeholder={t('Instructions for the Worker')} value={instructions} onChange={e => setInstructions(e.target.value)} data-testid="new-task-instructions" />
             <ModelInput value={model} onChange={setModel} testId="new-task-model" />
-            <button type="submit" data-testid="add-task">Add task</button>
+            <button type="submit" data-testid="add-task">{t('Add task')}</button>
           </form>
         </section>
       )}
-      <section className="card"><h3>Chief report</h3><pre data-testid="chief-report">{detail.report}</pre></section>
+      <section className="card"><h3>{t('Chief report')}</h3><pre data-testid="chief-report">{detail.report}</pre></section>
     </div>
   )
 }
@@ -271,7 +273,7 @@ const parseModel = (s: string) => (s === 'local-default' ? { provider: 'local-de
 function ModelInput({ value, onChange, testId }: { value: string; onChange: (v: string) => void; testId: string }) {
   return (
     <>
-      <input list="models" placeholder="model (provider/model, default local)" value={value} onChange={e => onChange(e.target.value)} data-testid={testId} />
+      <input list="models" placeholder={t('model (provider/model, default local)')} value={value} onChange={e => onChange(e.target.value)} data-testid={testId} />
       <datalist id="models">
         <option value="local-default" /><option value="anthropic/claude-opus-5-5" /><option value="deepseek-official/deepseek-flash" /><option value="deepseek-official/deepseek-pro" />
       </datalist>
@@ -285,20 +287,20 @@ function TaskRow({ task, pid, act }: { task: Task; pid: string; act: (p: Promise
   const last = task.attempts.at(-1)
   return (
     <tr data-testid={`task-${task.id}`}>
-      <td>{task.title}{task.review && <span className="badge" title="reviewed after checks pass">review</span>}{task.steer && <div className="muted">steer: {task.steer}</div>}{task.reviews?.at(-1) && !task.reviews.at(-1)!.approve && <div className="muted">reviewer: {task.reviews.at(-1)!.comments}</div>}</td>
-      <td><span className={`state ${task.state}`} data-testid="task-state">{task.state}</span></td>
+      <td>{task.title}{task.review && <span className="badge" title={t('reviewed after checks pass')}>{t('review')}</span>}{task.steer && <div className="muted">{t('steer: {s}', { s: task.steer })}</div>}{task.reviews?.at(-1) && !task.reviews.at(-1)!.approve && <div className="muted">{t('reviewer: {c}', { c: task.reviews.at(-1)!.comments })}</div>}</td>
+      <td><span className={`state ${task.state}`} data-testid="task-state">{tState(task.state)}</span></td>
       <td>{task.attempts.length}/{task.policy.maxAttempts}{last && <div className="muted">{last.strategy}</div>}</td>
       <td>
         <div>{fmtModel(task.policy.model.worker)}</div>
         {!task.running && <form className="inline" onSubmit={e => { e.preventDefault(); if (model) act(api('POST', `/api/projects/${pid}/tasks/${task.id}/model`, { role: 'worker', model })); setModel('') }}>
-          <ModelInput value={model} onChange={setModel} testId="task-model" /><button type="submit">Set</button>
+          <ModelInput value={model} onChange={setModel} testId="task-model" /><button type="submit">{t('Set')}</button>
         </form>}
       </td>
-      <td data-testid="task-verdict">{last?.verdict ?? '—'}</td>
+      <td data-testid="task-verdict">{last?.verdict ? tState(last.verdict) : '—'}</td>
       <td className="actions">
-        <button disabled={['passed', 'failed', 'stopped'].includes(task.state)} onClick={() => act(api('POST', `/api/projects/${pid}/tasks/${task.id}/stop`, {}))} data-testid="stop-task">Stop</button>
+        <button disabled={['passed', 'failed', 'stopped'].includes(task.state)} onClick={() => act(api('POST', `/api/projects/${pid}/tasks/${task.id}/stop`, {}))} data-testid="stop-task">{t('Stop')}</button>
         <form className="inline" onSubmit={e => { e.preventDefault(); if (steer) act(api('POST', `/api/projects/${pid}/tasks/${task.id}/steer`, { text: steer })); setSteer('') }}>
-          <input placeholder="steer next attempt" value={steer} onChange={e => setSteer(e.target.value)} data-testid="steer-input" /><button type="submit" data-testid="steer-task">Steer</button>
+          <input placeholder={t('steer next attempt')} value={steer} onChange={e => setSteer(e.target.value)} data-testid="steer-input" /><button type="submit" data-testid="steer-task">{t('Steer')}</button>
         </form>
       </td>
     </tr>
@@ -309,16 +311,16 @@ function HumanGateCard({ gate, task, onDecide }: { gate: ProjectDetail['humanGat
   const [note, setNote] = useState('')
   return (
     <div className="gate" data-testid={`gate-${gate.id}`}>
-      <div><span className="badge warn">{gate.reason}</span> {task && <strong>{task.title}</strong>}</div>
-      <p>{gate.detail}</p>
+      <div><span className="badge warn">{t(gate.reason)}</span> {task && <strong>{task.title}</strong>}</div>
+      <p>{tx(gate.detail)}</p>
       {gate.actions && gate.actions.length > 0 && (
-        <details open data-testid="gate-actions"><summary>{gate.actions.length} action(s) blocked before execution — approving allows exactly these</summary>
+        <details open data-testid="gate-actions"><summary>{t('{n} action(s) blocked before execution — approving allows exactly these', { n: gate.actions.length })}</summary>
           <ul>{gate.actions.map(a => <li key={a.fingerprint}><code>{a.summary}</code> <span className="muted">[{a.category}: {a.rule}]</span></li>)}</ul>
         </details>
       )}
-      <input placeholder="decision note / direction" value={note} onChange={e => setNote(e.target.value)} data-testid="gate-note" />
-      <button onClick={() => onDecide('approved', note)} data-testid="approve">Approve</button>
-      <button className="danger" onClick={() => onDecide('rejected', note)} data-testid="reject">Reject</button>
+      <input placeholder={t('decision note / direction')} value={note} onChange={e => setNote(e.target.value)} data-testid="gate-note" />
+      <button onClick={() => onDecide('approved', note)} data-testid="approve">{t('Approve')}</button>
+      <button className="danger" onClick={() => onDecide('rejected', note)} data-testid="reject">{t('Reject')}</button>
     </div>
   )
 }
@@ -328,18 +330,18 @@ function Workers({ detail, onError }: { detail: ProjectDetail; onError: (e: stri
   const [open, setOpen] = useState<string | null>(null)
   return (
     <section className="card">
-      <h3>Workers / Loop <span className="muted">— tap a Worker to see exactly what it did</span></h3>
+      <h3>{t('Workers / Loop')} <span className="muted">{t('— tap a Worker to see exactly what it did')}</span></h3>
       {open && <TranscriptDrawer projectId={detail.project.id} workerId={open} onClose={() => setOpen(null)} onError={onError} />}
       <table className="tasks" data-testid="workers">
-        <thead><tr><th>Worker</th><th>Task</th><th>Attempt</th><th>Status</th><th>Model</th><th>Last report</th><th>Modules</th></tr></thead>
+        <thead><tr><th>{t('Worker')}</th><th>{t('Task')}</th><th>{t('Attempt')}</th><th>{t('Status')}</th><th>{t('Model')}</th><th>{t('Last report')}</th><th>{t('Modules')}</th></tr></thead>
         <tbody>{workers.map(w => (
           <tr key={w.id} className="clickable" onClick={() => setOpen(w.id)} data-testid={`worker-${w.id}`}>
             <td><code>{w.id}</code><div className="muted">{w.executor}</div></td>
             <td>{detail.tasks.find(t => t.id === w.taskId)?.title ?? w.taskId}</td>
             <td>{w.attempt}</td>
-            <td><span className={`state ${w.status}`}>{w.status}</span></td>
+            <td><span className={`state ${w.status}`}>{tState(w.status)}</span></td>
             <td>{fmtModel(w.model)}</td>
-            <td>{w.lastReport ? <><div>{w.lastReport.kind}: {w.lastReport.current_state}</div><progress max={100} value={w.lastReport.progress} /> <span className="muted">claim {w.lastReport.verification_result}</span></> : '—'}</td>
+            <td>{w.lastReport ? <><div>{w.lastReport.kind}: {w.lastReport.current_state}</div><progress max={100} value={w.lastReport.progress} /> <span className="muted">{t('claim {c}', { c: w.lastReport.verification_result })}</span></> : '—'}</td>
             <td>{w.activeModules.join(', ') || '—'}</td>
           </tr>
         ))}</tbody>
@@ -351,7 +353,7 @@ function Workers({ detail, onError }: { detail: ProjectDetail; onError: (e: stri
 function Events({ events }: { events: SAEvent[] }) {
   return (
     <section className="card">
-      <h3>Live events</h3>
+      <h3>{t('Live events')}</h3>
       <ol className="events" data-testid="events">{events.map(e => (
         <li key={`${e.seq}`}><time>{new Date(e.ts).toLocaleTimeString()}</time> <strong>{e.type}</strong> <code>{JSON.stringify(e.data).slice(0, 200)}</code></li>
       ))}</ol>

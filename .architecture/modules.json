@@ -204,7 +204,7 @@
     "description": "LoopEngine, Chief, Worker executors, pre-tool policy wiring, Chief auto-wake",
     "protected": false,
     "declared": true,
-    "files": 15,
+    "files": 16,
     "gates": [
       "unit",
       "smoke-dsh"
@@ -216,6 +216,7 @@
       "superagent/plugins/chief-worker/test/adversarial-verifier.test.ts",
       "superagent/plugins/chief-worker/test/advisor.test.ts",
       "superagent/plugins/chief-worker/test/chief-wake.test.ts",
+      "superagent/plugins/chief-worker/test/dsh-process.test.ts",
       "superagent/plugins/chief-worker/test/dsh-worker.integration.test.ts",
       "superagent/plugins/chief-worker/test/loop.test.ts"
     ],
@@ -288,7 +289,7 @@
     "description": "Minimal Web/PWA",
     "protected": false,
     "declared": true,
-    "files": 24,
+    "files": 25,
     "gates": [
       "e2e-ui"
     ],

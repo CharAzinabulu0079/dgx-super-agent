@@ -1,6 +1,8 @@
 /** Streaming `dsh … --json` runner: parses newline-delimited run events as they arrive. */
-import { spawn } from 'node:child_process'
-import { appendFileSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import { appendFileSync, existsSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { dshBin } from '@superagent/testkit'
 
 /** API credentials never reach a Worker process (it could otherwise resolve Human Gates over HTTP). */
@@ -20,6 +22,36 @@ export function workerEnv(extra: Record<string, string | undefined>, keepCredent
   }
   if (!keepCredentials) for (const k of SCRUBBED_WORKER_ENV) delete env[k]
   return env
+}
+
+/**
+ * Read isolation for model sessions without a second OS user (NEXT_STEPS P0 #2): the
+ * DSH Landlock sandbox only confines writes, so a same-user Worker could still *read*
+ * the agent token, held-out tests or the service's human token. When bubblewrap works
+ * (unprivileged user namespaces), non-Chief sessions run with those paths covered by
+ * empty tmpfs mounts. Everything else (project, model server, DSH home) is unchanged.
+ * `SUPERAGENT_SANDBOX=off` disables it; without bwrap the old behaviour stays and
+ * health reports it.
+ */
+export function hiddenPaths(stateHome: string | undefined, home = homedir()): string[] {
+  const paths = [join(home, '.config', 'superagent')]
+  if (stateHome) paths.push(...['secrets', 'heldout', 'backups'].map(d => join(stateHome, d)))
+  return paths.filter(p => existsSync(p))
+}
+
+let bwrapWorks: boolean | undefined
+export function readIsolation(): { available: boolean; reason: string } {
+  if (process.env.SUPERAGENT_SANDBOX === 'off') return { available: false, reason: 'disabled (SUPERAGENT_SANDBOX=off)' }
+  bwrapWorks ??= spawnSync('bwrap', ['--dev-bind', '/', '/', '--', 'true'], { stdio: 'ignore', timeout: 5_000 }).status === 0
+  return bwrapWorks
+    ? { available: true, reason: 'bubblewrap hides secrets, held-out tests, backups and ~/.config/superagent from Workers' }
+    : { available: false, reason: 'bubblewrap (bwrap) not usable: Workers can read secrets and held-out tests as the server user' }
+}
+
+/** `[command, args]` for a model session, wrapped in bwrap when isolation applies. */
+export function sandboxed(bin: string, args: readonly string[], hide: readonly string[]): [string, string[]] {
+  if (!hide.length || !readIsolation().available) return [bin, [...args]]
+  return ['bwrap', ['--dev-bind', '/', '/', '--die-with-parent', ...hide.flatMap(p => ['--tmpfs', p]), '--', bin, ...args]]
 }
 
 export interface DshStreamOptions {
@@ -43,7 +75,9 @@ export interface DshStreamResult {
 
 export function runDshStreaming(options: DshStreamOptions): Promise<DshStreamResult> {
   return new Promise(resolve => {
-    const child = spawn(dshBin(), [...options.args], {
+    // The Chief keeps its agent token by design; every other session is read-isolated.
+    const [bin, argv] = options.keepCredentials ? [dshBin(), [...options.args]] : sandboxed(dshBin(), options.args, hiddenPaths(options.env.SUPERAGENT_HOME))
+    const child = spawn(bin, argv, {
       cwd: options.cwd,
       env: workerEnv(options.env, options.keepCredentials),
       stdio: ['ignore', 'pipe', 'pipe'],

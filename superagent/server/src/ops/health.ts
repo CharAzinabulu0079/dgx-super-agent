@@ -9,6 +9,7 @@ import type { ModelRef } from '@superagent/contracts'
 import { processAlive, type StateStore } from '@superagent/project-state'
 import { effectiveModels, loadGlobalPolicy } from '@superagent/model-policy'
 import { dshBin } from '@superagent/testkit'
+import { readIsolation } from '@superagent/chief-worker'
 import { probeProvider, readRoutes, storedConnection, testModel, type ProbeResult } from './providers.ts'
 
 export type CheckStatus = 'ok' | 'warn' | 'fail'
@@ -210,6 +211,10 @@ export async function runHealthCheck(ctx: HealthContext): Promise<HealthReport> 
   checks.push(loose.length
     ? { id: 'storage.secrets', group: 'storage', status: 'warn', title: 'Secrets readable by other users', detail: loose.join(', '), fix: 'chmod 700 secrets; chmod 600 model-routes.json' }
     : { id: 'storage.secrets', group: 'storage', status: 'ok', title: 'Secrets permissions', detail: 'owner-only' })
+  const iso = readIsolation()
+  checks.push(iso.available
+    ? { id: 'agents.isolation', group: 'agents', status: 'ok', title: 'Worker read isolation', detail: iso.reason }
+    : { id: 'agents.isolation', group: 'agents', status: 'warn', title: 'Workers are not read-isolated', detail: iso.reason, fix: 'sudo apt install bubblewrap (or run Workers as a separate OS user, NEXT_STEPS P0 #2)' })
   checks.push(...await modelChecks(ctx))
   // agents
   let orphans = 0

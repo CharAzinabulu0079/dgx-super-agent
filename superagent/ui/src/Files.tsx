@@ -1,6 +1,7 @@
 /** Files agents sent you, plus a read-only project browser; preview or download (phone-friendly). */
 import { useEffect, useState } from 'react'
 import { api, fileLink, fmtSize, type FileLink, type SharedFile, type TreeEntry } from './api.ts'
+import { t } from './i18n.ts'
 
 type Target = { file: string } | { path: string }
 
@@ -16,26 +17,26 @@ export function FilesPanel({ projectId, refreshKey, onError }: { projectId: stri
   return (
     <>
       <section className="card" data-testid="shared-files">
-        <h3>Sent to you</h3>
-        {shared.length === 0 ? <p className="muted">Nothing yet. Workers and the Chief can send you files (reports, screenshots, builds) — they show up here.</p> : (
+        <h3>{t('Sent to you')}</h3>
+        {shared.length === 0 ? <p className="muted">{t('Nothing yet. Workers and the Chief can send you files (reports, screenshots, builds) — they show up here.')}</p> : (
           <ul className="file-list">{shared.map(f => (
             <li key={f.id} data-testid={`shared-${f.name}`}>
               <div className="file-main">
-                <strong>{f.name}</strong> <span className="muted">{fmtSize(f.size)} · from {f.from.role} · {new Date(f.createdAt).toLocaleString()}</span>
+                <strong>{f.name}</strong> <span className="muted">{fmtSize(f.size)} · {t('from {r}', { r: t(f.from.role) })} · {new Date(f.createdAt).toLocaleString()}</span>
                 {f.note && <div>{f.note}</div>}
               </div>
               <div className="file-actions">
-                <button onClick={() => setPreview({ file: f.id })} data-testid="preview">Preview</button>
-                <button onClick={() => download({ file: f.id })} data-testid="download">Download</button>
+                <button onClick={() => setPreview({ file: f.id })} data-testid="preview">{t('Preview')}</button>
+                <button onClick={() => download({ file: f.id })} data-testid="download">{t('Download')}</button>
               </div>
             </li>
           ))}</ul>
         )}
       </section>
       <section className="card" data-testid="project-files">
-        <h3>Project files</h3>
+        <h3>{t('Project files')}</h3>
         <nav className="crumbs">
-          <button onClick={() => setDir('')}>root</button>
+          <button onClick={() => setDir('')}>{t('root')}</button>
           {crumbs.map((c, i) => <span key={i}> / <button onClick={() => setDir(crumbs.slice(0, i + 1).join('/'))}>{c}</button></span>)}
         </nav>
         <ul className="file-list">
@@ -51,7 +52,7 @@ export function FilesPanel({ projectId, refreshKey, onError }: { projectId: stri
             </li>
           ))}
         </ul>
-        {tree?.truncated && <p className="muted">Showing the first 1000 entries.</p>}
+        {tree?.truncated && <p className="muted">{t('Showing the first 1000 entries.')}</p>}
       </section>
       {preview && <Preview projectId={projectId} target={preview} onClose={() => setPreview(null)} onDownload={() => download(preview)} onError={onError} />}
     </>
@@ -76,18 +77,18 @@ function Preview({ projectId, target, onClose, onDownload, onError }: { projectI
         <header>
           <strong>{link?.name ?? '…'}</strong> {link && <span className="muted">{fmtSize(link.size)}</span>}
           <span className="spacer" />
-          {link && <a href={link.url} target="_blank" rel="noreferrer" data-testid="open-new-tab">Open</a>}
-          <button onClick={onDownload}>Download</button>
+          {link && <a href={link.url} target="_blank" rel="noreferrer" data-testid="open-new-tab">{t('Open')}</a>}
+          <button onClick={onDownload}>{t('Download')}</button>
           <button onClick={onClose} data-testid="close-preview">✕</button>
         </header>
         <div className="modal-content">
-          {!link ? <p className="muted">Loading…</p>
+          {!link ? <p className="muted">{t('Loading…')}</p>
             : m.startsWith('image/') ? <img src={link.url} alt={link.name} data-testid="preview-image" />
             : m.startsWith('video/') ? <video src={link.url} controls playsInline data-testid="preview-video" />
             : m.startsWith('audio/') ? <audio src={link.url} controls />
             : m === 'application/pdf' ? <iframe src={link.url} title={link.name} data-testid="preview-pdf" />
             : text !== null ? <pre className="file-text" data-testid="preview-text">{text}</pre>
-            : <p className="muted">No inline preview for {m || 'this type'}{link.size > 2_000_000 ? ' at this size' : ''}. Use Download or Open.</p>}
+            : <p className="muted">{t('No inline preview for {m}{s}. Use Download or Open.', { m: m || t('this type'), s: link.size > 2_000_000 ? t(' at this size') : '' })}</p>}
         </div>
       </div>
     </div>

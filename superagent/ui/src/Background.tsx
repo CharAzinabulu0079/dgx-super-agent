@@ -6,6 +6,7 @@
 import { useEffect, useRef } from 'react'
 import type { ActivityEvent, Appearance } from './api.ts'
 import { GRADIENTS, embedOrigin } from './theme.ts'
+import { t } from './i18n.ts'
 
 export interface BridgeFeed {
   /** Latest items to forward; the layer tracks what it already sent. */
@@ -56,7 +57,7 @@ function EmbedBridge({ a, theme, feed, onChat, onNotice }: { a: Appearance; them
       }
       if (m.type === 'chat' && typeof m.text === 'string' && m.text.trim()) {
         if (b.allowChat && feed.project) onChat(m.text.slice(0, 2000))
-        else onNotice('The background page tried to talk to the Chief; enable “Allow chat” in Appearance to let it.')
+        else onNotice(t('The background page tried to talk to the Chief; enable “Allow chat” in Appearance to let it.'))
       }
     }
     addEventListener('message', onMessage)
