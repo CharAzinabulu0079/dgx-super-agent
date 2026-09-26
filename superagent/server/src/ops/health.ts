@@ -172,6 +172,15 @@ async function modelChecks(ctx: HealthContext): Promise<HealthCheck[]> {
   return out
 }
 
+/** Ubuntu 24.04 blocks user namespaces for unconfined programs (a service): bwrap needs a profile. */
+function bwrapFix(): string {
+  let restricted = false
+  try { restricted = readFileSync('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 'utf8').trim() === '1' } catch (absent) { void absent }
+  return restricted && existsSync('/usr/bin/bwrap')
+    ? 'allow bubblewrap in AppArmor (Ubuntu 24.04 blocks it for services): see SETUP_DGX.md §6b, then restart SuperAgent'
+    : 'sudo apt install bubblewrap (or run Workers as a separate OS user, NEXT_STEPS P0 #2)'
+}
+
 export async function runHealthCheck(ctx: HealthContext): Promise<HealthReport> {
   const checks: HealthCheck[] = []
   const node = process.versions.node
@@ -214,7 +223,7 @@ export async function runHealthCheck(ctx: HealthContext): Promise<HealthReport> 
   const iso = readIsolation()
   checks.push(iso.available
     ? { id: 'agents.isolation', group: 'agents', status: 'ok', title: 'Worker read isolation', detail: iso.reason }
-    : { id: 'agents.isolation', group: 'agents', status: 'warn', title: 'Workers are not read-isolated', detail: iso.reason, fix: 'sudo apt install bubblewrap (or run Workers as a separate OS user, NEXT_STEPS P0 #2)' })
+    : { id: 'agents.isolation', group: 'agents', status: 'warn', title: 'Workers are not read-isolated', detail: iso.reason, fix: bwrapFix() })
   checks.push(...await modelChecks(ctx))
   // agents
   let orphans = 0

@@ -201,6 +201,7 @@ const ZH: Record<string, string> = {
   'Got it': '知道了',
   'Waiting to update to {ref}: the task in progress finishes first, no new task starts; queued work resumes after the update.': '等待更新到 {ref}：正在做的任务先做完，不再开始新任务；更新完成后排队的工作会自动继续。',
   'now: {b}': '当前：{b}', 'Cancel waiting': '取消等待',
+  'allow bubblewrap in AppArmor (Ubuntu 24.04 blocks it for services): see SETUP_DGX.md §6b, then restart SuperAgent': '在 AppArmor 里放行 bubblewrap（Ubuntu 24.04 默认不让服务用它）：见 SETUP_DGX.md 第 6b 节，然后重启 SuperAgent',
   // panels
   'Model policy': '模型策略', 'Defaults ← global ← project ← task pin. Un-pinned tasks pick up changes on their next attempt — no model call needed.': '优先级：默认 ← 全局 ← 项目 ← 任务固定。没固定模型的任务下次尝试时自动用新设置，不需要调用模型。',
   'All projects': '所有项目', 'This project': '本项目', 'Global default': '全局默认', 'Project override': '项目覆盖', 'Effective here': '实际生效',
