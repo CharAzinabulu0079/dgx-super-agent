@@ -12,7 +12,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { existsSync, readFileSync, statSync, watch, type FSWatcher } from 'node:fs'
 import { extname, join, normalize, resolve } from 'node:path'
 import type { AddressInfo } from 'node:net'
-import { parseGateSpec, type Project, type SuperAgentEvent } from '@superagent/contracts'
+import { parseGateSpec, type Project, type SuperAgentEvent, type Task } from '@superagent/contracts'
 import { effectiveModels, loadGlobalPolicy, parseModelSpec, parsePolicyLayer, roleModel, saveGlobalPolicy } from '@superagent/model-policy'
 import type { SuperAgentRuntime } from './runtime.ts'
 import { narrate, narrateLang, type NarrateLang } from './narrate.ts'
@@ -29,7 +29,9 @@ import { preflightChecks, type HealthContext } from './ops/health.ts'
 import { REPO_ROOT } from '@superagent/testkit'
 import { presetViews } from './ops/presets.ts'
 import { AppearanceError, GRADIENT_PRESETS, MAX_BACKGROUND_BYTES, deleteBackground, findBackground, listBackgrounds, loadAppearance, saveAppearance, saveBackground } from './appearance.ts'
-import { ChiefDriver, DshChiefChannel, GateRegistryError, WakeMonitor, type ChiefChannel } from '@superagent/chief-worker'
+import { ChiefDriver, DshChiefChannel, GateRegistryError, WakeMonitor, type ChiefChannel, type PlanGoalOptions } from '@superagent/chief-worker'
+import { researchReport, resolveTaskPreset, taskPresetViews } from './ops/task-presets.ts'
+import { startNotifier } from './ops/notify.ts'
 
 export interface ServerOptions {
   readonly runtime: SuperAgentRuntime
@@ -187,6 +189,22 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     watchProject(p)
     return p
   }, 'human')
+  // Home: every project at a glance (progress, Workers now, failures, decisions, latest files).
+  route('GET', '/api/overview', () => store.listProjects().map(p => {
+    const goal = store.currentGoal(p.id)
+    const tasks = goal ? goal.taskIds.map(id => store.getTask(p.id, id)).filter(Boolean) as Task[] : []
+    const open = store.listHumanGates(p.id, 'open')
+    return {
+      id: p.id, name: p.name, root: p.root,
+      goal: goal ? { id: goal.id, objective: goal.objective, status: goal.status, blocker: goal.blocker } : null,
+      progress: { passed: tasks.filter(t => t.state === 'passed').length, total: tasks.length },
+      running: store.listTasks(p.id).filter(t => engine.isRunning(t.id)).map(t => ({ id: t.id, title: t.title, attempt: t.attempts.length })),
+      failed: store.listTasks(p.id).filter(t => t.state === 'failed').slice(-3).map(t => ({ id: t.id, title: t.title })),
+      decisions: open.map(g => ({ id: g.id, reason: g.reason, detail: g.detail.slice(0, 200) })),
+      files: store.listRecords<SharedFile>(p.id, 'files').sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3).map(f => ({ id: f.id, name: f.name, createdAt: f.createdAt })),
+      testGate: p.defaultGates.some(g => g.id !== 'architecture'),
+    }
+  }))
   route('GET', '/api/projects/:pid', ({ params }) => {
     const p = project(params.pid!)
     const goal = store.currentGoal(p.id)
@@ -248,10 +266,20 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
       }
       policy = { model: parsed }
     }
-    const planned = await chief.planGoal(p.id, body.request.trim(), { planner: runtime.planner, review: body.review === true, architecture: runtime.architectureSummary(p), policy })
+    let taskPreset: PlanGoalOptions['taskPreset']
+    if (typeof body.taskPreset === 'string' && body.taskPreset) {
+      let tp: ReturnType<typeof resolveTaskPreset>
+      try { tp = resolveTaskPreset(body.taskPreset, p) } catch (error) { throw new HttpError(400, (error as Error).message) }
+      taskPreset = {
+        singleTask: tp.singleTask, maxAttempts: tp.maxAttempts, review: tp.review, gates: tp.extraGates,
+        instructions: goalId => `${tp.guidance}${tp.singleTask ? `\nReport file: ${researchReport(goalId)}` : ''}`,
+      }
+    }
+    const planned = await chief.planGoal(p.id, body.request.trim(), { planner: runtime.planner, review: body.review === true, architecture: runtime.architectureSummary(p), policy, taskPreset })
     const run = body.run === false ? { started: false, queued: false } : goals.start(p.id, planned.goal.id)
     return { ...planned, run }
   })
+  route('GET', '/api/projects/:pid/task-presets', ({ params }) => ({ presets: taskPresetViews(project(params.pid!)) }))
   route('POST', '/api/projects/:pid/tasks/:tid/stop', ({ params }) => engine.stop(project(params.pid!).id, params.tid!))
   route('POST', '/api/projects/:pid/tasks/:tid/steer', ({ params, body }) => {
     if (typeof body?.text !== 'string' || !body.text.trim()) throw new HttpError(400, 'text is required')
@@ -397,6 +425,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
 
   registerSystemRoutes(route, {
     store, healthCtx,
+    listen: () => ({ host: options.host ?? '127.0.0.1', port: (server.address() as AddressInfo | null)?.port ?? options.port ?? 7788, token: humanToken }),
     busy: () => {
       const goal = store.listProjects().map(p => goals.running(p.id)).find(Boolean)
       return goal ? `goal ${goal} is running` : commands.anyRunning() ? 'a command is running' : undefined
@@ -480,6 +509,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
   })
 
   // ---------------------------------------------------------------- SSE
+  const stopNotifier = startNotifier(store)
   const sseClients = new Set<{ res: ServerResponse; project?: string; lang: NarrateLang; cursor: Map<string, number> }>()
   const pump = setInterval(() => {
     for (const client of sseClients) {
@@ -642,6 +672,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     server,
     close: async () => {
       chiefDriver?.stop()
+      stopNotifier()
       chatAbort.abort()
       commands.stopAll()
       clearInterval(pump)

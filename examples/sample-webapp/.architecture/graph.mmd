@@ -1,0 +1,12 @@
+flowchart LR
+  _root_["(root)<br/><small>3 files</small>"]
+  e2e["e2e<br/><small>1 files</small>"]
+  public["public<br/><small>3 files</small>"]
+  classDef stable fill:#e8f5e9,stroke:#2e7d32
+  classDef changing fill:#fff8e1,stroke:#f9a825
+  classDef worker_active fill:#e3f2fd,stroke:#1565c0
+  classDef gate_failed fill:#ffebee,stroke:#c62828
+  classDef protected stroke:#6a1b9a,stroke-width:3px
+  class _root_ changing
+  class e2e stable
+  class public stable

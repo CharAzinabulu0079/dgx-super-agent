@@ -14,7 +14,7 @@ import { availableStrategies, decideNext, type LoopDecision, type ToolPolicy } f
 import { DEFAULT_VERIFICATION_POLICY } from '@superagent/verifier'
 import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { livePolicy, modelForStrategy } from '@superagent/model-policy'
+import { autonomyFor, livePolicy, modelForStrategy } from '@superagent/model-policy'
 import type { AttemptFeedback, WorkerExecutor } from './executor.ts'
 import type { Reviewer } from './advisor.ts'
 import { mkdirSync } from 'node:fs'
@@ -124,6 +124,7 @@ export class LoopEngine {
       approvedActions: (task.grants?.approvedActions ?? []).map(a => a.fingerprint),
       forbiddenPaths: [this.store.home], apiOrigins: this.apiOrigins,
       productionWrite: task.policy.production_write, tempRoots: [...new Set([tmpdir(), '/tmp'])],
+      autonomy: autonomyFor(this.store.home, project),
     }
   }
 

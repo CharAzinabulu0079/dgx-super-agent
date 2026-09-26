@@ -9,6 +9,9 @@ import { UpdateError, isSupervised, scheduleRestart, type UpdateManager } from '
 import { ScanError, initGit, listDirs, scanProject } from './ops/project-scan.ts'
 import { CLEANUP_KINDS, applyCleanup, previewCleanup, type CleanupContext } from './ops/cleanup.ts'
 import { BackupError, createBackup, deleteBackup, importBackup, listBackups, restoreBackup } from './ops/backup.ts'
+import { loadNotify, notifyView, NotifyError, saveNotify, sendTo } from './ops/notify.ts'
+import { RemoteError, defaultRemotePaths, listAddresses, readEnvValue, setServiceHost } from './ops/remote.ts'
+import { existsSync } from 'node:fs'
 
 type Role = 'human' | 'agent' | 'anonymous'
 type Handler = (ctx: { req: IncomingMessage; res: ServerResponse; params: Record<string, string>; body: any; query: URLSearchParams; role: Role }) => unknown | Promise<unknown>
@@ -27,6 +30,8 @@ export interface SystemDeps {
   /** Restart through the supervisor (default: exit 75 when supervised). */
   readonly restart?: () => boolean
   readonly cleanupCtx: () => CleanupContext
+  /** Where this server listens and its human token (remote access wizard links). */
+  readonly listen?: () => { readonly host: string; readonly port: number; readonly token: string }
   /** Stop starting new work (drain before an update); false resumes queued goals. */
   readonly hold?: (on: boolean) => void
 }
@@ -68,6 +73,37 @@ export function registerSystemRoutes(route: RouteFn, deps: SystemDeps): void {
     makeLocalDefault: body?.makeLocalDefault === true,
   }), ProviderError), 'human')
   route('POST', '/api/system/providers/:name/delete', ({ params }) => as400(() => { removeProvider(store.home, params.name!); return { providers: listProviders(store.home) } }, ProviderError), 'human')
+
+  // Remote access: addresses, current bind, switch (service restarts), links for the QR code.
+  route('GET', '/api/system/remote', () => {
+    const l = deps.listen?.()
+    const paths = defaultRemotePaths()
+    const addresses = listAddresses().map(a => ({
+      ...a,
+      link: l && a.address !== '0.0.0.0' && (l.host === '0.0.0.0' || l.host === a.address) ? `http://${a.address}:${l.port}/?token=${encodeURIComponent(l.token)}` : undefined,
+    }))
+    return { host: l?.host, port: l?.port, addresses, service: existsSync(paths.unitFile), stableToken: !!readEnvValue(paths.envFile, 'SUPERAGENT_HUMAN_TOKEN'), supervised: supervised() }
+  }, 'human')
+  route('POST', '/api/system/remote', ({ body }) => as400(() => {
+    const host = String(body?.host ?? '')
+    const busy = deps.busy()
+    if (busy) throw new RemoteError(`cannot restart while ${busy}`)
+    if (!setServiceHost(host)) throw new RemoteError(`no systemd service here: start it yourself with  sa serve --host ${host}`)
+    const restarting = restart()
+    return { host, restarting, port: deps.listen?.().port }
+  }, RemoteError), 'human')
+
+  // Phone notifications (secrets write-only).
+  route('GET', '/api/system/notify', () => notifyView(store.home), 'human')
+  route('POST', '/api/system/notify', ({ body }) => as400(() => { saveNotify(store.home, body); return notifyView(store.home) }, NotifyError), 'human')
+  route('POST', '/api/system/notify/test', () => as400(async () => {
+    const cfg = loadNotify(store.home)
+    if (!cfg.channels.length) throw new NotifyError('add a channel first')
+    const zh = cfg.lang === 'zh'
+    const results = await Promise.all(cfg.channels.map(ch => sendTo(ch, zh ? 'SuperAgent 测试通知' : 'SuperAgent test', zh ? '收到这条就说明手机通知设置好了。' : 'If you see this, notifications work.')
+      .then(() => ({ kind: ch.kind, ok: true, detail: 'sent' }), e => ({ kind: ch.kind, ok: false, detail: String((e as Error).message ?? e) }))))
+    return { results }
+  }, NotifyError), 'human')
 
   // Model presets.
   route('GET', '/api/system/presets', () => ({ presets: presetViews(store.home) }))

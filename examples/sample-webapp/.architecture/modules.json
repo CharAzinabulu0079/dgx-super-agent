@@ -1,0 +1,49 @@
+[
+  {
+    "id": "(root)",
+    "source": "directory",
+    "root": "",
+    "paths": [
+      "*"
+    ],
+    "protected": false,
+    "declared": false,
+    "files": 3,
+    "gates": [],
+    "adrs": [],
+    "tests": [],
+    "externalDeps": []
+  },
+  {
+    "id": "e2e",
+    "source": "directory",
+    "root": "e2e",
+    "paths": [
+      "e2e/**"
+    ],
+    "protected": false,
+    "declared": false,
+    "files": 1,
+    "gates": [],
+    "adrs": [],
+    "tests": [
+      "e2e/todo.spec.js"
+    ],
+    "externalDeps": []
+  },
+  {
+    "id": "public",
+    "source": "directory",
+    "root": "public",
+    "paths": [
+      "public/**"
+    ],
+    "protected": false,
+    "declared": false,
+    "files": 3,
+    "gates": [],
+    "adrs": [],
+    "tests": [],
+    "externalDeps": []
+  }
+]

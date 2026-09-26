@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-26T19:39:56.145Z",
-  "commit": "ba720dc",
+  "generatedAt": "2026-09-26T20:00:20.056Z",
+  "commit": "d73f1ea",
   "layers": [
     "foundation",
     "capability",
@@ -17,7 +17,8 @@
       "layer": "foundation",
       "root": "superagent/contracts",
       "status": [
-        "protected"
+        "protected",
+        "changing"
       ],
       "files": 5,
       "declared": true,
@@ -164,7 +165,7 @@
       "layer": "capability",
       "root": "superagent/plugins/loop-policy",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 7,
       "declared": true,
@@ -196,7 +197,7 @@
       "layer": "capability",
       "root": "superagent/plugins/model-policy",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 4,
       "declared": true,
@@ -300,7 +301,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/chief-worker",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 16,
       "declared": true,
@@ -347,7 +348,7 @@
       "status": [
         "changing"
       ],
-      "files": 33,
+      "files": 38,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -377,9 +378,11 @@
         "superagent/server/test/cleanup.test.ts",
         "superagent/server/test/commands.test.ts",
         "superagent/server/test/files.test.ts",
+        "superagent/server/test/notify.test.ts",
         "superagent/server/test/ops.test.ts",
         "superagent/server/test/project-scan.test.ts",
         "superagent/server/test/project-setup.test.ts",
+        "superagent/server/test/remote.test.ts",
         "superagent/server/test/requests.test.ts",
         "superagent/server/test/server.test.ts",
         "superagent/server/test/update.test.ts"
@@ -394,7 +397,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 2,
       "declared": true,
@@ -425,7 +428,7 @@
       "status": [
         "changing"
       ],
-      "files": 25,
+      "files": 27,
       "declared": true,
       "protected": false,
       "dependsOn": [],
@@ -470,7 +473,7 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 16,
       "declared": true,
@@ -514,9 +517,9 @@
       "label": "sample-webapp",
       "root": "examples/sample-webapp",
       "status": [
-        "stable"
+        "changing"
       ],
-      "files": 7,
+      "files": 17,
       "declared": true,
       "protected": false,
       "dependsOn": [],
@@ -1031,7 +1034,7 @@
     {
       "from": "server",
       "to": "chief-worker",
-      "weight": 17,
+      "weight": 19,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1045,7 +1048,7 @@
     {
       "from": "server",
       "to": "contracts",
-      "weight": 11,
+      "weight": 13,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1092,7 +1095,7 @@
     {
       "from": "server",
       "to": "project-state",
-      "weight": 15,
+      "weight": 16,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1106,7 +1109,7 @@
     {
       "from": "server",
       "to": "testkit",
-      "weight": 15,
+      "weight": 17,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1157,22 +1160,76 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "SETUP_DGX.md",
-      "superagent/server/src/ops/health.ts",
-      "superagent/ui/src/i18n.ts"
+      "CHANGELOG.md",
+      "CURRENT_STATE.md",
+      "NEXT_STEPS.md",
+      "REDTEAM_REPORT.md",
+      "examples/sample-webapp/.architecture/.gitignore",
+      "examples/sample-webapp/.architecture/dataflows.json",
+      "examples/sample-webapp/.architecture/dependencies.json",
+      "examples/sample-webapp/.architecture/drift.json",
+      "examples/sample-webapp/.architecture/graph.json",
+      "examples/sample-webapp/.architecture/graph.mmd",
+      "examples/sample-webapp/.architecture/interfaces.json",
+      "examples/sample-webapp/.architecture/modules.json",
+      "examples/sample-webapp/.architecture/services.json",
+      "examples/sample-webapp/.architecture/skills.json",
+      "package.json",
+      "pnpm-lock.yaml",
+      "superagent/cli/src/main.ts",
+      "superagent/contracts/src/types.ts",
+      "superagent/evals/test/ui-system.e2e.test.ts",
+      "superagent/plugins/chief-worker/src/chief.ts",
+      "superagent/plugins/chief-worker/src/engine.ts",
+      "superagent/plugins/loop-policy/src/tool-policy.ts",
+      "superagent/plugins/loop-policy/test/tool-policy.test.ts",
+      "superagent/plugins/model-policy/src/policy.ts",
+      "superagent/plugins/model-policy/test/policy.test.ts",
+      "superagent/server/src/http.ts",
+      "superagent/server/src/ops/index.ts",
+      "superagent/server/src/ops/notify.ts",
+      "superagent/server/src/ops/remote.ts",
+      "superagent/server/src/ops/task-presets.ts",
+      "superagent/server/src/ops/update.ts",
+      "superagent/server/src/system-routes.ts",
+      "superagent/server/test/commands.test.ts",
+      "superagent/server/test/notify.test.ts",
+      "superagent/server/test/remote.test.ts",
+      "superagent/server/test/requests.test.ts",
+      "superagent/ui/package.json",
+      "superagent/ui/src/App.tsx",
+      "superagent/ui/src/Home.tsx",
+      "superagent/ui/src/Panels.tsx",
+      "superagent/ui/src/System.tsx",
+      "superagent/ui/src/SystemExtra.tsx",
+      "superagent/ui/src/i18n.ts",
+      "superagent/ui/src/styles.css"
     ],
     "modules": [
+      "chief-worker",
+      "cli",
+      "contracts",
+      "evals",
+      "loop-policy",
+      "model-policy",
+      "sample-webapp",
       "server",
       "ui"
     ],
     "impacted": [
-      "cli",
-      "evals",
-      "learning"
+      "architecture-observatory",
+      "dsh-bundle",
+      "learning",
+      "project-state",
+      "verifier"
     ],
     "gates": [
+      "architecture",
+      "e2e",
       "e2e-ui",
       "evals",
+      "smoke-dsh",
+      "typecheck",
       "unit"
     ]
   },
@@ -1249,9 +1306,9 @@
     }
   ],
   "stats": {
-    "files": 182,
+    "files": 199,
     "modules": 15,
     "edges": 54,
-    "scanMs": 607
+    "scanMs": 591
   }
 }

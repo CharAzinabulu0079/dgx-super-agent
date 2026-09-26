@@ -15,6 +15,7 @@ import { HealthPanel, LearningPanel, PolicyPanel } from './Panels.tsx'
 import { ChiefChat } from './Chat.tsx'
 import { FilesPanel } from './Files.tsx'
 import { TranscriptDrawer } from './Transcript.tsx'
+import { HomeView } from './Home.tsx'
 
 type Tab = 'overview' | 'chat' | 'files' | 'terminal' | 'workers' | 'architecture' | 'learning' | 'policy' | 'events'
 const TABS: Array<[Tab, string, string]> = [
@@ -41,6 +42,8 @@ export function App() {
   const loadHealth = useCallback(() => api<HealthReport>('GET', '/api/system/health').then(h => setHealth(h.overall), () => setHealth(null)), [])
   useEffect(() => { void loadHealth() }, [loadHealth])
   const [more, setMore] = useState(false)
+  const [home, setHome] = useState(() => localStorage.getItem('superagent-home') === '1')
+  useEffect(() => { localStorage.setItem('superagent-home', home ? '1' : '0') }, [home])
   const [cmdKey, setCmdKey] = useState(0)
   const [activity, setActivity] = useState<ActivityEvent[]>([])
   const [chiefFeed, setChiefFeed] = useState<Array<{ seq: number; projectId: string; role: string; text: string }>>([])
@@ -105,9 +108,10 @@ export function App() {
           <button className="icon" title={t('Appearance')} aria-label="Appearance" onClick={() => setShowAppearance(true)} data-testid="open-appearance">◐</button>
           <button className="icon lang" title={t('Language')} aria-label="Language" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} data-testid="toggle-lang">{lang === 'zh' ? 'EN' : '中'}</button>
         </div>
+        <button className={`home-btn ${home ? 'active' : ''}`} onClick={() => setHome(true)} data-testid="open-home">⌂ {t('Home')}</button>
         <nav data-testid="project-list">
           {projects.map(p => (
-            <button key={p.id} className={p.id === current ? 'active' : ''} onClick={() => setCurrent(p.id)} data-testid={`project-${p.id}`}>
+            <button key={p.id} className={p.id === current && !home ? 'active' : ''} onClick={() => { setCurrent(p.id); setHome(false) }} data-testid={`project-${p.id}`}>
               <span>{p.name}</span>
               <small>{p.goal?.status ? tState(p.goal.status) : t('no goal')}{p.openHumanGates ? t(' · {n} decision(s)', { n: p.openHumanGates }) : ''}</small>
             </button>
@@ -116,7 +120,7 @@ export function App() {
         <button className="add-project-btn" onClick={() => setWizard(true)} data-testid="add-project-toggle">{t('＋ Add project')}</button>
       </aside>
       <main>
-        {!detail ? <><Guide onModels={() => setSystem('models')} onAdd={() => setWizard(true)} always /><p className="muted">{t('Add or select a project.')}</p></> : (
+        {home && projects.length > 0 ? <HomeView onOpen={(id, tb) => { setCurrent(id); setHome(false); if (tb) setTab(tb as Tab) }} onAdd={() => setWizard(true)} /> : !detail ? <><Guide onModels={() => setSystem('models')} onAdd={() => setWizard(true)} always /><p className="muted">{t('Add or select a project.')}</p></> : (
           <>
             <header className="project-header">
               <h2 data-testid="project-title">{detail.project.name}</h2>
@@ -183,6 +187,9 @@ function Ask({ detail, act, onHealth }: { detail: ProjectDetail; act: (p: Promis
   const [review, setReview] = useState(false)
   const [preset, setPreset] = useState('')
   const [presets, setPresets] = useState<PresetView[]>([])
+  const [kind, setKind] = useState('')
+  const [kinds, setKinds] = useState<Array<{ id: string; name: string; description: string; problem?: string }>>([])
+  useEffect(() => { api<{ presets: typeof kinds }>('GET', `/api/projects/${detail.project.id}/task-presets`).then(r => setKinds(r.presets), () => {}) }, [detail.project.id])
   const [busy, setBusy] = useState(false)
   const [blocked, setBlocked] = useState<string | null>(null)
   useEffect(() => { api<{ presets: PresetView[] }>('GET', '/api/system/presets').then(r => setPresets(r.presets.filter(p => p.available)), () => {}) }, [])
@@ -191,7 +198,7 @@ function Ask({ detail, act, onHealth }: { detail: ProjectDetail; act: (p: Promis
     if (!request.trim() || busy) return
     setBusy(true)
     setBlocked(null)
-    api('POST', `/api/projects/${detail.project.id}/requests`, { request, review, force, ...(preset ? { preset } : {}) })
+    api('POST', `/api/projects/${detail.project.id}/requests`, { request, review, force, ...(preset ? { preset } : {}), ...(kind ? { taskPreset: kind } : {}) })
       .then(() => { setRequest(''); act(Promise.resolve()) }, e => { const m = String((e as Error).message ?? e); if (/^not ready/.test(m)) setBlocked(m); else act(Promise.reject(e)) })
       .finally(() => setBusy(false))
   }
@@ -202,6 +209,9 @@ function Ask({ detail, act, onHealth }: { detail: ProjectDetail; act: (p: Promis
       <textarea placeholder={t('Describe the change in plain words, e.g. “the signup form should reject emails without an @”')} value={request} onChange={e => setRequest(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e) }} data-testid="ask-input" rows={3} />
       <div className="ask-row">
         <label><input type="checkbox" checked={review} onChange={e => setReview(e.target.checked)} data-testid="ask-review" /> {t('also have a reviewer check the change')}</label>
+        {kinds.length > 0 && <select value={kind} onChange={e => setKind(e.target.value)} title={kinds.find(k => k.id === kind) ? t(kinds.find(k => k.id === kind)!.description) : t('What kind of work this is')} data-testid="ask-kind">
+          <option value="">{t('type: automatic')}</option>{kinds.map(k => <option key={k.id} value={k.id} disabled={!!k.problem} title={k.problem ? t(k.problem) : t(k.description)}>{t(k.name)}{k.problem ? ' ✕' : ''}</option>)}
+        </select>}
         {presets.length > 0 && <select value={preset} onChange={e => setPreset(e.target.value)} title={t('Models for this request only')} data-testid="ask-preset">
           <option value="">{t('models: current')}</option>{presets.map(p => <option key={p.id} value={p.id}>{t('this time: {name}', { name: t(p.name) })}</option>)}
         </select>}

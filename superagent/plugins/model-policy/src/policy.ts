@@ -12,7 +12,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { join } from 'node:path'
 import {
   ContractError, parseModelRef, parseTaskPolicy, RETRY_STRATEGIES,
-  type ModelRef, type ModelRole, type PolicyLayer, type Project, type RetryStrategy, type Task, type TaskPolicy,
+  AUTONOMY_LEVELS, type Autonomy, type ModelRef, type ModelRole, type PolicyLayer, type Project, type RetryStrategy, type Task, type TaskPolicy,
 } from '@superagent/contracts'
 
 /**
@@ -56,7 +56,12 @@ export function parsePolicyLayer(value: unknown, path = 'policy'): PolicyLayer {
     if (!Array.isArray(o.strategies) || !o.strategies.length || !o.strategies.every(s => RETRY_STRATEGIES.includes(s as RetryStrategy))) throw new ContractError(`${path}.strategies`, 'invalid strategies')
     strategies = o.strategies as RetryStrategy[]
   }
-  return { models, maxAttempts: int('maxAttempts'), maxSameFailure: int('maxSameFailure'), strategies }
+  let autonomy: Autonomy | undefined
+  if (o.autonomy !== undefined && o.autonomy !== null) {
+    if (!AUTONOMY_LEVELS.includes(o.autonomy as Autonomy)) throw new ContractError(`${path}.autonomy`, `expected ${AUTONOMY_LEVELS.join('|')}`)
+    autonomy = o.autonomy as Autonomy
+  }
+  return { models, maxAttempts: int('maxAttempts'), maxSameFailure: int('maxSameFailure'), strategies, ...(autonomy ? { autonomy } : {}) }
 }
 
 export function loadGlobalPolicy(home: string): PolicyLayer {
@@ -79,7 +84,13 @@ export function mergeLayers(a: PolicyLayer, b: PolicyLayer): PolicyLayer {
     maxAttempts: b.maxAttempts ?? a.maxAttempts,
     maxSameFailure: b.maxSameFailure ?? a.maxSameFailure,
     strategies: b.strategies ?? a.strategies,
+    autonomy: b.autonomy ?? a.autonomy,
   }
+}
+
+/** Safe mode in effect for a project (global ← project), read at attempt time. */
+export function autonomyFor(home: string, project?: Project): Autonomy {
+  return mergeLayers(loadGlobalPolicy(home), project?.policy ?? {}).autonomy ?? 'normal'
 }
 
 /** Effective role → model map for a project (and a task's pins). */

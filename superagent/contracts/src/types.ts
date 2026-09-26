@@ -52,8 +52,13 @@ export type ModelRole = 'chief' | 'worker' | 'reviewer' | 'escalation' | 'planne
  * Global lives in `$SUPERAGENT_HOME/policy.json`, project in the project record —
  * never in the Worker-writable tree.
  */
+/** Safe mode: how much a Worker may do without asking (Freeze §11 human gates stay). */
+export type Autonomy = 'read-only' | 'normal' | 'high'
+export const AUTONOMY_LEVELS: readonly Autonomy[] = ['read-only', 'normal', 'high']
+
 export interface PolicyLayer {
   readonly models?: Partial<Record<ModelRole, ModelRef>>
+  readonly autonomy?: Autonomy
   readonly maxAttempts?: number
   readonly maxSameFailure?: number
   readonly strategies?: readonly RetryStrategy[]

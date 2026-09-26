@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react'
 import { api, fmtSize, upload, type BackupInfo, type CleanupItem, type HealthReport, type PresetView, type ProviderView } from './api.ts'
 import { CodeBlock } from './Markdown.tsx'
 import { t, tx } from './i18n.ts'
+import { Notify, Remote } from './SystemExtra.tsx'
 
-export type SystemTab = 'health' | 'models' | 'backup' | 'update' | 'cleanup'
-const TABS: Array<[SystemTab, string]> = [['health', 'Health'], ['models', 'Models'], ['backup', 'Backup'], ['update', 'Update'], ['cleanup', 'Cleanup']]
+export type SystemTab = 'health' | 'models' | 'remote' | 'notify' | 'backup' | 'update' | 'cleanup'
+const TABS: Array<[SystemTab, string]> = [['health', 'Health'], ['models', 'Models'], ['remote', 'Remote access'], ['notify', 'Notifications'], ['backup', 'Backup'], ['update', 'Update'], ['cleanup', 'Cleanup']]
 const ROLES = ['chief', 'planner', 'worker', 'reviewer', 'escalation']
 
 export function SystemPanel({ initial = 'health', onClose, onError }: { initial?: SystemTab; onClose: () => void; onError: (e: string) => void }) {
@@ -21,6 +22,8 @@ export function SystemPanel({ initial = 'health', onClose, onError }: { initial?
         <div className="modal-content">
           {tab === 'health' && <Health onError={onError} go={setTab} />}
           {tab === 'models' && <Models onError={onError} />}
+          {tab === 'remote' && <Remote onError={onError} />}
+          {tab === 'notify' && <Notify onError={onError} />}
           {tab === 'backup' && <Backups onError={onError} />}
           {tab === 'update' && <Update onError={onError} />}
           {tab === 'cleanup' && <Cleanup onError={onError} />}

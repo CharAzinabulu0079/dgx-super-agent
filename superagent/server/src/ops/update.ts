@@ -365,7 +365,8 @@ export function scheduleRestart(delayMs = 400): void {
 /** systemd user unit for `sa serve` from the managed install. */
 export function systemdUnit(opts: { base: string; home?: string; host?: string; port?: number; node?: string; browser?: boolean }): string {
   const node = opts.node ?? process.execPath
-  const args = ['serve', '--host', opts.host ?? '127.0.0.1', '--port', String(opts.port ?? 7788), ...(opts.browser ? ['--browser'] : [])]
+  // Without --host the service takes SUPERAGENT_HOST from its env file (remote access wizard).
+  const args = ['serve', ...(opts.host ? ['--host', opts.host] : []), '--port', String(opts.port ?? 7788), ...(opts.browser ? ['--browser'] : [])]
   return [
     '[Unit]',
     'Description=DGX Super Agent',

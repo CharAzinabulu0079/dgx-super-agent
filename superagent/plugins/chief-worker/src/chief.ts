@@ -60,6 +60,17 @@ export interface PlanGoalOptions {
   readonly signal?: AbortSignal
   /** Policy fragment for every planned task (e.g. a per-request model override); pinned on the tasks. */
   readonly policy?: unknown
+  /**
+   * Kind of work (bug fix, research…) chosen by the human: approach for the Worker, loop
+   * limit, review, and extra checks. Trusted input (server-defined presets).
+   */
+  readonly taskPreset?: {
+    readonly singleTask: boolean
+    readonly maxAttempts: number
+    readonly review: boolean
+    readonly instructions: (goalId: string) => string
+    readonly gates: (goalId: string) => GateSpec[]
+  }
 }
 
 export interface PlannedGoal {
@@ -120,7 +131,7 @@ export class Chief {
     const input = { project, request, gates: [...gateRegistry(project).values()], architecture: options.architecture, signal: options.signal }
     let plan: Plan
     try {
-      plan = await (options.planner ?? new DeterministicPlanner()).plan(input)
+      plan = await (options.taskPreset?.singleTask ? new DeterministicPlanner() : options.planner ?? new DeterministicPlanner()).plan(input)
     } catch (error) {
       const fallback = await new DeterministicPlanner().plan(input)
       plan = { ...fallback, note: `planner ${options.planner?.name ?? '?'} failed (${String((error as Error).message ?? error).slice(0, 300)}); using a single task` }
@@ -128,9 +139,19 @@ export class Chief {
     const goal = this.store.createGoal(projectId, plan.objective)
     this.store.updateGoal(projectId, goal.id, { request })
     this.store.emitTyped('request/submitted', projectId, { request: request.slice(0, 2_000), planner: plan.planner, note: plan.note, tasks: plan.tasks.map(t => t.title) }, { goalId: goal.id })
-    const tasks = plan.tasks.map(t => this.addTask(projectId, goal.id, {
-      title: t.title, instructions: t.instructions, scope: { paths: [...t.paths], modules: [...t.modules] }, gates: [...t.gates], review: options.review || t.review, policy: options.policy,
-    }, 'agent'))
+    const tp = options.taskPreset
+    const policy = tp ? { ...(options.policy as object | undefined), maxAttempts: tp.maxAttempts } : options.policy
+    const extra = tp?.gates(goal.id) ?? []
+    const tasks = plan.tasks.map(t => {
+      const task = this.addTask(projectId, goal.id, {
+        title: t.title, instructions: tp ? `${t.instructions}\n\n${tp.instructions(goal.id)}` : t.instructions,
+        scope: { paths: [...t.paths], modules: [...t.modules] }, gates: [...t.gates], review: options.review || tp?.review || t.review, policy,
+      }, 'agent')
+      // Preset checks come from the server (trusted), not from the planner: add them after validation.
+      if (!extra.length) return task
+      const base = task.gates.length ? task.gates : project.defaultGates
+      return this.store.updateTask(projectId, task.id, { gates: [...base.filter(g => !extra.some(x => x.id === g.id)), ...extra] })
+    })
     return { goal: this.store.getGoal(projectId, goal.id)!, tasks, plan }
   }
 

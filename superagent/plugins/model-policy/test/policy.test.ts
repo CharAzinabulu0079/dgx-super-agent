@@ -71,3 +71,16 @@ test('model routes map logical models onto DSH configuration (no automatic routi
   assert.deepEqual(rows.map((r: { id: string }) => r.id), ['agent-default-model', 'llm-pi-ai'])
   assert.equal(modelPatch(LOCAL_DEFAULT, {}), undefined)
 })
+
+test('safe mode (autonomy): validated, project overrides global, default normal', async () => {
+  const { autonomyFor, parsePolicyLayer, saveGlobalPolicy } = await import('../src/index.ts')
+  const { tempDir } = await import('@superagent/testkit')
+  assert.equal(parsePolicyLayer({ autonomy: 'high' }).autonomy, 'high')
+  assert.throws(() => parsePolicyLayer({ autonomy: 'yolo' }), /autonomy/)
+  assert.equal(parsePolicyLayer({ autonomy: null }).autonomy, undefined)
+  const home = tempDir('sa-home-')
+  assert.equal(autonomyFor(home), 'normal')
+  saveGlobalPolicy(home, { autonomy: 'read-only' })
+  assert.equal(autonomyFor(home), 'read-only')
+  assert.equal(autonomyFor(home, { policy: { autonomy: 'high' } } as never), 'high')
+})

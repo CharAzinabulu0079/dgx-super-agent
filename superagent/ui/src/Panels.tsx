@@ -12,9 +12,11 @@ export function PolicyPanel({ projectId, onError }: { projectId: string; onError
   const [effective, setEffective] = useState<Models>({})
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [scope, setScope] = useState<'global' | 'project'>('global')
+  const [globalAutonomy, setGlobalAutonomy] = useState<string | undefined>()
+  const [projectAutonomy, setProjectAutonomy] = useState<string | undefined>()
   const load = () => {
-    api<{ global: { models?: Models } }>('GET', '/api/policy').then(r => setGlobal(r.global), e => onError(String(e)))
-    api<{ project: { policy?: { models?: Models } }; models: Models }>('GET', `/api/projects/${projectId}`).then(r => { setProject(r.project.policy ?? {}); setEffective(r.models) }, e => onError(String(e)))
+    api<{ global: { models?: Models; autonomy?: string } }>('GET', '/api/policy').then(r => { setGlobal(r.global); setGlobalAutonomy(r.global.autonomy) }, e => onError(String(e)))
+    api<{ project: { policy?: { models?: Models; autonomy?: string } }; models: Models }>('GET', `/api/projects/${projectId}`).then(r => { setProject(r.project.policy ?? {}); setProjectAutonomy(r.project.policy?.autonomy); setEffective(r.models) }, e => onError(String(e)))
   }
   useEffect(load, [projectId])
   const current = scope === 'global' ? global : project
@@ -25,7 +27,8 @@ export function PolicyPanel({ projectId, onError }: { projectId: string; onError
       if (v) models[r] = v
     }
     const path = scope === 'global' ? '/api/policy' : `/api/projects/${projectId}/policy`
-    api('POST', path, { ...current, models }).then(() => { setDraft({}); load() }, e => onError(String(e)))
+    const autonomy = scope === 'global' ? globalAutonomy : projectAutonomy
+    api('POST', path, { ...current, models, autonomy: autonomy ?? null }).then(() => { setDraft({}); load() }, e => onError(String(e)))
   }
   return (
     <section className="card" data-testid="policy-panel">
@@ -45,6 +48,13 @@ export function PolicyPanel({ projectId, onError }: { projectId: string; onError
           </tr>
         ))}</tbody>
       </table>
+      <div className="field"><div className="field-label">{t('Safe mode')}</div><div>
+        <div className="seg" role="radiogroup">{(scope === 'project' ? ['', 'read-only', 'normal', 'high'] : ['read-only', 'normal', 'high']).map(m => {
+          const cur = (scope === 'global' ? globalAutonomy ?? 'normal' : projectAutonomy ?? '')
+          return <button key={m} role="radio" aria-checked={cur === m} className={cur === m ? 'on' : ''} onClick={() => (scope === 'global' ? setGlobalAutonomy(m) : setProjectAutonomy(m || undefined))} data-testid={`autonomy-${m || 'inherit'}`}>{t(m ? `autonomy:${m}` : 'inherit')}</button>
+        })}</div>
+        <div className="muted">{t('Read-only: Workers may look but every change needs your approval. Normal: risky actions need approval. High: also low-risk permission and listener actions run without asking; deleting, deploying, credentials and tests always ask.')}</div>
+      </div></div>
       <button onClick={save} data-testid="policy-save">{t('Save {scope} policy', { scope })}</button>
     </section>
   )

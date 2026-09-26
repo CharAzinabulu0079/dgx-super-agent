@@ -146,6 +146,27 @@ test('System page: models, presets, backup/restore, update, cleanup, health; ask
     await phone.getByTestId('health-overall').waitFor()
     assert.ok(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'system page fits the phone')
 
+    // Second batch: home across projects, task type, safe mode, remote access, notifications.
+    await page.getByTestId('open-home').click()
+    await page.getByTestId('home-calc').waitFor()
+    await page.getByTestId('home-calc').getByRole('button', { name: 'calc' }).click()
+    await page.getByTestId('ask-kind').selectOption('bugfix')
+    await page.getByTestId('tab-policy').click()
+    await page.getByTestId('autonomy-read-only').click()
+    await page.getByTestId('policy-save').click()
+    await page.waitForFunction(async () => (await (await fetch('/api/policy')).json()).global.autonomy === 'read-only')
+    await page.getByTestId('autonomy-normal').click()
+    await page.getByTestId('policy-save').click()
+    await page.getByTestId('open-system').click()
+    await page.getByTestId('sys-remote').click()
+    await page.getByTestId('addr-127.0.0.1').waitFor()
+    await page.getByTestId('sys-notify').click()
+    await page.getByTestId('add-ntfy').click()
+    await page.getByTestId('ntfy-url').fill('https://ntfy.sh/sa-e2e-topic-x1')
+    await page.getByTestId('notify-save').click()
+    await page.getByText('Saved.').waitFor()
+    await page.getByTestId('close-system').click()
+
     // A Chinese browser gets the Chinese UI; the 中/EN toggle switches and remembers it.
     const zh = await browser.newPage({ locale: 'zh-CN', viewport: { width: 1280, height: 900 } })
     await zh.goto(`${server.url}/?token=${'h'.repeat(24)}`)

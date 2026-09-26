@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "project": "sample-webapp",
+  "generatedAt": "2026-09-26T19:52:45.101Z",
+  "commit": "d73f1ea",
+  "layers": [],
+  "nodes": [
+    {
+      "id": "(root)",
+      "label": "(root)",
+      "root": "",
+      "status": [
+        "changing"
+      ],
+      "files": 3,
+      "declared": false,
+      "protected": false,
+      "dependsOn": [],
+      "usedBy": [],
+      "gates": [],
+      "adrs": [],
+      "tests": [],
+      "drift": []
+    },
+    {
+      "id": "e2e",
+      "label": "e2e",
+      "root": "e2e",
+      "status": [
+        "stable"
+      ],
+      "files": 1,
+      "declared": false,
+      "protected": false,
+      "dependsOn": [],
+      "usedBy": [],
+      "gates": [],
+      "adrs": [],
+      "tests": [
+        "e2e/todo.spec.js"
+      ],
+      "drift": []
+    },
+    {
+      "id": "public",
+      "label": "public",
+      "root": "public",
+      "status": [
+        "stable"
+      ],
+      "files": 3,
+      "declared": false,
+      "protected": false,
+      "dependsOn": [],
+      "usedBy": [],
+      "gates": [],
+      "adrs": [],
+      "tests": [],
+      "drift": []
+    }
+  ],
+  "edges": [],
+  "drift": [],
+  "changes": {
+    "base": "HEAD",
+    "files": [
+      ".claude/launch.json",
+      "examples/sample-webapp/.architecture/.gitignore",
+      "examples/sample-webapp/.architecture/dataflows.json",
+      "examples/sample-webapp/.architecture/dependencies.json",
+      "examples/sample-webapp/.architecture/drift.json",
+      "examples/sample-webapp/.architecture/graph.json",
+      "examples/sample-webapp/.architecture/graph.mmd",
+      "examples/sample-webapp/.architecture/interfaces.json",
+      "examples/sample-webapp/.architecture/modules.json",
+      "examples/sample-webapp/.architecture/services.json",
+      "examples/sample-webapp/.architecture/skills.json",
+      "pnpm-lock.yaml",
+      "superagent/cli/src/main.ts",
+      "superagent/contracts/src/types.ts",
+      "superagent/evals/test/ui-system.e2e.test.ts",
+      "superagent/plugins/chief-worker/src/chief.ts",
+      "superagent/plugins/chief-worker/src/engine.ts",
+      "superagent/plugins/loop-policy/src/tool-policy.ts",
+      "superagent/plugins/loop-policy/test/tool-policy.test.ts",
+      "superagent/plugins/model-policy/src/policy.ts",
+      "superagent/plugins/model-policy/test/policy.test.ts",
+      "superagent/server/src/http.ts",
+      "superagent/server/src/ops/index.ts",
+      "superagent/server/src/ops/notify.ts",
+      "superagent/server/src/ops/remote.ts",
+      "superagent/server/src/ops/task-presets.ts",
+      "superagent/server/src/ops/update.ts",
+      "superagent/server/src/system-routes.ts",
+      "superagent/server/test/notify.test.ts",
+      "superagent/server/test/remote.test.ts",
+      "superagent/server/test/requests.test.ts",
+      "superagent/ui/package.json",
+      "superagent/ui/src/App.tsx",
+      "superagent/ui/src/Home.tsx",
+      "superagent/ui/src/Panels.tsx",
+      "superagent/ui/src/System.tsx",
+      "superagent/ui/src/SystemExtra.tsx",
+      "superagent/ui/src/i18n.ts",
+      "superagent/ui/src/styles.css"
+    ],
+    "modules": [
+      "(root)"
+    ],
+    "impacted": [],
+    "gates": []
+  },
+  "services": [
+    {
+      "id": "(root):script:start",
+      "module": "(root)",
+      "kind": "script",
+      "detail": "node server.js"
+    },
+    {
+      "id": "(root):http:server.js",
+      "module": "(root)",
+      "kind": "http-server",
+      "detail": "server.js"
+    }
+  ],
+  "dataflows": [],
+  "stats": {
+    "files": 7,
+    "modules": 3,
+    "edges": 0,
+    "scanMs": 27
+  }
+}

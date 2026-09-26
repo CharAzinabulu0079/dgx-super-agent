@@ -89,7 +89,10 @@ test('commands left running by a dead server are closed as interrupted and their
     const fresh = runner.start(p.id, 'sleep 30', false)
     assert.equal(fresh.ownerPid, process.pid)
     assert.ok(fresh.pid && processAlive(fresh.pid))
-    assert.match(readFileSync(`/proc/${fresh.pid}/environ`, 'latin1'), new RegExp(`SUPERAGENT_COMMAND_ID=${fresh.id}`))
+    // Right after spawn the child may not have exec'd yet (empty environ under load): wait for it.
+    let environ = ''
+    for (let i = 0; i < 50 && !environ.includes('SUPERAGENT_COMMAND_ID'); i++) { environ = readFileSync(`/proc/${fresh.pid}/environ`, 'latin1'); if (!environ.includes('SUPERAGENT_COMMAND_ID')) await sleep(20) }
+    assert.match(environ, new RegExp(`SUPERAGENT_COMMAND_ID=${fresh.id}`))
     runner.stopAll()
   } finally {
     for (const c of [orphan, stranger, liveOwner]) { try { process.kill(-c.pid!, 'SIGKILL') } catch (gone) { void gone } }

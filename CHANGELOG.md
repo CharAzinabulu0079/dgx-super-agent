@@ -1,6 +1,13 @@
 # Changelog
 
 
+
+## v1.3.0 — second batch of one-click features (2026-09-26)
+
+- ⌂ Home across projects; task type in the ask box (bug fix / feature / refactor / front-end test / research with a report check); safe mode (read-only / normal / high); System → Remote access (addresses, bind switch, phone QR); System → Notifications (ntfy / Bark / Telegram).
+- Fixed on the way: a long option in the new task-type menu widened the page on phones (the phone browser then zoomed out and the bottom bar could not be tapped).
+- All in Chinese and English; unit, E2E (incl. the new pages) and red-team suites green on the DGX.
+
 ## v1.2.1 — first run on the DGX (2026-09-26)
 
 Found and fixed by running on the DGX Spark with a local llama.cpp model and real use:

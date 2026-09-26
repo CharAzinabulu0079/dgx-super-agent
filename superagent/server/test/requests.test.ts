@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { ScriptedExecutor, parsePlan, type Planner } from '@superagent/chief-worker'
@@ -94,6 +94,47 @@ test('goal runs survive a restart, and approving a human gate resumes the goal',
     const r = await api(server.url, 'POST', `/api/projects/calc/human-gates/${hg.id}`, { decision: 'approved', resolution: 'round half up' }, 'h')
     assert.equal(r.resumed, true)
     await until(() => rt2.store.getGoal('calc', planned.goal.id)!, g => g.status === 'complete')
+  } finally {
+    await server.close()
+  }
+})
+
+test('task presets: research = one task whose check is the report; feature is reviewed; front-end needs an E2E check', async () => {
+  const root = calcProject()
+  writeFileSync(join(root, 'src/calc.js'), FIXED_CALC)
+  let writeReport = true
+  const runtime = createRuntime({
+    home: tempDir('sa-home-'), planner,
+    executor: new ScriptedExecutor(i => {
+      const path = /Report file: (\S+)/.exec(i.task.instructions)?.[1]
+      if (path && writeReport) mkdirSync(join(root, 'research'), { recursive: true })
+      if (path && writeReport) writeFileSync(join(root, path), `# Findings\n\n${'The add function is correct; evidence below. '.repeat(20)}`)
+    }),
+  })
+  const server = await startServer({ runtime, port: 0, humanToken: 'h' })
+  try {
+    await api(server.url, 'POST', '/api/projects', { name: 'calc', root, defaultGates: [NODE_TEST_GATE] }, 'h')
+    const presets = (await api(server.url, 'GET', '/api/projects/calc/task-presets')).presets
+    assert.deepEqual(presets.map((p: any) => p.id), ['bugfix', 'feature', 'refactor', 'frontend-test', 'research'])
+    assert.match(presets.find((p: any) => p.id === 'frontend-test').problem, /end-to-end/)
+    await assert.rejects(api(server.url, 'POST', '/api/projects/calc/requests', { request: 'x', taskPreset: 'frontend-test', run: false }, 'h'), /end-to-end/)
+
+    const r = await api(server.url, 'POST', '/api/projects/calc/requests', { request: 'is add correct?', taskPreset: 'research' }, 'h')
+    assert.equal(r.tasks.length, 1)
+    const t = r.tasks[0]
+    assert.equal(t.policy.maxAttempts, 3)
+    assert.deepEqual(t.gates.map((g: any) => g.id), ['unit', 'research-report'])
+    assert.match(t.instructions, new RegExp(`Report file: research/${r.goal.id}\\.md`))
+    await until(() => runtime.store.getGoal('calc', r.goal.id)!.status, s => s === 'complete')
+
+    writeReport = false
+    const r2 = await api(server.url, 'POST', '/api/projects/calc/requests', { request: 'and subtract?', taskPreset: 'research' }, 'h')
+    await until(() => runtime.store.getGoal('calc', r2.goal.id)!.status, s => s !== 'active')
+    assert.notEqual(runtime.store.getGoal('calc', r2.goal.id)!.status, 'complete', 'no report → not done, whatever the Worker says')
+
+    const f = await api(server.url, 'POST', '/api/projects/calc/requests', { request: 'add pow', taskPreset: 'feature', run: false }, 'h')
+    assert.equal(f.tasks[0].review, true)
+    assert.equal(f.tasks[0].policy.maxAttempts, 8)
   } finally {
     await server.close()
   }

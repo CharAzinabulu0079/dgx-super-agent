@@ -33,6 +33,12 @@ export interface ToolPolicy {
   readonly productionWrite: boolean
   /** Temp roots writes may target (scratch space). */
   readonly tempRoots: readonly string[]
+  /**
+   * Safe mode. `read-only`: file writes and any shell command not known to be read-only
+   * need a human. `high`: low-risk rules (chmod +x in the project, local listeners) are
+   * relaxed. Destructive, production, credential and verification rules never are.
+   */
+  readonly autonomy?: 'read-only' | 'normal' | 'high'
 }
 
 export type ToolDecision =
@@ -51,7 +57,7 @@ export function actionFingerprint(tool: string, args: unknown): string {
   return createHash('sha256').update(`${tool}\u0000${JSON.stringify(canon(args))}`).digest('hex').slice(0, 32)
 }
 
-interface ShellRule { readonly re: RegExp; readonly category: HumanGateReason; readonly rule: string }
+interface ShellRule { readonly re: RegExp; readonly category: HumanGateReason; readonly rule: string; readonly lowRisk?: boolean }
 
 const SHELL_RULES: readonly ShellRule[] = [
   // irreversible data / history
@@ -65,6 +71,9 @@ const SHELL_RULES: readonly ShellRule[] = [
   { re: /\b(ssh|scp|sftp)\s+|rsync\s+[^|]*\s[\w.-]+@?[\w.-]+:/, category: 'production-deploy', rule: 'remote host access' },
   // permission / credential expansion
   { re: /(^|[;&|]\s*|\s)(sudo|su|doas|pkexec)\s/, category: 'permission-expansion', rule: 'privilege escalation' },
+  // low risk (relaxed in high autonomy): make a project script executable, listen locally
+  { re: /^\s*chmod\s+(u?\+x|0?755)\s+(?!\/)[\w./-]+\s*$/, category: 'permission-expansion', rule: 'make a script executable', lowRisk: true },
+  { re: /^\s*(nc|ncat)\s+-l[k]?\s+(-p\s+)?\d+\s*$/, category: 'permission-expansion', rule: 'local listener', lowRisk: true },
   { re: /\bchmod\s+(-R\s+)?[0-7]*7[0-7]{0,2}\b|\bchmod\s+[+ugo]*s\b|\bchown\b|\bsetfacl\b|\bpasswd\b|\busermod\b|\bvisudo\b/, category: 'permission-expansion', rule: 'permission change' },
   { re: /(~|\$HOME|\/home\/[^/\s]+|\/root)\/\.(ssh|aws|gnupg|kube|docker|netrc|git-credentials|config\/gh|npmrc|pypirc)\b/, category: 'permission-expansion', rule: 'credential store access' },
   { re: /\b(curl|wget)\b[^|]*\|\s*(ba|z|da)?sh\b|\b(ba)?sh\s+<\(\s*(curl|wget)/, category: 'permission-expansion', rule: 'remote script execution' },
@@ -117,6 +126,12 @@ function judgeShell(policy: ToolPolicy, command: string): { category: HumanGateR
   for (const r of SHELL_RULES) {
     if (r.category === 'production-deploy' && policy.productionWrite) continue
     if (r.re.test(command)) {
+      if (r.lowRisk) {
+        // Allowed outright in high autonomy (simple, project-relative form only); otherwise the
+        // remaining rules judge it exactly as before this mode existed.
+        if (policy.autonomy === 'high' && !command.includes('..')) return undefined
+        continue
+      }
       // `rm -r` confined to project scratch/build output is routine; judge the targets.
       if (r.rule === 'recursive delete') {
         const targets = [...command.matchAll(/\brm\s+(?:-\S+\s+)+([^;&|]+)/g)].flatMap(m => m[1]!.trim().split(/\s+/))
@@ -134,6 +149,13 @@ function judgeShell(policy: ToolPolicy, command: string): { category: HumanGateR
   }
   for (const f of policy.forbiddenPaths) if (command.includes(f)) return { category: 'permission-expansion', rule: `SuperAgent state/secrets path (${f})` }
   return undefined
+}
+
+/** Commands that only read (read-only safe mode); every pipeline segment must be one of these. */
+const READ_ONLY_CMD = /^(ls|cat|head|tail|less|grep|egrep|rg|find|wc|pwd|echo|tree|file|stat|du|df|which|whoami|date|sort|uniq|cut|diff|jq|git\s+(status|log|diff|show|branch|blame|ls-files|rev-parse|describe)|node\s+--version|python3?\s+--version|nvidia-smi)(\s|$)/
+function readOnlyShell(command: string): boolean {
+  if (/[>`]|\$\(|\bfind\b.*\s-(delete|exec)\b/.test(command)) return false
+  return command.split(/\|\||&&|[|;]/).map(s => s.trim()).filter(Boolean).every(s => READ_ONLY_CMD.test(s))
 }
 
 const WRITE_TOOLS = new Set(['write', 'edit', 'multi_edit', 'notebook_edit', 'apply_patch'])
@@ -156,10 +178,12 @@ export function decideToolCall(policy: ToolPolicy, tool: string, args: Record<st
   if (SHELL_TOOLS.has(tool)) {
     const command = typeof args.command === 'string' ? args.command : JSON.stringify(args)
     verdict = judgeShell(policy, command)
+    if (!verdict && policy.autonomy === 'read-only' && policy.role === 'worker' && !readOnlyShell(command)) verdict = { category: 'permission-expansion', rule: 'read-only mode: this command may change files' }
     if (!verdict && typeof args.workdir === 'string') verdict = judgePath(policy, args.workdir, false)
   } else if (WRITE_TOOLS.has(tool)) {
     const path = typeof args.file_path === 'string' ? args.file_path : typeof args.path === 'string' ? args.path : undefined
     verdict = path === undefined ? { category: 'permission-expansion', rule: 'write tool without a path' } : judgePath(policy, path, true)
+    if (!verdict && policy.autonomy === 'read-only' && policy.role === 'worker') verdict = { category: 'permission-expansion', rule: 'read-only mode: file changes need approval' }
   } else if (READ_TOOLS.has(tool)) {
     const path = typeof args.file_path === 'string' ? args.file_path : typeof args.path === 'string' ? args.path : undefined
     if (path !== undefined) verdict = judgePath(policy, path, false)

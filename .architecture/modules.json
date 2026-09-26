@@ -235,7 +235,7 @@
     "description": "Headless HTTP/SSE Realtime API",
     "protected": false,
     "declared": true,
-    "files": 33,
+    "files": 38,
     "gates": [
       "unit",
       "e2e-ui"
@@ -247,9 +247,11 @@
       "superagent/server/test/cleanup.test.ts",
       "superagent/server/test/commands.test.ts",
       "superagent/server/test/files.test.ts",
+      "superagent/server/test/notify.test.ts",
       "superagent/server/test/ops.test.ts",
       "superagent/server/test/project-scan.test.ts",
       "superagent/server/test/project-setup.test.ts",
+      "superagent/server/test/remote.test.ts",
       "superagent/server/test/requests.test.ts",
       "superagent/server/test/server.test.ts",
       "superagent/server/test/update.test.ts"
@@ -289,7 +291,7 @@
     "description": "Minimal Web/PWA",
     "protected": false,
     "declared": true,
-    "files": 25,
+    "files": 27,
     "gates": [
       "e2e-ui"
     ],
@@ -367,7 +369,7 @@
     "description": "Example app for real-browser E2E gates",
     "protected": false,
     "declared": true,
-    "files": 7,
+    "files": 17,
     "gates": [
       "e2e"
     ],

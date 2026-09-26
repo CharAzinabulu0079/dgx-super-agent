@@ -193,7 +193,7 @@ async function main(argv: string[]): Promise<number> {
   const { store, chief, engine } = rt
   switch (cmd) {
     case 'serve': {
-      const host = values.host ?? '127.0.0.1'
+      const host = values.host ?? process.env.SUPERAGENT_HOST ?? '127.0.0.1'
       const envToken = process.env.SUPERAGENT_HUMAN_TOKEN
       if (envToken !== undefined && envToken.length < 24) throw new Error('SUPERAGENT_HUMAN_TOKEN must be at least 24 characters (e.g. `openssl rand -base64 24`)')
       // Held only in memory from here on: nothing this process spawns (Chief, Workers, gates, ▷ Run) inherits it.

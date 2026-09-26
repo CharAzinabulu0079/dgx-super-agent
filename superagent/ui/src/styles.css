@@ -291,3 +291,20 @@ a.button { display: inline-block; padding: 6px 12px; border: 1px solid var(--bor
 .model-pick { max-height: 280px; overflow: auto; }
 .guide ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 8px; }
 .guide li button { margin-left: 6px; }
+
+/* home */
+.home-btn { width: 100%; text-align: left; margin-bottom: 8px; }
+.home-btn.active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.home-summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.home-card header { display: flex; align-items: center; gap: 8px; }
+.home-goal { margin: 6px 0; }
+.home-line { font-size: 13px; margin-top: 4px; overflow-wrap: anywhere; }
+.home-add { min-height: 120px; border-style: dashed; cursor: pointer; }
+.home-grid progress { flex: 1; }
+.qr-box { display: flex; gap: 12px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+.qr { width: 180px; height: 180px; background: #fff; padding: 6px; border-radius: 8px; }
+.qr svg { width: 100%; height: 100%; }
+/* long option texts must not widen the page on a phone */
+.ask-row select { max-width: 100%; min-width: 0; }
+@media (max-width: 760px) { .ask-row select { flex: 1 1 140px; } }

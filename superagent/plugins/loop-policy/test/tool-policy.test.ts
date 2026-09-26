@@ -71,3 +71,27 @@ test('an approved fingerprint allows exactly that action and nothing else', () =
   assert.deepEqual(decideToolCall(approved, 'bash', { command: 'rm -rf data/' }), { allow: true, approved: true })
   assert.equal(decideToolCall(approved, 'bash', { command: 'rm -rf data2/' }).allow, false)
 })
+
+test('safe mode: read-only gates writes and non-read commands; high relaxes only low-risk rules', () => {
+  const ro: ToolPolicy = { ...policy, autonomy: 'read-only' }
+  const hi: ToolPolicy = { ...policy, autonomy: 'high' }
+  const run = (p: ToolPolicy, command: string) => cat(decideToolCall(p, 'bash', { command }))
+  for (const c of ['ls -la src', 'git status', 'git log --oneline | head -5', 'grep -rn foo src | wc -l', 'cat README.md']) assert.equal(run(ro, c), 'allow', c)
+  for (const c of ['npm install', 'echo hi > a.txt', 'node build.js', 'find . -delete', 'sed -i s/a/b/ x', 'ls $(rm -rf x)']) assert.notEqual(run(ro, c), 'allow', c)
+  assert.equal(cat(decideToolCall(ro, 'write', { file_path: '/work/app/src/app.js', content: '' })), 'permission-expansion')
+  assert.equal(cat(decideToolCall(ro, 'read', { file_path: '/work/app/src/app.js' })), 'allow')
+
+  // normal: unchanged; high: chmod +x / 755 in the project and a local listener are fine
+  assert.equal(run(policy, 'chmod +x scripts/run.sh'), 'allow', 'as before this mode existed')
+  assert.equal(run(policy, 'chmod 755 scripts/run.sh'), 'permission-expansion')
+  assert.equal(run(policy, 'nc -l 9000'), 'permission-expansion')
+  assert.equal(run(hi, 'chmod 755 scripts/run.sh'), 'allow')
+  assert.equal(run(hi, 'nc -l 9000'), 'allow')
+  // …never absolute/outside paths, and never the destructive, production, credential or verification rules
+  assert.equal(run(hi, 'chmod 755 /etc/passwd'), 'permission-expansion')
+  assert.equal(run(hi, 'chmod 755 ../other/x'), 'permission-expansion')
+  assert.equal(run(hi, 'rm -rf data/'), 'irreversible-data')
+  assert.equal(run(hi, 'npm publish'), 'production-deploy')
+  assert.equal(run(hi, 'sudo ls'), 'permission-expansion')
+  assert.equal(cat(decideToolCall(hi, 'write', { file_path: '/work/app/src/app.test.js', content: '' })), 'verification-change')
+})

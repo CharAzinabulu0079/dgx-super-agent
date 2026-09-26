@@ -1,0 +1,14 @@
+[
+  {
+    "id": "(root):script:start",
+    "module": "(root)",
+    "kind": "script",
+    "detail": "node server.js"
+  },
+  {
+    "id": "(root):http:server.js",
+    "module": "(root)",
+    "kind": "http-server",
+    "detail": "server.js"
+  }
+]
