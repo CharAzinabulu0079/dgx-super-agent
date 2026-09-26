@@ -58,7 +58,7 @@ test('UI on a phone over a remote bind: chat, files (preview/download), transcri
   await runtime.chief.runGoal('calc', goal.id)
 
   const browser = await chromium.launch({ executablePath: process.env.SUPERAGENT_CHROMIUM ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) })
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3, acceptDownloads: true })
+  const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3, acceptDownloads: true })
   const page = await context.newPage()
   const errors: string[] = []
   page.on('pageerror', e => errors.push(String(e)))

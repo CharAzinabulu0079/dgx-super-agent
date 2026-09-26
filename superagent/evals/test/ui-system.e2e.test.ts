@@ -44,7 +44,7 @@ test('System page: models, presets, backup/restore, update, cleanup, health; ask
   await runtime.addProject({ name: 'calc', root: calcProject(), defaultGates: [NODE_TEST_GATE] })
   await runtime.addProject({ name: 'plain', root: tempDir('sa-plain-'), defaultGates: [NODE_TEST_GATE] })
   const browser = await chromium.launch({ executablePath: process.env.SUPERAGENT_CHROMIUM ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) })
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  const page = await browser.newPage({ locale: 'en-US', viewport: { width: 1280, height: 900 } })
   page.on('dialog', d => void d.accept())
   const errors: string[] = []
   page.on('pageerror', e => errors.push(String(e)))
@@ -117,13 +117,25 @@ test('System page: models, presets, backup/restore, update, cleanup, health; ask
     assert.deepEqual(tasks.at(-1)!.pinnedModels?.worker, { provider: 'local-default', model: 'default' }, 'this request ran on the chosen preset')
 
     // Phone: System reachable from More, fits the screen.
-    const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+    const phone = await browser.newPage({ locale: 'en-US', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
     await phone.goto(`${server.url}/?token=${'h'.repeat(24)}`)
     await phone.getByTestId('project-calc').tap()
     await phone.getByTestId('nav-more').tap()
     await phone.getByTestId('more-system').tap()
     await phone.getByTestId('health-overall').waitFor()
     assert.ok(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'system page fits the phone')
+
+    // A Chinese browser gets the Chinese UI; the 中/EN toggle switches and remembers it.
+    const zh = await browser.newPage({ locale: 'zh-CN', viewport: { width: 1280, height: 900 } })
+    await zh.goto(`${server.url}/?token=${'h'.repeat(24)}`)
+    await zh.getByTestId('project-calc').click()
+    await zh.getByText('你想做什么？').waitFor()
+    await zh.getByTestId('open-system').click()
+    await zh.getByTestId('sys-health').filter({ hasText: '健康' }).waitFor()
+    await zh.getByTestId('close-system').click()
+    await zh.getByTestId('toggle-lang').click()
+    await zh.getByText('What do you want?').waitFor()
+    await zh.close()
     assert.deepEqual(errors, [])
   } finally {
     await browser.close()

@@ -39,7 +39,7 @@ test('UI appearance: image background for all devices; Digital Human embed bridg
   const server = await startServer({ runtime, port: 0, uiDir: UI_DIR, chiefChat: chat })
   await runtime.addProject({ name: 'calc', root: calcProject(), defaultGates: [NODE_TEST_GATE] })
   const browser = await chromium.launch({ executablePath: process.env.SUPERAGENT_CHROMIUM ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) })
-  const page = await browser.newPage({ viewport: { width: 1280, height: 860 } })
+  const page = await browser.newPage({ locale: 'en-US', viewport: { width: 1280, height: 860 } })
   const errors: string[] = []
   page.on('pageerror', e => errors.push(String(e)))
   try {
@@ -75,7 +75,7 @@ test('UI appearance: image background for all devices; Digital Human embed bridg
     await page.getByTestId('appearance-save').click()
     await page.locator('[data-testid="bg-layer"][data-kind="image"]').waitFor()
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark')
-    const other = await browser.newPage()
+    const other = await browser.newPage({ locale: 'en-US' })
     await other.goto(`${server.url}/?token=${server.humanToken}`)
     await other.locator('[data-testid="bg-layer"][data-kind="image"]').waitFor()
     await other.close()

@@ -35,7 +35,7 @@ test('UI: projects, goal, tasks with model selection, live loop, human gate, arc
   })
   const server = await startServer({ runtime, port: 0, uiDir: UI_DIR })
   const browser = await chromium.launch({ executablePath: process.env.SUPERAGENT_CHROMIUM ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) })
-  const page = await browser.newPage()
+  const page = await browser.newPage({ locale: 'en-US' })
   const consoleErrors: string[] = []
   page.on('pageerror', e => consoleErrors.push(String(e)))
   try {
@@ -139,7 +139,7 @@ test('UI one-box: describe a change → planned, built, checked, narrated', { ti
   })
   const server = await startServer({ runtime, port: 0, uiDir: UI_DIR })
   const browser = await chromium.launch({ executablePath: process.env.SUPERAGENT_CHROMIUM ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) })
-  const page = await browser.newPage()
+  const page = await browser.newPage({ locale: 'en-US' })
   const consoleErrors: string[] = []
   page.on('pageerror', e => consoleErrors.push(String(e)))
   try {
