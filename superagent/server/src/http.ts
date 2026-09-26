@@ -22,7 +22,8 @@ import type { ChiefMessage, SharedFile } from '@superagent/contracts'
 import { workerTranscript } from './transcript.ts'
 import { CommandError, CommandRunner } from './commands.ts'
 import { registerSystemRoutes } from './system-routes.ts'
-import { backupFile } from './ops/backup.ts'
+import { backupFile, createBackup } from './ops/backup.ts'
+import { UpdateManager, isSupervised, managedBase, scheduleRestart } from './ops/update.ts'
 import { appVersion } from './ops/version.ts'
 import { preflightChecks, type HealthContext } from './ops/health.ts'
 import { REPO_ROOT } from '@superagent/testkit'
@@ -68,6 +69,8 @@ export interface ServerOptions {
   readonly resumeGoals?: boolean
   /** The human token is stable across restarts (SUPERAGENT_HUMAN_TOKEN) — shown by the health check. */
   readonly stableToken?: boolean
+  /** Managed-install updates (default: detected from where this code runs). Tests pass their own. */
+  readonly update?: { readonly base: string; readonly steps?: ReadonlyArray<readonly string[]>; readonly restart?: () => boolean }
 }
 
 export interface RunningServer {
@@ -163,6 +166,12 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
   }
   const links = new LinkSigner()
   const commands = new CommandRunner(store)
+  const installBase = options.update?.base ?? managedBase(REPO_ROOT)
+  const updateManager = installBase ? new UpdateManager({
+    base: installBase, home: store.home, steps: options.update?.steps,
+    backup: label => createBackup(store.home, { label, ...appVersion() }).id,
+    restart: () => { if (options.update?.restart) options.update.restart(); else if (isSupervised()) scheduleRestart() },
+  }) : undefined
   let chiefDriver: ChiefDriver | undefined
   let chiefChannel: ChiefChannel | undefined
   const chatAbort = new AbortController()
@@ -393,6 +402,8 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     },
     backupLink: id => `/dl/${links.sign({ p: '', f: id, d: 1, k: 'backup' }).token}`,
     appVersion: () => appVersion(),
+    update: updateManager,
+    restart: options.update?.restart,
   })
 
   // ---------------------------------------------------------------- human-run commands (▷ on code blocks)

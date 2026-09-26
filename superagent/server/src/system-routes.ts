@@ -5,6 +5,7 @@ import { HttpError } from './http.ts'
 import { runHealthCheck, type HealthContext } from './ops/health.ts'
 import { PROVIDER_APIS, ProviderError, listProviders, probeProvider, removeProvider, saveProvider, storedConnection, testModel, type ProviderApi } from './ops/providers.ts'
 import { PresetError, applyPreset, presetViews, savePresets } from './ops/presets.ts'
+import { UpdateError, isSupervised, scheduleRestart, type UpdateManager } from './ops/update.ts'
 import { BackupError, createBackup, deleteBackup, importBackup, listBackups, restoreBackup } from './ops/backup.ts'
 
 type Role = 'human' | 'agent' | 'anonymous'
@@ -19,6 +20,10 @@ export interface SystemDeps {
   /** Short-lived download link for a backup archive. */
   readonly backupLink: (id: string) => string
   readonly appVersion: () => { appVersion?: string; commit?: string }
+  /** Present when the server runs from a managed install (`sa install`). */
+  readonly update?: UpdateManager
+  /** Restart through the supervisor (default: exit 75 when supervised). */
+  readonly restart?: () => boolean
 }
 
 const as400 = async <T>(fn: () => T | Promise<T>, ...types: Array<new (...a: any[]) => Error>): Promise<T> => {
@@ -81,6 +86,29 @@ export function registerSystemRoutes(route: RouteFn, deps: SystemDeps): void {
     const r = restoreBackup(store.home, params.id!, deps.appVersion())
     return { ...r, backups: backups() }
   }, BackupError), 'human')
+
+  // Update / Rollback / Restart.
+  const supervised = () => isSupervised() || !!deps.restart
+  const restart = () => (deps.restart ? deps.restart() : isSupervised() ? (scheduleRestart(), true) : false)
+  route('GET', '/api/system/update', () => deps.update
+    ? { ...deps.update.status(), supervised: supervised(), running: deps.appVersion() }
+    : { managed: false, supervised: supervised(), running: deps.appVersion(), hint: 'Updates need a managed install: `sa install --dir ~/superagent`, then run the service from ~/superagent/current (`sa service install`).' }, 'human')
+  const needUpdate = (): UpdateManager => {
+    if (!deps.update) throw new UpdateError('not a managed install — run `sa install --dir ~/superagent` and start SuperAgent from there')
+    return deps.update
+  }
+  route('POST', '/api/system/update/check', () => as400(() => needUpdate().check(), UpdateError), 'human')
+  route('POST', '/api/system/update', ({ body }) => as400(() => {
+    if (typeof body?.ref !== 'string' || !body.ref) throw new UpdateError('ref (a version tag) is required')
+    return { job: needUpdate().startUpdate(body.ref, deps.busy()), supervised: supervised() }
+  }, UpdateError), 'human')
+  route('POST', '/api/system/update/rollback', () => as400(() => ({ to: needUpdate().rollback(deps.busy()), supervised: supervised() }), UpdateError), 'human')
+  route('POST', '/api/system/restart', () => {
+    const busy = deps.busy()
+    if (busy) throw new HttpError(409, `cannot restart while ${busy}`)
+    if (!restart()) throw new HttpError(409, 'not running under a supervisor: restart it yourself (or install the service: `sa service install`)')
+    return { restarting: true }
+  }, 'human')
 
   route('POST', '/api/system/presets/:id/apply', ({ params }) => as400(() => { const policy = applyPreset(store.home, params.id!); return { policy, presets: presetViews(store.home) } }, PresetError), 'human')
 }

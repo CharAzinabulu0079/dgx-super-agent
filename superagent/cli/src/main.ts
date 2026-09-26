@@ -3,15 +3,16 @@
  * `sa` — SuperAgent command line. Thin shell over the same runtime the API uses.
  * Run: `node superagent/cli/src/main.ts <command>` (or `pnpm sa <command>`).
  */
-import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { chmodSync, existsSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs'
+import { basename, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { parseGateSpec, type GateSpec } from '@superagent/contracts'
 import { effectiveModels, formatModel, loadGlobalPolicy, parseModelSpec, parsePolicyLayer, saveGlobalPolicy } from '@superagent/model-policy'
 import { scanHygiene } from '@superagent/verifier'
 import { Observatory } from '@superagent/architecture-observatory'
-import { BROWSER_PATCH, CHIEF_PROFILE, createRuntime, isLoopbackHost, narrate, registerHeldOut, setupDshProfiles, startServer } from '@superagent/server'
-import { networkInterfaces } from 'node:os'
+import { BROWSER_PATCH, CHIEF_PROFILE, UpdateManager, createBackup, createRuntime, isLoopbackHost, isSupervised, managedBase, narrate, preflightChecks, registerHeldOut, setupDshProfiles, startServer, systemdUnit, appVersion } from '@superagent/server'
+import { homedir, networkInterfaces } from 'node:os'
+import { execFileSync } from 'node:child_process'
 import { defaultHome } from '@superagent/project-state'
 import { REPO_ROOT } from '@superagent/testkit'
 
@@ -25,6 +26,11 @@ const HELP = `sa — DGX Super Agent CLI
                                                 SUPERAGENT_HUMAN_TOKEN=<24+ chars> keeps the link stable across restarts
   sa project add <name> <root> [--gate 'id=command'...] [--protect module...]
   sa project list
+  sa install --dir ~/superagent [--from <git url|path>] [--ref <tag>]
+                                                managed install (releases + current symlink) for one-click Update/Rollback
+  sa service unit|install [--dir ~/superagent] [--host <ip>] [--browser]
+                                                systemd user service (auto start, restart after update)
+  sa update status|check|apply <tag>|rollback [--dir ~/superagent]
   sa heldout add <project> <gateId> <testsDir> --mount <dir> --command "<cmd>"
                                                 hidden acceptance tests: copied into $SUPERAGENT_HOME/heldout,
                                                 mounted only into a verification copy, never visible to Workers
@@ -68,7 +74,7 @@ async function main(argv: string[]): Promise<number> {
       'worker-patch': { type: 'string', multiple: true },
       gate: { type: 'string', multiple: true }, protect: { type: 'string', multiple: true },
       title: { type: 'string' }, instructions: { type: 'string' }, model: { type: 'string' }, escalation: { type: 'string' },
-      check: { type: 'boolean' }, review: { type: 'boolean' }, 'no-run': { type: 'boolean' }, mount: { type: 'string' }, command: { type: 'string' }, help: { type: 'boolean', short: 'h' }, project: { type: 'string' }, reflect: { type: 'boolean' },
+      check: { type: 'boolean' }, dir: { type: 'string' }, from: { type: 'string' }, ref: { type: 'string' }, review: { type: 'boolean' }, 'no-run': { type: 'boolean' }, mount: { type: 'string' }, command: { type: 'string' }, help: { type: 'boolean', short: 'h' }, project: { type: 'string' }, reflect: { type: 'boolean' },
     },
   })
   const [cmd, sub, ...rest] = positionals
@@ -97,6 +103,47 @@ async function main(argv: string[]): Promise<number> {
     const blocks = findings.filter(f => f.severity === 'block').length
     console.log(`hygiene: ${blocks} block, ${findings.length - blocks} warn`)
     return blocks ? 1 : 0
+  }
+
+  // ---- managed install / service / update (work without a running server)
+  if (cmd === 'install') {
+    const base = resolve(values.dir ?? join(homedir(), 'superagent'))
+    let from = values.from
+    if (!from) {
+      try { from = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: REPO_ROOT }).toString().trim() } catch (noRemote) { void noRemote; from = REPO_ROOT }
+    }
+    console.log(`Installing SuperAgent into ${base} from ${from}${values.ref ? ` @ ${values.ref}` : ''} (clone, install, build, typecheck)…`)
+    const m = UpdateManager.install(base, from, values.ref)
+    console.log(`Installed ${m.state().current}. Run it from ${join(base, 'current')}:\n  node ${join(base, 'current', 'superagent/cli/src/main.ts')} dsh setup\n  node ${join(base, 'current', 'superagent/cli/src/main.ts')} service install --dir ${base}`)
+    return 0
+  }
+  if (cmd === 'service') {
+    const base = resolve(values.dir ?? managedBase(REPO_ROOT) ?? join(homedir(), 'superagent'))
+    const unit = systemdUnit({ base, home: process.env.SUPERAGENT_HOME, host: values.host, port: values.port ? Number(values.port) : undefined, browser: values.browser })
+    if (sub !== 'install') { console.log(unit); return 0 }
+    const dir = join(homedir(), '.config', 'systemd', 'user')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'superagent.service'), unit)
+    const envDir = join(homedir(), '.config', 'superagent')
+    mkdirSync(envDir, { recursive: true, mode: 0o700 })
+    if (!existsSync(join(envDir, 'env'))) writeFileSync(join(envDir, 'env'), '# SUPERAGENT_HUMAN_TOKEN=<24+ random characters>\n', { mode: 0o600 })
+    console.log(`Wrote ${join(dir, 'superagent.service')}. Next:\n  systemctl --user daemon-reload && systemctl --user enable --now superagent\n  loginctl enable-linger $USER   # keep it running after logout\n  (optional) put SUPERAGENT_HUMAN_TOKEN in ${join(envDir, 'env')} for a stable phone link`)
+    return 0
+  }
+  if (cmd === 'update') {
+    const base = resolve(values.dir ?? managedBase(REPO_ROOT) ?? '')
+    if (!base || !existsSync(join(base, 'releases.json'))) throw new Error('not a managed install: run `sa install --dir ~/superagent` first (or pass --dir)')
+    const m = new UpdateManager({ base, home: defaultHome(), backup: label => createBackup(defaultHome(), { label, ...appVersion() }).id })
+    if (sub === 'check') { const c = m.check(); for (const a of c.available) console.log(`${a.newer ? '↑' : ' '} ${a.ref}\t${a.commit.slice(0, 7)}`); return 0 }
+    if (sub === 'apply') {
+      const job = m.startUpdate(rest[0] ?? '')
+      await m.done
+      console.log(job.status === 'switched' ? `Switched to ${job.release}. Restart the service: systemctl --user restart superagent` : `Update failed: ${job.error} (log: ${job.log})`)
+      return job.status === 'switched' ? 0 : 1
+    }
+    if (sub === 'rollback') { console.log(`Rolled back to ${m.rollback()}. Restart the service: systemctl --user restart superagent`); return 0 }
+    console.log(JSON.stringify(m.state(), null, 2))
+    return 0
   }
 
   const dshHome = join(defaultHome(), 'dsh-home')
@@ -146,6 +193,15 @@ async function main(argv: string[]): Promise<number> {
         chiefWake: !values['no-chief'] && chiefProfile,
         resumeGoals: true, stableToken: !!envToken,
       })
+      // A freshly updated release checks itself; if it is red, go back to the previous one.
+      const base = managedBase(REPO_ROOT)
+      if (base) {
+        const m = new UpdateManager({ base, home: store.home, restart: () => { if (isSupervised()) setTimeout(() => process.exit(75), 300) } })
+        const failing = preflightChecks({ store, repoRoot: REPO_ROOT, dshHome, usesDsh: true }).filter(c => c.status === 'fail' && c.group === 'dsh')
+        const r = m.verifyAfterStart(basename(realpathSync(REPO_ROOT)), failing.length === 0, failing.map(c => c.title).join('; '))
+        if (r === 'rolled-back') console.error(`This release failed its start-up check (${failing.map(c => c.title).join('; ')}); switched back to ${m.state().current}.`)
+        else if (r === 'verified') console.log(`Update verified: running ${basename(realpathSync(REPO_ROOT))}.`)
+      }
       // Agent token for the Chief launcher (0600, outside any worktree). The human token
       // is printed once and kept only in this process's memory.
       mkdirSync(join(store.home, 'secrets'), { recursive: true, mode: 0o700 })

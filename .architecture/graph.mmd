@@ -15,7 +15,7 @@ flowchart LR
     chief_worker["chief-worker<br/><small>15 files</small>"]
   end
   subgraph layer_interface["interface"]
-    server["server<br/><small>27 files</small>"]
+    server["server<br/><small>29 files</small>"]
     cli["cli<br/><small>2 files</small>"]
     ui["ui<br/><small>22 files</small>"]
     dsh_bundle["dsh-bundle<br/><small>5 files</small>"]
@@ -66,7 +66,7 @@ flowchart LR
   classDef protected stroke:#6a1b9a,stroke-width:3px
   class contracts stable
   class testkit stable
-  class project_state changing
+  class project_state stable
   class verifier stable
   class loop_policy stable
   class model_policy stable
@@ -74,7 +74,7 @@ flowchart LR
   class learning stable
   class chief_worker stable
   class server changing
-  class cli stable
+  class cli changing
   class ui stable
   class dsh_bundle stable
   class evals stable

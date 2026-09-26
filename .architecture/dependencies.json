@@ -498,7 +498,7 @@
     {
       "from": "server",
       "to": "chief-worker",
-      "weight": 12,
+      "weight": 13,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -559,7 +559,7 @@
     {
       "from": "server",
       "to": "project-state",
-      "weight": 12,
+      "weight": 13,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -573,7 +573,7 @@
     {
       "from": "server",
       "to": "testkit",
-      "weight": 12,
+      "weight": 13,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [

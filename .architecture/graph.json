@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-26T14:21:09.835Z",
-  "commit": "b1d295d",
+  "generatedAt": "2026-09-26T14:25:14.823Z",
+  "commit": "834a2a7",
   "layers": [
     "foundation",
     "capability",
@@ -88,7 +88,7 @@
       "layer": "capability",
       "root": "superagent/plugins/project-state",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 5,
       "declared": true,
@@ -346,7 +346,7 @@
       "status": [
         "changing"
       ],
-      "files": 27,
+      "files": 29,
       "declared": true,
       "protected": false,
       "dependsOn": [
@@ -378,7 +378,8 @@
         "superagent/server/test/ops.test.ts",
         "superagent/server/test/project-setup.test.ts",
         "superagent/server/test/requests.test.ts",
-        "superagent/server/test/server.test.ts"
+        "superagent/server/test/server.test.ts",
+        "superagent/server/test/update.test.ts"
       ],
       "entry": "superagent/server/src/index.ts",
       "description": "Headless HTTP/SSE Realtime API",
@@ -390,7 +391,7 @@
       "layer": "interface",
       "root": "superagent/cli",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 2,
       "declared": true,
@@ -1026,7 +1027,7 @@
     {
       "from": "server",
       "to": "chief-worker",
-      "weight": 12,
+      "weight": 13,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1087,7 +1088,7 @@
     {
       "from": "server",
       "to": "project-state",
-      "weight": 12,
+      "weight": 13,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1101,7 +1102,7 @@
     {
       "from": "server",
       "to": "testkit",
-      "weight": 12,
+      "weight": 13,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
@@ -1152,34 +1153,24 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "superagent/plugins/project-state/src/store.ts",
-      "superagent/server/src/commands.ts",
-      "superagent/server/src/files-http.ts",
+      "superagent/cli/src/main.ts",
       "superagent/server/src/http.ts",
-      "superagent/server/src/ops/backup.ts",
       "superagent/server/src/ops/index.ts",
-      "superagent/server/src/ops/version.ts",
+      "superagent/server/src/ops/update.ts",
       "superagent/server/src/system-routes.ts",
-      "superagent/server/test/backup.test.ts"
+      "superagent/server/test/update.test.ts"
     ],
     "modules": [
-      "project-state",
+      "cli",
       "server"
     ],
     "impacted": [
-      "architecture-observatory",
-      "chief-worker",
-      "cli",
-      "dsh-bundle",
       "evals",
-      "learning",
-      "model-policy"
+      "learning"
     ],
     "gates": [
-      "architecture",
       "e2e-ui",
       "evals",
-      "smoke-dsh",
       "unit"
     ]
   },
@@ -1256,9 +1247,9 @@
     }
   ],
   "stats": {
-    "files": 171,
+    "files": 173,
     "modules": 15,
     "edges": 54,
-    "scanMs": 732
+    "scanMs": 741
   }
 }
