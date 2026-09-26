@@ -75,6 +75,11 @@ export interface GoalRunResult {
 
 export class Chief {
   readonly engine: LoopEngine
+  /**
+   * While true, runGoal starts no further task: the current one finishes, the goal stays
+   * active (and requested) and resumes later — used to drain before an update.
+   */
+  hold: () => boolean = () => false
 
   constructor(engine: LoopEngine) {
     this.engine = engine
@@ -140,6 +145,7 @@ export class Chief {
     for (const taskId of goal.taskIds) {
       let task = this.store.requireTask(projectId, taskId)
       if (task.state === 'passed') continue
+      if (this.hold()) return this.result(projectId, goal)
       // An explicit (re)run of the goal resumes tasks the human stopped earlier.
       if (task.state === 'stopped') task = this.store.updateTask(projectId, taskId, { state: task.attempts.length ? 'retrying' : 'pending', stopRequested: false })
       const { task: after, humanGate } = await this.engine.runTask(projectId, taskId)

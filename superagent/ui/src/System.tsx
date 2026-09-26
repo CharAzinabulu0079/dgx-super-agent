@@ -256,13 +256,19 @@ type UpdateState = {
 function Update({ onError }: { onError: (e: string) => void }) {
   const [s, setS] = useState<UpdateState | null>(null)
   const [avail, setAvail] = useState<Array<{ ref: string; commit: string; newer: boolean }> | null>(null)
-  const load = () => api<UpdateState>('GET', '/api/system/update').then(setS, e => onError(String(e)))
+  const [waiting, setWaiting] = useState<{ ref: string; since: string; busy?: string } | null>(null)
+  const load = () => {
+    api<UpdateState>('GET', '/api/system/update').then(setS, e => onError(String(e)))
+    api<{ waiting?: typeof waiting }>('GET', '/api/system/update/waiting').then(r => setWaiting(r.waiting ?? null), () => {})
+  }
   useEffect(() => { void load() }, [])
   useEffect(() => {
-    if (s?.job?.status !== 'running') return
-    const t = setTimeout(load, 1000)
-    return () => clearTimeout(t)
-  }, [s])
+    if (s?.job?.status !== 'running' && !waiting) return
+    const timer = setTimeout(load, s?.job?.status === 'running' ? 1000 : 3000)
+    return () => clearTimeout(timer)
+  }, [s, waiting])
+  const startUpdate = (ref: string) => api<{ job?: UpdateState['job']; waiting?: typeof waiting }>('POST', '/api/system/update', { ref, whenIdle: true })
+    .then(r => { setWaiting(r.waiting ?? null); load() }, e => onError(String(e)))
   if (!s) return <p className="muted">{t('Loading…')}</p>
   const restart = () => api('POST', '/api/system/restart', {}).then(() => onError(t('Restarting… the page reconnects in a few seconds.')), e => onError(String(e)))
   return (
@@ -275,9 +281,11 @@ function Update({ onError }: { onError: (e: string) => void }) {
           {s.supervised && <button onClick={restart} data-testid="restart">{t('Restart SuperAgent')}</button>}
         </div>
         {s.job && <div className={s.job.status === 'failed' ? 'warn-box' : 'ok-box'} data-testid="update-job">{s.job.target}: {s.job.status === 'running' ? `${s.job.step}…` : s.job.status === 'switched' ? (s.supervised ? t('installed — restarting') : t('installed — restart SuperAgent to use it')) : t('failed: {e}', { e: s.job.error })}</div>}
+        {waiting && <div className="ok-box" data-testid="update-waiting">{t('Waiting to update to {ref}: the task in progress finishes first, no new task starts; queued work resumes after the update.', { ref: waiting.ref })}{waiting.busy && <div className="muted">{t('now: {b}', { b: waiting.busy })}</div>}
+          <div className="row"><button className="small" onClick={() => api('POST', '/api/system/update/waiting/cancel', {}).then(() => { setWaiting(null); load() }, e => onError(String(e)))} data-testid="update-waiting-cancel">{t('Cancel waiting')}</button></div></div>}
         {avail && <ul className="file-list">{avail.map(a => (
           <li key={a.ref}><div className="file-main"><strong>{a.ref}</strong> <span className="muted">{a.commit.slice(0, 7)}</span>{a.newer && <span className="badge">{t('new')}</span>}</div>
-            <button className="primary" disabled={!a.newer || s.job?.status === 'running'} onClick={() => { if (confirm(t('Update to {ref}? It is built next to the running version, your state is backed up, and it switches back automatically if the new version fails its start-up check.', { ref: a.ref }))) api<{ job: UpdateState['job'] }>('POST', '/api/system/update', { ref: a.ref }).then(load, e => onError(String(e))) }}>{t('Update')}</button></li>
+            <button className="primary" disabled={!a.newer || s.job?.status === 'running'} onClick={() => { if (confirm(t('Update to {ref}? It is built next to the running version, your state is backed up, and it switches back automatically if the new version fails its start-up check.', { ref: a.ref }))) startUpdate(a.ref) }}>{t('Update')}</button></li>
         ))}</ul>}
         {!!s.state?.history.length && <details><summary>{t('History')}</summary><ul className="events">{[...s.state.history].reverse().map((h, i) => <li key={i}><time>{new Date(h.at).toLocaleString()}</time> {t(h.action)} {h.from ? `${h.from} → ` : ''}{h.to} <span className="muted">{h.note}</span></li>)}</ul></details>}
       </>}

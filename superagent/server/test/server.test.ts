@@ -207,3 +207,36 @@ test('privilege split: Workers (no token) and agents cannot resolve Human Gates 
     await server.close()
   }
 })
+
+test('hold (update when idle): the running task finishes, nothing new starts, the goal resumes on release', async () => {
+  const root = calcProject()
+  let release!: () => void
+  const gate = new Promise<void>(r => { release = r })
+  const ran: string[] = []
+  const runtime = createRuntime({
+    home: tempDir('sa-home-'),
+    executor: new ScriptedExecutor(async input => {
+      ran.push(input.task.title)
+      if (input.task.title === 'first') await gate
+      writeFileSync(join(root, 'src/calc.js'), FIXED_CALC)
+    }),
+  })
+  await runtime.addProject({ name: 'calc', root, defaultGates: [NODE_TEST_GATE] })
+  const goal = runtime.chief.createGoal('calc', 'two steps')
+  runtime.chief.addTask('calc', goal.id, { title: 'first', instructions: 'i' })
+  runtime.chief.addTask('calc', goal.id, { title: 'second', instructions: 'i' })
+  runtime.goals.start('calc', goal.id)
+  while (!ran.length) await new Promise(r => setTimeout(r, 20))
+  runtime.goals.setHold(true)
+  release()
+  await runtime.goals.idle('calc')
+  assert.deepEqual(ran, ['first'], 'the second task did not start while held')
+  const held = runtime.store.getGoal('calc', goal.id)!
+  assert.equal(held.status, 'active')
+  assert.equal(held.runRequested, true, 'still requested: a restart (after an update) resumes it')
+  runtime.goals.setHold(false)
+  await new Promise(r => setTimeout(r, 50))
+  await runtime.goals.idle('calc')
+  assert.deepEqual(ran, ['first', 'second'])
+  assert.equal(runtime.store.getGoal('calc', goal.id)!.status, 'complete')
+})

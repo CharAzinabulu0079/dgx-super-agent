@@ -60,6 +60,8 @@ const PATTERNS: Array<[RegExp, string]> = [
   [/^required gates not passing: (.*)$/, '必需的检查没有通过：$1'],
   [/^all (\d+) required gates passed$/, '全部 $1 个必需检查都通过了'],
   [/^not ready: (.*)$/s, '还没准备好：$1'],
+  [/^goal (\S+) is running$/, '目标 $1 正在运行'],
+  [/^cannot update while (.*)$/, '现在不能更新：$1'],
   [/^"(.+)" is reserved$/, '“$1”是保留名称，请换一个（例如 $1-api）'],
   [/^(\d+) model\(s\) available$/, '找到 $1 个模型'],
   [/^the server rejected the key \(HTTP (\d+)\)$/, '服务器拒绝了这个 Key（HTTP $1）——检查 Key 是否正确、是否有余额'],
@@ -197,6 +199,8 @@ const ZH: Record<string, string> = {
   'Watch and decide.': '看进度，做决定。', 'Activity shows progress in plain words. When something needs you (a risky command, repeated failures), it appears under “Needs your decision”: approve or reject.': '“动态”用大白话显示进度。遇到需要你的事（危险命令、多次失败），会出现在“需要你决定”里：点批准或拒绝。',
   'This project has no test command yet, so “checks passed” only means nothing broke structurally — add a test command to the project for real checking.': '这个项目还没有测试命令，所以“检查通过”只代表结构没被破坏——给项目加一个测试命令，检查才真正有意义。',
   'Got it': '知道了',
+  'Waiting to update to {ref}: the task in progress finishes first, no new task starts; queued work resumes after the update.': '等待更新到 {ref}：正在做的任务先做完，不再开始新任务；更新完成后排队的工作会自动继续。',
+  'now: {b}': '当前：{b}', 'Cancel waiting': '取消等待',
   // panels
   'Model policy': '模型策略', 'Defaults ← global ← project ← task pin. Un-pinned tasks pick up changes on their next attempt — no model call needed.': '优先级：默认 ← 全局 ← 项目 ← 任务固定。没固定模型的任务下次尝试时自动用新设置，不需要调用模型。',
   'All projects': '所有项目', 'This project': '本项目', 'Global default': '全局默认', 'Project override': '项目覆盖', 'Effective here': '实际生效',

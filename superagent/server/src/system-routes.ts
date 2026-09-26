@@ -27,6 +27,8 @@ export interface SystemDeps {
   /** Restart through the supervisor (default: exit 75 when supervised). */
   readonly restart?: () => boolean
   readonly cleanupCtx: () => CleanupContext
+  /** Stop starting new work (drain before an update); false resumes queued goals. */
+  readonly hold?: (on: boolean) => void
 }
 
 const as400 = async <T>(fn: () => T | Promise<T>, ...types: Array<new (...a: any[]) => Error>): Promise<T> => {
@@ -116,9 +118,44 @@ export function registerSystemRoutes(route: RouteFn, deps: SystemDeps): void {
     return deps.update
   }
   route('POST', '/api/system/update/check', () => as400(() => needUpdate().check(), UpdateError), 'human')
+  // "Update when idle": finish the task in progress, start nothing new, then update. Without
+  // it a busy queue (one goal after another) never leaves a window to update.
+  let waiting: { ref: string; since: string; timer: ReturnType<typeof setInterval> } | undefined
+  const stopWaiting = (): void => {
+    if (!waiting) return
+    clearInterval(waiting.timer)
+    waiting = undefined
+    deps.hold?.(false)
+  }
+  const waitingView = () => (waiting ? { ref: waiting.ref, since: waiting.since, busy: deps.busy() } : undefined)
+  route('GET', '/api/system/update/waiting', () => ({ waiting: waitingView() }), 'human')
+  route('POST', '/api/system/update/waiting/cancel', () => { stopWaiting(); return { waiting: undefined } }, 'human')
   route('POST', '/api/system/update', ({ body }) => as400(() => {
     if (typeof body?.ref !== 'string' || !body.ref) throw new UpdateError('ref (a version tag) is required')
-    return { job: needUpdate().startUpdate(body.ref, deps.busy()), supervised: supervised() }
+    const m = needUpdate()
+    const busy = deps.busy()
+    if (busy && body.whenIdle === true && deps.hold) {
+      stopWaiting()
+      deps.hold(true)
+      const ref = body.ref as string
+      const timer = setInterval(() => {
+        if (deps.busy()) return
+        clearInterval(timer)
+        waiting = undefined
+        try {
+          const job = m.startUpdate(ref)
+          // A failed build keeps the running release; unsupervised, nothing restarts us: resume the queue.
+          void m.done.then(() => { if (job.status === 'failed' || !supervised()) deps.hold?.(false) })
+        } catch (error) {
+          void error
+          deps.hold?.(false)
+        }
+      }, 2_000)
+      timer.unref?.()
+      waiting = { ref, since: new Date().toISOString(), timer }
+      return { waiting: waitingView(), supervised: supervised() }
+    }
+    return { job: m.startUpdate(body.ref, busy), supervised: supervised() }
   }, UpdateError), 'human')
   route('POST', '/api/system/update/rollback', () => as400(() => ({ to: needUpdate().rollback(deps.busy()), supervised: supervised() }), UpdateError), 'human')
   route('POST', '/api/system/restart', () => {

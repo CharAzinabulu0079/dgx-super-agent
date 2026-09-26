@@ -401,6 +401,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
       const goal = store.listProjects().map(p => goals.running(p.id)).find(Boolean)
       return goal ? `goal ${goal} is running` : commands.anyRunning() ? 'a command is running' : undefined
     },
+    hold: on => goals.setHold(on),
     backupLink: id => `/dl/${links.sign({ p: '', f: id, d: 1, k: 'backup' }).token}`,
     appVersion: () => appVersion(),
     update: updateManager,

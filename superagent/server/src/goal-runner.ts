@@ -14,10 +14,25 @@ export class GoalRunner {
   private readonly store: StateStore
   private readonly chief: Chief
   private readonly active = new Map<string, Promise<void>>()
+  private held = false
 
   constructor(store: StateStore, chief: Chief) {
     this.store = store
     this.chief = chief
+    chief.hold = () => this.held
+  }
+
+  /**
+   * Drain: no new goal or task starts; running tasks finish and their goals stay requested,
+   * so they resume on release or after a restart (e.g. an update). Release resumes now.
+   */
+  setHold(on: boolean): void {
+    this.held = on
+    if (!on) this.resumeAll()
+  }
+
+  get onHold(): boolean {
+    return this.held
   }
 
   /** Goal currently running in `projectId`, if any. */
@@ -53,7 +68,7 @@ export class GoalRunner {
   }
 
   private pump(projectId: string): void {
-    if (this.running(projectId)) return
+    if (this.held || this.running(projectId)) return
     const next = this.store.listGoals(projectId)
       .filter(g => g.runRequested && !FINAL.has(g.status))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]
@@ -68,7 +83,9 @@ export class GoalRunner {
       .finally(() => {
         this.active.delete(key)
         // A run ends complete, failed, blocked (human gate) or paused: the request is served.
-        if (this.store.getGoal(projectId, next.id)) this.store.updateGoal(projectId, next.id, { runRequested: false })
+        // Stopped by a hold it is still active and stays requested, to resume later.
+        const g = this.store.getGoal(projectId, next.id)
+        if (g && !(this.held && g.status === 'active')) this.store.updateGoal(projectId, next.id, { runRequested: false })
         this.pump(projectId)
       })
     this.active.set(key, run)

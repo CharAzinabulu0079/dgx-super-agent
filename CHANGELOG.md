@@ -1,5 +1,18 @@
 # Changelog
 
+
+## v1.2.1 — first run on the DGX (2026-09-26)
+
+Found and fixed by running on the DGX Spark with a local llama.cpp model and real use:
+- Keyless model servers (llama.cpp) were unusable; Chief/planner/reviewer sessions did not receive saved keys.
+- The integrity check rejected correct fixes when a test file could not load at baseline.
+- Adding a cloud API "hung" on Save: `deepseek` is a reserved name and the error rendered behind the modal. Errors now float above modals; names are normalised; provider templates; models can be typed by hand; searchable model lists.
+- Update check offered an older tag as new; a busy queue never let an update start — "update when idle" drains (the running task finishes, nothing new starts) and the queue resumes after the update.
+- `sa do /path`, restart detection under foreign systemd units, a flaky test.
+
+Added: Chinese UI (follows the browser, 中/EN toggle, bilingual activity), a four-step first-run guide, Worker read isolation via bubblewrap, `sa link`, stable token by default in `sa service install`.
+Verified on the DGX: check 115/115, evals 14/14, redteam 22/22, smoke 6/6, and a real `sa do --review` task on the local model.
+
 ## Unreleased (after cloud-v1.1) — one-click operations
 
 The goal is that nothing routine costs model tokens: buttons for everything that repeats (ADR-0023). Everything is under **⚙ System** (on phones: More → System) and at `/api/system/*`, and every operation is human-only.

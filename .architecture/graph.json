@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-26T19:11:42.189Z",
-  "commit": "63a5872",
+  "generatedAt": "2026-09-26T19:27:02.191Z",
+  "commit": "d428a79",
   "layers": [
     "foundation",
     "capability",
@@ -300,7 +300,7 @@
       "layer": "orchestration",
       "root": "superagent/plugins/chief-worker",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 16,
       "declared": true,
@@ -345,7 +345,7 @@
       "layer": "interface",
       "root": "superagent/server",
       "status": [
-        "stable"
+        "changing"
       ],
       "files": 33,
       "declared": true,
@@ -470,7 +470,7 @@
       "layer": "verification",
       "root": "superagent/evals",
       "status": [
-        "changing"
+        "stable"
       ],
       "files": 16,
       "declared": true,
@@ -1157,20 +1157,33 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "superagent/evals/test/ui-system.e2e.test.ts",
-      "superagent/ui/src/App.tsx",
+      "CHANGELOG.md",
+      "superagent/plugins/chief-worker/src/chief.ts",
+      "superagent/server/src/goal-runner.ts",
+      "superagent/server/src/http.ts",
+      "superagent/server/src/system-routes.ts",
+      "superagent/server/test/server.test.ts",
       "superagent/ui/src/System.tsx",
-      "superagent/ui/src/i18n.ts",
-      "superagent/ui/src/styles.css"
+      "superagent/ui/src/i18n.ts"
     ],
     "modules": [
-      "evals",
+      "chief-worker",
+      "server",
       "ui"
     ],
-    "impacted": [],
+    "impacted": [
+      "architecture-observatory",
+      "cli",
+      "evals",
+      "learning",
+      "model-policy"
+    ],
     "gates": [
+      "architecture",
       "e2e-ui",
-      "evals"
+      "evals",
+      "smoke-dsh",
+      "unit"
     ]
   },
   "services": [
@@ -1249,6 +1262,6 @@
     "files": 182,
     "modules": 15,
     "edges": 54,
-    "scanMs": 608
+    "scanMs": 609
   }
 }
