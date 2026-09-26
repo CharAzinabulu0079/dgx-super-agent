@@ -100,6 +100,19 @@ export function isLoopbackHost(host: string): boolean {
   return host === 'localhost' || host === '::1' || /^127\./.test(host)
 }
 
+/**
+ * DNS-rebinding guard for a loopback server with anonymous reads: a page on an attacker's
+ * domain that resolves to 127.0.0.1 is "same-origin" with itself, so the Origin check alone
+ * does not stop it. Only loopback names are accepted in the Host header.
+ */
+export function isLoopbackHostHeader(hostHeader: string | undefined): boolean {
+  if (!hostHeader) return false
+  const m = /^(\[[^\]]+\]|[^:]+)(?::\d+)?$/.exec(hostHeader.trim().toLowerCase())
+  if (!m) return false
+  const name = m[1]!.replace(/^\[|\]$/g, '')
+  return name === 'localhost' || name.endsWith('.localhost') || name === '::1' || /^127\.\d+\.\d+\.\d+$/.test(name)
+}
+
 export async function startServer(input: ServerOptions): Promise<RunningServer> {
   // Anything beyond loopback (e.g. a WireGuard address or 0.0.0.0) gets no anonymous reads.
   const options: ServerOptions = { ...input, protectReads: input.protectReads || !isLoopbackHost(input.host ?? '127.0.0.1') }
@@ -122,7 +135,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     routes.push({ method, pattern, keys, level, handler, raw })
   }
   const project = (pid: string): Project => {
-    const p = store.getProject(pid)
+    const p = /^[\w.-]+$/.test(pid) ? store.getProject(pid) : undefined
     if (!p) throw new HttpError(404, `project ${pid} not found`)
     return p
   }
@@ -408,18 +421,25 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
   const sseClients = new Set<{ res: ServerResponse; project?: string; cursor: Map<string, number> }>()
   const pump = setInterval(() => {
     for (const client of sseClients) {
-      const pids = client.project ? [client.project] : store.listProjects().map(p => p.id)
-      for (const pid of pids) {
-        if (!client.cursor.has(pid)) { client.cursor.set(pid, store.lastEventSeq(pid)); continue }
-        // Oldest first, bounded per tick; a burst drains over the next ticks without gaps.
-        const events: SuperAgentEvent[] = store.tailEvents(pid, client.cursor.get(pid)!, 500)
-        for (const e of events) {
-          client.res.write(`id: ${pid}:${e.seq}\nevent: superagent\ndata: ${JSON.stringify(e)}\n\n`)
-          // Plain-language line for voice/avatar clients (Digital Human) and the UI's embed bridge.
-          const line = narrate(e, id => store.getTask(pid, id)?.title)
-          if (line) client.res.write(`event: activity\ndata: ${JSON.stringify({ projectId: pid, ...line })}\n\n`)
+      // A failure while serving one client (e.g. its project was removed) ends that stream;
+      // it must never escape the timer, which would take the whole server down.
+      try {
+        const pids = client.project ? [client.project] : store.listProjects().map(p => p.id)
+        for (const pid of pids) {
+          if (!client.cursor.has(pid)) { client.cursor.set(pid, store.lastEventSeq(pid)); continue }
+          // Oldest first, bounded per tick; a burst drains over the next ticks without gaps.
+          const events: SuperAgentEvent[] = store.tailEvents(pid, client.cursor.get(pid)!, 500)
+          for (const e of events) {
+            client.res.write(`id: ${pid}:${e.seq}\nevent: superagent\ndata: ${JSON.stringify(e)}\n\n`)
+            // Plain-language line for voice/avatar clients (Digital Human) and the UI's embed bridge.
+            const line = narrate(e, id => store.getTask(pid, id)?.title)
+            if (line) client.res.write(`event: activity\ndata: ${JSON.stringify({ projectId: pid, ...line })}\n\n`)
+          }
+          if (events.length) client.cursor.set(pid, events.at(-1)!.seq)
         }
-        if (events.length) client.cursor.set(pid, events.at(-1)!.seq)
+      } catch (error) {
+        sseClients.delete(client)
+        client.res.end(`event: error\ndata: ${JSON.stringify({ error: String((error as Error).message ?? error) })}\n\n`)
       }
     }
   }, 400)
@@ -454,6 +474,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
         // CSRF guard for a local agent with shell access: browsers may send "simple"
         // cross-origin POSTs (text/plain) without preflight. Require JSON (forces a
         // preflight we never grant) and reject foreign Origins outright.
+        if (!options.protectReads && !isLoopbackHostHeader(req.headers.host)) throw new HttpError(403, 'unexpected Host header (this server only answers to localhost)')
         const origin = req.headers.origin
         if (origin && origin !== `http://${req.headers.host}`) throw new HttpError(403, 'cross-origin request refused')
         const contentType = String(req.headers['content-type'] ?? '')
@@ -461,6 +482,8 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
         const role = roleOf(req, url)
         if (url.pathname === '/api/events/stream') {
           if (options.protectReads && role === 'anonymous') throw new HttpError(401, 'unauthorized')
+          const only = url.searchParams.get('project')
+          if (only !== null) project(only)
           res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' })
           res.write(': connected\n\n')
           const client = { res, project: url.searchParams.get('project') ?? undefined, cursor: new Map<string, number>() }
@@ -515,7 +538,9 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
       }
       throw new HttpError(404, 'not found')
     } catch (error) {
-      const status = error instanceof HttpError ? error.status : /not found/.test(String(error)) ? 404 : 500
+      // Nothing more to say once a response has started: drop the connection.
+      if (res.headersSent) { res.destroy(); return }
+      const status = error instanceof HttpError ? error.status : /not found|ENOENT/.test(String(error)) ? 404 : 500
       sendJson(res, status, { error: (error as Error).message ?? String(error) })
     }
   }

@@ -137,6 +137,8 @@ async function main(argv: string[]): Promise<number> {
       const host = values.host ?? '127.0.0.1'
       const envToken = process.env.SUPERAGENT_HUMAN_TOKEN
       if (envToken !== undefined && envToken.length < 24) throw new Error('SUPERAGENT_HUMAN_TOKEN must be at least 24 characters (e.g. `openssl rand -base64 24`)')
+      // Held only in memory from here on: nothing this process spawns (Chief, Workers, gates, ▷ Run) inherits it.
+      delete process.env.SUPERAGENT_HUMAN_TOKEN
       const chiefProfile = existsSync(join(dshHome, 'profiles', 'superagent-chief-cli', 'package.json'))
       const s = await startServer({
         runtime: rt, port: Number(values.port ?? 7788), host, humanToken: envToken, chiefChat: chiefProfile,

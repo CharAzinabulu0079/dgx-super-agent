@@ -29,6 +29,12 @@ export interface SAEvent { seq: number; ts: string; type: string; projectId: str
 
 const token = new URLSearchParams(location.search).get('token') ?? localStorage.getItem('superagent-token') ?? ''
 if (token) localStorage.setItem('superagent-token', token)
+// Keep the long-lived human token out of the address bar, history and bookmarks once stored.
+if (new URLSearchParams(location.search).has('token')) {
+  const rest = new URLSearchParams(location.search)
+  rest.delete('token')
+  history.replaceState(history.state, '', `${location.pathname}${rest.size ? `?${rest}` : ''}${location.hash}`)
+}
 
 export async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
@@ -69,7 +75,7 @@ export interface Appearance {
   background: { kind: 'none' | 'gradient' | 'image' | 'video' | 'embed'; preset?: string; assetId?: string; url?: string; blur: number; dim: number; interactive?: boolean; allowChat?: boolean; allowMedia?: boolean }
 }
 export interface AppearanceView { appearance: Appearance; backgroundUrl: string | null; assets: Array<{ id: string; mime: string; size: number; url: string }>; presets: string[] }
-export interface CommandRecord { id: string; command: string; cwd: string; status: 'running' | 'exited' | 'stopped' | 'timeout' | 'error'; exitCode: number | null; startedAt: string; endedAt?: string; flagged?: string }
+export interface CommandRecord { id: string; command: string; cwd: string; status: 'running' | 'exited' | 'stopped' | 'timeout' | 'error' | 'interrupted'; exitCode: number | null; startedAt: string; endedAt?: string; flagged?: string }
 export interface ActivityEvent { projectId: string; seq: number; ts: string; taskId?: string; tone: 'info' | 'good' | 'bad' | 'attention'; text: string }
 
 /** Raw upload (image/video) with the human token. */

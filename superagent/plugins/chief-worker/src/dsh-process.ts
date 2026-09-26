@@ -6,8 +6,14 @@ import { dshBin } from '@superagent/testkit'
 /** API credentials never reach a Worker process (it could otherwise resolve Human Gates over HTTP). */
 export const SCRUBBED_WORKER_ENV = ['SUPERAGENT_TOKEN', 'SUPERAGENT_HUMAN_TOKEN', 'SUPERAGENT_AGENT_TOKEN']
 
+/**
+ * Child environment. Credentials are never inherited from this process (e.g. an exported
+ * `SUPERAGENT_HUMAN_TOKEN` for `sa serve`); with `keepCredentials` only those passed
+ * explicitly in `extra` (the Chief's agent token) reach the child.
+ */
 export function workerEnv(extra: Record<string, string | undefined>, keepCredentials = false): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env }
+  for (const k of SCRUBBED_WORKER_ENV) delete env[k]
   for (const [k, v] of Object.entries(extra)) {
     if (v === undefined) delete env[k]
     else env[k] = v

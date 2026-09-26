@@ -1,12 +1,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { chmodSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { StateStore } from '@superagent/project-state'
 import { Verifier } from '@superagent/verifier'
 import { classifyEvent } from '@superagent/loop-policy'
 import { calcProject, tempDir, FIXED_CALC, NODE_TEST_GATE } from '@superagent/testkit'
-import { Chief, ChiefDriver, LoopEngine, ScriptedExecutor, WakeMonitor, type ChiefChannel, type ChiefDigest } from '../src/index.ts'
+import { Chief, ChiefDriver, DshChiefChannel, LoopEngine, ScriptedExecutor, WakeMonitor, workerEnv, type ChiefChannel, type ChiefDigest } from '../src/index.ts'
 
 class RecordingChannel implements ChiefChannel {
   readonly name = 'recording'
@@ -116,4 +116,38 @@ test('low-priority-only wakes wait for a batch window', async () => {
   const driver = new ChiefDriver({ store, channel, minIntervalMs: 0, lowPriorityDelayMs: 60_000 })
   assert.equal((await driver.tick()).length, 0)
   assert.equal((await driver.tick(Date.now() + 61_000)).length, 1)
+})
+
+test('the Chief session gets only its agent token, never an exported human token (regression: token leak)', async () => {
+  const saved = { human: process.env.SUPERAGENT_HUMAN_TOKEN, legacy: process.env.SUPERAGENT_TOKEN, bin: process.env.SUPERAGENT_DSH_BIN }
+  // `SUPERAGENT_HUMAN_TOKEN=… sa serve` exports the human token into the server's own environment.
+  process.env.SUPERAGENT_HUMAN_TOKEN = 'human-secret-0123456789abcdef'
+  process.env.SUPERAGENT_TOKEN = 'legacy-secret'
+  const fake = join(tempDir('sa-fake-dsh-'), 'dsh')
+  writeFileSync(fake, `#!/usr/bin/env node
+const pick = ['SUPERAGENT_HUMAN_TOKEN', 'SUPERAGENT_TOKEN', 'SUPERAGENT_AGENT_TOKEN']
+const seen = Object.fromEntries(pick.map(k => [k, process.env[k] ?? null]))
+console.log(JSON.stringify({ type: 'session', sessionId: 's-1' }))
+console.log(JSON.stringify({ type: 'final', text: JSON.stringify(seen) }))
+`)
+  chmodSync(fake, 0o755)
+  process.env.SUPERAGENT_DSH_BIN = fake
+  try {
+    const home = tempDir('sa-home-')
+    const store = new StateStore(home)
+    const p = store.createProject({ name: 'calc', root: calcProject() })
+    const channel = new DshChiefChannel({ stateHome: home, apiUrl: 'http://127.0.0.1:1', agentToken: 'agent-secret', store })
+    const r = await channel.chat(p.id, 'hello', new AbortController().signal)
+    assert.deepEqual(JSON.parse(r.reply!), { SUPERAGENT_HUMAN_TOKEN: null, SUPERAGENT_TOKEN: null, SUPERAGENT_AGENT_TOKEN: 'agent-secret' })
+    // Workers and human-run commands get no credentials at all.
+    const env = workerEnv({ SUPERAGENT_AGENT_TOKEN: 'agent-secret' })
+    assert.equal(env.SUPERAGENT_HUMAN_TOKEN, undefined)
+    assert.equal(env.SUPERAGENT_AGENT_TOKEN, undefined)
+    assert.equal(workerEnv({}, true).SUPERAGENT_HUMAN_TOKEN, undefined, 'keepCredentials never inherits the human token')
+  } finally {
+    for (const [k, v] of [['SUPERAGENT_HUMAN_TOKEN', saved.human], ['SUPERAGENT_TOKEN', saved.legacy], ['SUPERAGENT_DSH_BIN', saved.bin]] as const) {
+      if (v === undefined) delete process.env[k]
+      else process.env[k] = v
+    }
+  }
 })
