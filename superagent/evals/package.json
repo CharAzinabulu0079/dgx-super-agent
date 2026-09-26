@@ -1,6 +1,6 @@
 {
   "name": "@superagent/evals",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "End-to-end loop scenarios (browser E2E gate, DSH workers, UI)",

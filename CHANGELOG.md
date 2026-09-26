@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased (after cloud-v1.0)
+## cloud-v1.1 — 2026-09-26
+
+The features below were added after cloud-v1.0. The release audit then reviewed all of it independently (Chief chat, transcripts, file sharing/downloads, WireGuard remote access, the phone UI, ▷ Run / Terminal, Appearance/background upload and the Digital Human bridge). It fixed the confirmed defects listed next, each with a regression test that fails on the pre-fix code. Full report: `docs/RELEASE_AUDIT_cloud-v1.1.md`.
+
+### Release audit (fixes)
+- **P0: human token leaked to the Chief.** With `SUPERAGENT_HUMAN_TOKEN` exported (the new stable-link option), the Chief's DSH process inherited it and could act as the human (resolve Human Gates, run commands). Child processes now never inherit SuperAgent credentials. The Chief receives only the agent token passed explicitly, and `sa serve` removes the variable from its own environment after reading it.
+- **P1: DNS rebinding.** A web page whose domain resolves to 127.0.0.1 could use the anonymous loopback reads to list projects and download project files. A loopback server with anonymous reads now answers only to loopback `Host` names. A remote bind is unaffected, because it already needs the token.
+- **P1: server crash from the SSE stream.** `/api/events/stream?project=<malformed>` threw inside the event pump timer and killed `sa serve`. The filter is now validated (404), and a failing client only ends its own stream.
+- **P1: server crash when serving a file.** A file that could not be read after its `stat` (a root-owned file, a file deleted or replaced mid-request) raised an unhandled stream error. Files are now opened before any header is sent, and read errors end only that response.
+- **P1: ▷ Run / Terminal recovery.** Commands left running by a stopped server (a crash, or Ctrl-C on `sa serve`) stayed `running` forever, and their detached process groups kept running. On start they are now closed as `interrupted`, and the orphaned group is killed. A process is killed only if it carries that command's id, so a reused pid is never touched.
+- **P1: phone/desktop UI could brick itself.** A "this device only" background URL is not checked by the server. A scheme-less URL crashed the UI on every load until the browser storage was cleared. Invalid URLs are now refused on save and ignored if already stored.
+- **Token hygiene:** the UI removes `?token=` from the address bar and history once the token is stored. `.git` is refused at any depth when sharing or serving files (a nested repo's `.git/config` can hold credentials).
+- Red-team RT-07, RT-20 and RT-21 now cite these regression tests.
+
+### Features
 
 - **Agents send you files:** `superagent_share_file` for Workers and the Chief. Only regular project files can be shared: no `.git`, no SuperAgent state and no links that escape the project, up to 200 MB. Each file is copied into the store and shows up in the UI's **Files** tab and in the activity feed.
 - **Preview and download from any browser, phone included.** Images, PDF, text/code, audio and video preview inline, and any file can be downloaded, through signed links that expire after 15 minutes. The links never contain the human token. HTML/SVG/XML are served sandboxed. Byte ranges are supported, so video plays on iOS.
@@ -31,7 +45,7 @@
 - **Verification:**
   - New red-team scenarios: RT-20 (file-sharing abuse) and RT-21 (UI remote-control abuse).
   - New evals for Chief chat, file sharing and transcripts (real DSH), the phone-viewport UI (incl. ▷ Run, Terminal, Appearance) and appearance/Digital Human embed.
-  - Totals: `pnpm check` 97/97, evals 13/13, red-team 21/21 (87 tests).
+  - Totals before the release audit: `pnpm check` 97/97, evals 13/13, red-team 21/21 (87 tests). For the release numbers see `CURRENT_STATE.md`.
 
 ## cloud-v1.0 — 2026-09-25
 
