@@ -16,6 +16,10 @@ import { parseGateSpec, type Project, type SuperAgentEvent } from '@superagent/c
 import { effectiveModels, loadGlobalPolicy, parseModelSpec, parsePolicyLayer, roleModel, saveGlobalPolicy } from '@superagent/model-policy'
 import type { SuperAgentRuntime } from './runtime.ts'
 import { narrate } from './narrate.ts'
+import { LinkSigner, listProjectDir, sendFile } from './files-http.ts'
+import { ShareError, mimeOf as mimeOfName, resolveProjectFile, shareFile, sharedFilePath } from '@superagent/project-state'
+import type { ChiefMessage, SharedFile } from '@superagent/contracts'
+import { workerTranscript } from './transcript.ts'
 import { ChiefDriver, DshChiefChannel, GateRegistryError, WakeMonitor, type ChiefChannel } from '@superagent/chief-worker'
 
 export interface ServerOptions {
@@ -37,6 +41,13 @@ export interface ServerOptions {
    * (profile superagent-chief-cli); pass a channel to override; omit to disable.
    */
   readonly chiefWake?: boolean | { readonly channel?: ChiefChannel; readonly intervalMs?: number; readonly minIntervalMs?: number; readonly env?: Record<string, string> }
+  /**
+   * Human ↔ Chief chat in the UI, through the same persistent Chief session the wakes use.
+   * `true` = DSH Chief channel (needs the superagent-chief-cli profile); or pass a channel.
+   */
+  readonly chiefChat?: boolean | ChiefChannel
+  /** Extra environment for the default DSH Chief channel (e.g. model endpoint). */
+  readonly chiefEnv?: Record<string, string>
   /** Directory with the built UI (`superagent/ui/dist`). */
   readonly uiDir?: string
   /** Watch registered project trees and rescan architecture on change. */
@@ -104,7 +115,10 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     return p
   }
   const goals = runtime.goals
+  const links = new LinkSigner()
   let chiefDriver: ChiefDriver | undefined
+  let chiefChannel: ChiefChannel | undefined
+  const chatAbort = new AbortController()
 
   // ---------------------------------------------------------------- projects
   route('GET', '/api/health', () => ({ ok: true, home: store.home }))
@@ -234,6 +248,70 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     const limit = Math.min(Number(query.get('limit') ?? 100), 500)
     return store.readEvents(p.id, 0, 5_000).map(e => narrate(e, id => titles.get(id))).filter(Boolean).slice(-limit)
   })
+  // ---------------------------------------------------------------- files (share, browse, preview/download links)
+  const sharedFile = (pid: string, fid: string): SharedFile => {
+    const f = store.getRecord<SharedFile>(pid, 'files', fid)
+    if (!f) throw new HttpError(404, `file ${fid} not found`)
+    return f
+  }
+  route('GET', '/api/projects/:pid/files', ({ params }) => store.listRecords<SharedFile>(project(params.pid!).id, 'files').sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+  route('POST', '/api/projects/:pid/files', ({ params, body, role }) => {
+    if (typeof body?.path !== 'string') throw new HttpError(400, 'path is required')
+    try {
+      return shareFile(store, project(params.pid!).id, body.path, { role: role === 'human' ? 'human' : 'chief' }, typeof body.note === 'string' ? body.note : undefined)
+    } catch (error) {
+      if (error instanceof ShareError) throw new HttpError(400, error.message)
+      throw error
+    }
+  })
+  route('GET', '/api/projects/:pid/tree', ({ params, query }) => {
+    const p = project(params.pid!)
+    try {
+      return listProjectDir(p.root, query.get('path') ?? '', store.home)
+    } catch (error) {
+      throw new HttpError(400, String((error as Error).message))
+    }
+  })
+  // Mint a short-lived link a browser (or phone) can open without the token.
+  route('POST', '/api/links', ({ body }) => {
+    const p = project(String(body?.project ?? ''))
+    const d: 0 | 1 = body?.download === true ? 1 : 0
+    if (typeof body?.file === 'string') {
+      const f = sharedFile(p.id, body.file)
+      const signed = links.sign({ p: p.id, f: f.id, d })
+      return { ...signed, url: `/dl/${signed.token}`, name: f.name, mime: f.mime, size: f.size }
+    }
+    if (typeof body?.path !== 'string') throw new HttpError(400, 'file or path is required')
+    try {
+      const r = resolveProjectFile(p.root, body.path, store.home)
+      const signed = links.sign({ p: p.id, path: r.rel, d })
+      return { ...signed, url: `/dl/${signed.token}`, name: r.rel.split('/').at(-1), mime: mimeOfName(r.rel), size: statSync(r.abs).size }
+    } catch (error) {
+      if (error instanceof ShareError) throw new HttpError(400, error.message)
+      throw error
+    }
+  }, 'read')
+  // ---------------------------------------------------------------- Chief conversation + Worker transcripts
+  route('GET', '/api/projects/:pid/chief/messages', ({ params, query }) => {
+    const p = project(params.pid!)
+    const limit = Math.min(Number(query.get('limit') ?? 200), 1000)
+    return { available: !!chiefChannel?.chat, busy: chiefChannel?.busy?.(p.id) ?? false, messages: store.listRecords<ChiefMessage>(p.id, 'chief-chat').slice(-limit) }
+  })
+  route('POST', '/api/projects/:pid/chief/messages', ({ params, body }) => {
+    const p = project(params.pid!)
+    if (typeof body?.text !== 'string' || !body.text.trim()) throw new HttpError(400, 'text is required')
+    if (!chiefChannel?.chat) throw new HttpError(503, 'Chief chat is not available: run `sa dsh setup` (creates the superagent-chief-cli profile) and restart `sa serve`')
+    const queued = chiefChannel.busy?.(p.id) ?? false
+    // Runs in the background; the reply streams into the transcript (SSE `chief/message`).
+    void chiefChannel.chat(p.id, body.text.trim().slice(0, 20_000), chatAbort.signal, chief.statusReport(p.id)).catch(() => {})
+    return { accepted: true, queued }
+  }, 'human')
+  route('GET', '/api/projects/:pid/workers/:wid/transcript', ({ params }) => {
+    const p = project(params.pid!)
+    const worker = store.getWorker(p.id, params.wid!)
+    if (!worker) throw new HttpError(404, `worker ${params.wid} not found`)
+    return { worker, ...workerTranscript(store.home, worker.id) }
+  })
   route('GET', '/api/projects/:pid/receipts', ({ params, query }) => store.listReceipts(project(params.pid!).id, query.get('task') ?? undefined))
   route('GET', '/api/projects/:pid/workers/:wid/reports', ({ params }) => store.readReports(project(params.pid!).id, params.wid!))
   route('GET', '/api/projects/:pid/events', ({ params, query }) => store.readEvents(project(params.pid!).id, Number(query.get('since') ?? 0), Number(query.get('limit') ?? 500)))
@@ -337,6 +415,20 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
         }
         throw new HttpError(404, `no route ${req.method} ${url.pathname}`)
       }
+      if (url.pathname.startsWith('/dl/') && (req.method === 'GET' || req.method === 'HEAD')) {
+        const link = links.verify(url.pathname.slice(4))
+        if (!link) throw new HttpError(403, 'link expired or invalid — open the file again from SuperAgent')
+        const p = project(link.p)
+        if (link.f) {
+          const f = sharedFile(p.id, link.f)
+          sendFile(req, res, sharedFilePath(store, f), f.name, link.d === 1, f.mime)
+        } else {
+          // Re-validated at serve time: the tree may have changed since the link was minted.
+          const r = resolveProjectFile(p.root, link.path ?? '', store.home)
+          sendFile(req, res, r.abs, r.rel.split('/').at(-1)!, link.d === 1)
+        }
+        return
+      }
       if (uiDir && req.method === 'GET') {
         const rel = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '')
         let file = join(uiDir, rel)
@@ -356,11 +448,16 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const addr = server.address() as AddressInfo
   const url = `http://${addr.address}:${addr.port}`
   engine.setApiOrigins([url, `http://localhost:${addr.port}`])
+  const cfg = typeof options.chiefWake === 'object' ? options.chiefWake : {}
+  if (options.chiefWake || options.chiefChat) {
+    // One channel for wakes and chat, so both serialize on the same persistent session.
+    chiefChannel = typeof options.chiefChat === 'object' ? options.chiefChat
+      : cfg.channel ?? new DshChiefChannel({ stateHome: store.home, apiUrl: url, agentToken, store, env: { ...cfg.env, ...options.chiefEnv }, model: pid => roleModel(store.home, store.getProject(pid), 'chief') })
+  }
   if (options.chiefWake) {
-    const cfg = typeof options.chiefWake === 'object' ? options.chiefWake : {}
     chiefDriver = new ChiefDriver({
       store, monitor: new WakeMonitor(store), minIntervalMs: cfg.minIntervalMs,
-      channel: cfg.channel ?? new DshChiefChannel({ stateHome: store.home, apiUrl: url, agentToken, store, env: cfg.env, model: pid => roleModel(store.home, store.getProject(pid), 'chief') }),
+      channel: chiefChannel!,
       statusReport: id => chief.statusReport(id),
     })
     chiefDriver.start(cfg.intervalMs ?? 2_000)
@@ -376,6 +473,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     server,
     close: async () => {
       chiefDriver?.stop()
+      chatAbort.abort()
       clearInterval(pump)
       clearInterval(heartbeat)
       for (const w of watchers.values()) w.close()

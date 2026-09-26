@@ -395,6 +395,32 @@ export interface BlockedAction {
   readonly at: IsoTime
 }
 
+// ---------------------------------------------------------------- files & chat
+
+/** A file an agent (or the human) shared for viewing/downloading; a copy lives in the store. */
+export interface SharedFile {
+  readonly id: string
+  readonly projectId: ProjectId
+  readonly name: string
+  readonly size: number
+  readonly mime: string
+  /** Project-relative path the file was shared from. */
+  readonly source: string
+  readonly note?: string
+  readonly from: { readonly role: 'worker' | 'chief' | 'human'; readonly workerId?: WorkerId; readonly taskId?: TaskId }
+  readonly createdAt: IsoTime
+}
+
+/** One entry of the project's Chief conversation (human chat and autonomous wakes). */
+export interface ChiefMessage {
+  readonly id: string
+  readonly projectId: ProjectId
+  readonly role: 'human' | 'chief' | 'tool' | 'wake' | 'error'
+  readonly text: string
+  readonly tool?: string
+  readonly at: IsoTime
+}
+
 // ---------------------------------------------------------------- events
 
 export type SuperAgentEventType =
@@ -419,6 +445,8 @@ export type SuperAgentEventType =
   | 'learning/archived'
   | 'request/submitted'
   | 'review/completed'
+  | 'file/shared'
+  | 'chief/message'
 
 /** Append-only, per-project event (events.jsonl). `seq` is monotonic per project. */
 export interface SuperAgentEvent {

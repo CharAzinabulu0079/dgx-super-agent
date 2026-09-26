@@ -10,7 +10,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { now, type ModelRef, type SuperAgentEvent } from '@superagent/contracts'
+import { now, type ChiefMessage, type ModelRef, type SuperAgentEvent } from '@superagent/contracts'
 import { loadModelRoutes, modelPatch } from './dsh-executor.ts'
 import type { StateStore } from '@superagent/project-state'
 import { classifyEvent, DEFAULT_WAKE_POLICY, type WakePolicyOptions, type WakePriority, type WakeReason } from '@superagent/loop-policy'
@@ -46,6 +46,9 @@ export interface ChiefDigest {
 export interface ChiefChannel {
   readonly name: string
   deliver(digest: ChiefDigest, signal: AbortSignal): Promise<{ sessionId?: string; reply?: string }>
+  /** Human chat into the same Chief session (optional; the UI's Chief panel). */
+  chat?(projectId: string, text: string, signal: AbortSignal, context?: string): Promise<{ sessionId?: string; reply?: string }>
+  busy?(projectId: string): boolean
 }
 
 const CURSOR = 'wake-cursor'
@@ -205,29 +208,80 @@ export interface DshChiefChannelOptions {
   readonly model?: (projectId: string) => ModelRef | undefined
 }
 
-/** Delivers digests into a persistent per-project Chief DSH session (`--session-id` resume). */
+let messageSeq = 0
+
+/** Append one entry to the project's Chief conversation (UI chat view) and announce it. */
+export function appendChiefMessage(store: StateStore, projectId: string, role: ChiefMessage['role'], text: string, tool?: string): ChiefMessage {
+  const msg: ChiefMessage = { id: `m-${Date.now()}-${String(messageSeq++ % 1e6).padStart(6, '0')}`, projectId, role, text: text.slice(0, 20_000), tool, at: now() }
+  store.putRecord('chief-chat', msg)
+  store.emitTyped('chief/message', projectId, { messageId: msg.id, role, text: text.slice(0, 300), tool: tool ?? null })
+  return msg
+}
+
+function toolLine(tool: string, input: Record<string, unknown>): string {
+  const pick = input.path ?? input.file_path ?? input.command ?? input.project ?? input.objective ?? input.title ?? ''
+  return `${tool}${pick ? ` ${String(pick).slice(0, 160)}` : ''}`
+}
+
+/**
+ * The persistent per-project Chief DSH session (`--session-id` resume). Autonomous wake
+ * digests and human chat messages are serialized per project (one DSH process per
+ * session at a time) and both land in one transcript the UI shows as a conversation.
+ */
 export class DshChiefChannel implements ChiefChannel {
   readonly name = 'dsh-chief'
   private readonly o: DshChiefChannelOptions
+  private readonly locks = new Map<string, Promise<unknown>>()
   constructor(options: DshChiefChannelOptions) {
     this.o = options
   }
 
   async deliver(digest: ChiefDigest, signal: AbortSignal): Promise<{ sessionId?: string; reply?: string }> {
-    const project = this.o.store.requireProject(digest.projectId)
-    const prior = this.o.store.getMeta<{ sessionId?: string }>(digest.projectId, 'chief-session')?.sessionId
+    appendChiefMessage(this.o.store, digest.projectId, 'wake', digest.text)
+    return this.turn(digest.projectId, digest.text, signal)
+  }
+
+  async chat(projectId: string, text: string, signal: AbortSignal, context?: string): Promise<{ sessionId?: string; reply?: string }> {
+    appendChiefMessage(this.o.store, projectId, 'human', text)
+    const prompt = [`[Message from the human in the SuperAgent UI — project ${projectId}]`, text, context ? `\n(Current state, for reference)\n${context.slice(0, 4_000)}` : ''].join('\n')
+    try {
+      return await this.turn(projectId, prompt, signal)
+    } catch (error) {
+      appendChiefMessage(this.o.store, projectId, 'error', String((error as Error).message ?? error))
+      throw error
+    }
+  }
+
+  /** Whether a turn is running (or queued) for the project. */
+  busy(projectId: string): boolean {
+    return this.locks.has(projectId)
+  }
+
+  private turn(projectId: string, text: string, signal: AbortSignal): Promise<{ sessionId?: string; reply?: string }> {
+    const previous = this.locks.get(projectId) ?? Promise.resolve()
+    const run = previous.catch(() => {}).then(() => this.runTurn(projectId, text, signal))
+    const tracked = run.finally(() => { if (this.locks.get(projectId) === tracked) this.locks.delete(projectId) })
+    this.locks.set(projectId, tracked)
+    return run
+  }
+
+  private async runTurn(projectId: string, text: string, signal: AbortSignal): Promise<{ sessionId?: string; reply?: string }> {
+    const store = this.o.store
+    const project = store.requireProject(projectId)
+    const prior = store.getMeta<{ sessionId?: string }>(projectId, 'chief-session')?.sessionId
     const args = ['--profile', this.o.profile ?? 'superagent-chief-cli']
-    const model = this.o.model?.(digest.projectId)
+    const model = this.o.model?.(projectId)
     const patch = model ? modelPatch(model, loadModelRoutes(this.o.stateHome)) : undefined
     if (patch) {
       const dir = join(this.o.stateHome, 'runtime', 'chief')
       mkdirSync(dir, { recursive: true })
-      writeFileSync(join(dir, `${digest.projectId}.model.yml`), patch)
-      args.push('--patch', join(dir, `${digest.projectId}.model.yml`))
+      writeFileSync(join(dir, `${projectId}.model.yml`), patch)
+      args.push('--patch', join(dir, `${projectId}.model.yml`))
     }
-    args.push('--json', ...(prior ? ['--session-id', prior] : []), digest.text)
+    args.push('--json', ...(prior ? ['--session-id', prior] : []), text)
     let sessionId: string | undefined
     let reply = ''
+    let lastText = ''
     const r = await runDshStreaming({
       args, cwd: project.root, signal, timeoutMs: this.o.timeoutMs ?? 10 * 60_000, keepCredentials: true,
       env: {
@@ -236,11 +290,18 @@ export class DshChiefChannel implements ChiefChannel {
       },
       onEvent: e => {
         if (e.type === 'session' && typeof e.sessionId === 'string') sessionId = e.sessionId
-        if (e.type === 'final' && typeof e.text === 'string') reply = e.text
+        else if (e.type === 'tool_call' && typeof e.tool === 'string') appendChiefMessage(store, projectId, 'tool', toolLine(e.tool, (e.input ?? {}) as Record<string, unknown>), e.tool)
+        else if (e.type === 'text' && typeof e.text === 'string' && e.text.trim()) {
+          lastText = e.text
+          appendChiefMessage(store, projectId, 'chief', e.text)
+        } else if (e.type === 'final' && typeof e.text === 'string') {
+          reply = e.text || lastText
+          if (e.text.trim() && e.text.trim() !== lastText.trim()) appendChiefMessage(store, projectId, 'chief', e.text)
+        }
       },
     })
-    if (r.exitCode !== 0) throw new Error(`Chief session exited ${r.exitCode}: ${r.stderrTail.slice(-300)}`)
-    if (sessionId) this.o.store.setMeta(digest.projectId, 'chief-session', { sessionId, updatedAt: now() })
+    if (r.exitCode !== 0) throw new Error(`Chief session exited ${r.exitCode}${r.timedOut ? ' (timeout)' : ''}: ${r.stderrTail.slice(-300)}`)
+    if (sessionId) store.setMeta(projectId, 'chief-session', { sessionId, updatedAt: now() })
     return { sessionId, reply }
   }
 }

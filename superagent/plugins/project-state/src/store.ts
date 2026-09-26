@@ -46,7 +46,9 @@ export function defaultHome(): string {
   return resolve(process.env.SUPERAGENT_HOME ?? join(homedir(), '.superagent'))
 }
 
-type Collection = 'goals' | 'tasks' | 'workers' | 'receipts' | 'human-gates' | 'wakes'
+type Collection = 'goals' | 'tasks' | 'workers' | 'receipts' | 'human-gates' | RecordCollection
+/** Generic per-project record collections (putRecord/getRecord/listRecords). */
+export type RecordCollection = 'wakes' | 'files' | 'chief-chat'
 
 export type NewEvent = Omit<SuperAgentEvent, 'seq' | 'ts'> & { ts?: string }
 
@@ -382,13 +384,13 @@ export class StateStore {
   // ------------------------------------------------------------ generic records (wakes, meta)
 
   /** Durable per-project record in a named collection (e.g. Chief wakes). */
-  putRecord<T extends { id: string; projectId: ProjectId }>(collection: 'wakes', record: T): T {
+  putRecord<T extends { id: string; projectId: ProjectId }>(collection: RecordCollection, record: T): T {
     return this.put(collection, record)
   }
-  getRecord<T>(pid: ProjectId, collection: 'wakes', id: string): T | undefined {
+  getRecord<T>(pid: ProjectId, collection: RecordCollection, id: string): T | undefined {
     return this.readJson<T>(this.recordPath(pid, collection, id))
   }
-  listRecords<T>(pid: ProjectId, collection: 'wakes'): T[] {
+  listRecords<T>(pid: ProjectId, collection: RecordCollection): T[] {
     return this.list<T>(pid, collection)
   }
   /** Small per-project key/value state (cursors, session ids). */

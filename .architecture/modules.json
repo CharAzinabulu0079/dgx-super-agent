@@ -59,7 +59,7 @@
     "description": "File-backed state store (SUPERAGENT_HOME)",
     "protected": false,
     "declared": true,
-    "files": 4,
+    "files": 5,
     "gates": [
       "unit"
     ],
@@ -234,13 +234,14 @@
     "description": "Headless HTTP/SSE Realtime API",
     "protected": false,
     "declared": true,
-    "files": 11,
+    "files": 14,
     "gates": [
       "unit",
       "e2e-ui"
     ],
     "adrs": [],
     "tests": [
+      "superagent/server/test/files.test.ts",
       "superagent/server/test/project-setup.test.ts",
       "superagent/server/test/requests.test.ts",
       "superagent/server/test/server.test.ts"
@@ -323,7 +324,7 @@
     "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
     "protected": false,
     "declared": true,
-    "files": 12,
+    "files": 13,
     "gates": [
       "evals"
     ],
@@ -333,6 +334,7 @@
       "superagent/evals/redteam/redteam.test.ts",
       "superagent/evals/test/browser-e2e-gate.test.ts",
       "superagent/evals/test/chief-autowake.integration.test.ts",
+      "superagent/evals/test/chief-chat-files.integration.test.ts",
       "superagent/evals/test/chief-planner.integration.test.ts",
       "superagent/evals/test/chief-tools.integration.test.ts",
       "superagent/evals/test/dsh-browser-worker.integration.test.ts",

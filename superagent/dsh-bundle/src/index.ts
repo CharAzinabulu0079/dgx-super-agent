@@ -1,8 +1,9 @@
 /**
  * SuperAgent Cordis plugin for DSH sessions (loaded via the bundle patch).
  *
- * Worker tool (active when the Worker env is present, set by DshHeadlessExecutor):
+ * Worker tools (active when the Worker env is present, set by DshHeadlessExecutor):
  *   superagent_report      structured progress/blocker/result report → state store
+ *   superagent_share_file  hand a project file (report, screenshot, build) to the human (Worker and Chief)
  * Chief tools (client of the SuperAgent Realtime/API gateway):
  *   superagent_status      project progress report (from state, not memory)
  *   superagent_create_goal / superagent_add_task / superagent_run_goal
@@ -21,7 +22,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { now, parseWorkerReport } from '@superagent/contracts'
-import { StateStore } from '@superagent/project-state'
+import { StateStore, shareFile } from '@superagent/project-state'
 import { decideToolCall, type ToolPolicy } from '@superagent/loop-policy'
 
 export const name = 'superagent-tools'
@@ -32,6 +33,7 @@ export interface Config {
 }
 
 const text = (value: string) => [{ type: 'text' as const, text: value }]
+const SHARED_SCHEMA = { type: 'object', additionalProperties: false, properties: { fileId: { type: 'string', required: true }, name: { type: 'string', required: true }, size: { type: 'number', required: true } } } as const
 
 async function callApi(apiUrl: string, method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<any> {
   const token = process.env.SUPERAGENT_AGENT_TOKEN
@@ -117,7 +119,32 @@ export function apply(ctx: Context, config: Config = {}): void {
     }))
   }
 
+  const shareDescription = 'Send a file from the project to the human: it appears in SuperAgent\'s Files view (previewable and downloadable, also on their phone). Use for deliverables the human asked for — reports, screenshots, exports, builds. Only files inside the project can be shared.'
+  if (isWorker && store) {
+    tools.register(defineTool({
+      name: 'superagent_share_file',
+      description: shareDescription,
+      parameters: { path: { type: 'string', required: true, description: 'File path (absolute or relative to the project root)' }, note: { type: 'string', description: 'One line for the human: what this is' } },
+      output: { schema: SHARED_SCHEMA, render: (_a, v) => text(`shared ${v.name} (${v.size} bytes); the human can open it in SuperAgent → Files`) },
+      async execute(args) {
+        const f = shareFile(store, worker.projectId!, args.path, { role: 'worker', workerId: worker.workerId, taskId: worker.taskId }, args.note)
+        return { fileId: f.id, name: f.name, size: f.size }
+      },
+    }))
+  }
+
   if (role !== 'chief') return
+
+  tools.register(defineTool({
+    name: 'superagent_share_file',
+    description: shareDescription,
+    parameters: { project: { type: 'string', required: true }, path: { type: 'string', required: true, description: 'Path inside the project (relative to its root, or absolute)' }, note: { type: 'string' } },
+    output: { schema: SHARED_SCHEMA, render: (_a, v) => text(`shared ${v.name} (${v.size} bytes); the human can open it in SuperAgent → Files`) },
+    async execute(args, exec) {
+      const f = await callApi(apiUrl, 'POST', `/api/projects/${encodeURIComponent(args.project)}/files`, { path: args.path, note: args.note }, exec.signal)
+      return { fileId: f.id, name: f.name, size: f.size }
+    },
+  }))
 
   tools.register(defineTool({
     name: 'superagent_status',

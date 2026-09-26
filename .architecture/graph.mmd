@@ -4,7 +4,7 @@ flowchart LR
     testkit["testkit<br/><small>6 files</small>"]
   end
   subgraph layer_capability["capability"]
-    project_state["project-state<br/><small>4 files</small>"]
+    project_state["project-state<br/><small>5 files</small>"]
     verifier["verifier<br/><small>10 files</small>"]
     loop_policy["loop-policy<br/><small>7 files</small>"]
     model_policy["model-policy<br/><small>4 files</small>"]
@@ -15,13 +15,13 @@ flowchart LR
     chief_worker["chief-worker<br/><small>15 files</small>"]
   end
   subgraph layer_interface["interface"]
-    server["server<br/><small>11 files</small>"]
+    server["server<br/><small>14 files</small>"]
     cli["cli<br/><small>2 files</small>"]
     ui["ui<br/><small>13 files</small>"]
     dsh_bundle["dsh-bundle<br/><small>5 files</small>"]
   end
   subgraph layer_verification["verification"]
-    evals["evals<br/><small>12 files</small>"]
+    evals["evals<br/><small>13 files</small>"]
   end
   sample_webapp["sample-webapp<br/><small>7 files</small>"]
   architecture_observatory --> contracts
@@ -63,18 +63,18 @@ flowchart LR
   classDef worker_active fill:#e3f2fd,stroke:#1565c0
   classDef gate_failed fill:#ffebee,stroke:#c62828
   classDef protected stroke:#6a1b9a,stroke-width:3px
-  class contracts stable
+  class contracts changing
   class testkit stable
-  class project_state stable
+  class project_state changing
   class verifier stable
   class loop_policy stable
   class model_policy stable
   class architecture_observatory stable
   class learning stable
-  class chief_worker stable
-  class server stable
+  class chief_worker changing
+  class server changing
   class cli stable
   class ui stable
-  class dsh_bundle stable
-  class evals stable
+  class dsh_bundle changing
+  class evals changing
   class sample_webapp stable
