@@ -7,7 +7,7 @@ import { AppearanceError, DEFAULT_APPEARANCE, createRuntime, parseAppearance, st
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
 
 async function call(base: string, method: string, path: string, body?: unknown, token?: string, type = 'application/json'): Promise<{ status: number; json: any }> {
-  const res = await fetch(`${base}${path}`, { method, headers: { 'content-type': type, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body === undefined ? undefined : Buffer.isBuffer(body) ? body : JSON.stringify(body) })
+  const res = await fetch(`${base}${path}`, { method, headers: { 'content-type': type, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body === undefined ? undefined : Buffer.isBuffer(body) ? new Uint8Array(body) : JSON.stringify(body) })
   return { status: res.status, json: await res.json() }
 }
 
