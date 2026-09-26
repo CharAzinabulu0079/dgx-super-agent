@@ -447,6 +447,7 @@ export type SuperAgentEventType =
   | 'review/completed'
   | 'file/shared'
   | 'chief/message'
+  | 'command/updated'
 
 /** Append-only, per-project event (events.jsonl). `seq` is monotonic per project. */
 export interface SuperAgentEvent {

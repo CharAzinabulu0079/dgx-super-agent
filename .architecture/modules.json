@@ -234,7 +234,7 @@
     "description": "Headless HTTP/SSE Realtime API",
     "protected": false,
     "declared": true,
-    "files": 16,
+    "files": 18,
     "gates": [
       "unit",
       "e2e-ui"
@@ -242,6 +242,7 @@
     "adrs": [],
     "tests": [
       "superagent/server/test/appearance.test.ts",
+      "superagent/server/test/commands.test.ts",
       "superagent/server/test/files.test.ts",
       "superagent/server/test/project-setup.test.ts",
       "superagent/server/test/requests.test.ts",
@@ -282,7 +283,7 @@
     "description": "Minimal Web/PWA",
     "protected": false,
     "declared": true,
-    "files": 16,
+    "files": 22,
     "gates": [
       "e2e-ui"
     ],
@@ -325,7 +326,7 @@
     "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
     "protected": false,
     "declared": true,
-    "files": 14,
+    "files": 15,
     "gates": [
       "evals"
     ],
@@ -342,6 +343,7 @@
       "superagent/evals/test/learning-replay.integration.test.ts",
       "superagent/evals/test/model-route.integration.test.ts",
       "superagent/evals/test/pre-tool-guard.integration.test.ts",
+      "superagent/evals/test/ui-appearance.e2e.test.ts",
       "superagent/evals/test/ui-mobile.e2e.test.ts",
       "superagent/evals/test/ui.e2e.test.ts"
     ],

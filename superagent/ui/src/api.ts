@@ -63,3 +63,29 @@ export const fileLink = (project: string, target: { file: string } | { path: str
   api<FileLink>('POST', '/api/links', { project, ...target, download })
 
 export const fmtSize = (n: number): string => (n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB` : n < 1024 ** 3 ? `${(n / 1024 ** 2).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`)
+
+export interface Appearance {
+  style: 'glass' | 'solid'; theme: 'auto' | 'light' | 'dark'; accent: string; panelOpacity: number
+  background: { kind: 'none' | 'gradient' | 'image' | 'video' | 'embed'; preset?: string; assetId?: string; url?: string; blur: number; dim: number; interactive?: boolean; allowChat?: boolean; allowMedia?: boolean }
+}
+export interface AppearanceView { appearance: Appearance; backgroundUrl: string | null; assets: Array<{ id: string; mime: string; size: number; url: string }>; presets: string[] }
+export interface CommandRecord { id: string; command: string; cwd: string; status: 'running' | 'exited' | 'stopped' | 'timeout' | 'error'; exitCode: number | null; startedAt: string; endedAt?: string; flagged?: string }
+export interface ActivityEvent { projectId: string; seq: number; ts: string; taskId?: string; tone: 'info' | 'good' | 'bad' | 'attention'; text: string }
+
+/** Raw upload (image/video) with the human token. */
+export async function upload<T>(path: string, file: File): Promise<T> {
+  const res = await fetch(path, { method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: file })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.error ?? res.statusText)
+  return json as T
+}
+
+/** Plain-language activity lines from the SSE stream (also forwarded to a Digital Human background). */
+export function activityStream(project: string | undefined, onLine: (a: ActivityEvent) => void): () => void {
+  const qs = new URLSearchParams()
+  if (project) qs.set('project', project)
+  if (token) qs.set('token', token)
+  const es = new EventSource(`/api/events/stream?${qs}`)
+  es.addEventListener('activity', m => onLine(JSON.parse((m as MessageEvent).data)))
+  return () => es.close()
+}

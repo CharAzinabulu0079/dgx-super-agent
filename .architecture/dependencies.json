@@ -236,7 +236,7 @@
     {
       "from": "evals",
       "to": "chief-worker",
-      "weight": 13,
+      "weight": 14,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -284,7 +284,7 @@
     {
       "from": "evals",
       "to": "server",
-      "weight": 11,
+      "weight": 12,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -298,7 +298,7 @@
     {
       "from": "evals",
       "to": "testkit",
-      "weight": 13,
+      "weight": 14,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -498,29 +498,29 @@
     {
       "from": "server",
       "to": "chief-worker",
-      "weight": 7,
+      "weight": 9,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
+        "superagent/server/src/commands.ts → @superagent/chief-worker",
         "superagent/server/src/goal-runner.ts → @superagent/chief-worker",
         "superagent/server/src/http.ts → @superagent/chief-worker",
         "superagent/server/src/runtime.ts → @superagent/chief-worker",
-        "superagent/server/test/appearance.test.ts → @superagent/chief-worker",
-        "superagent/server/test/files.test.ts → @superagent/chief-worker"
+        "superagent/server/test/appearance.test.ts → @superagent/chief-worker"
       ]
     },
     {
       "from": "server",
       "to": "contracts",
-      "weight": 6,
+      "weight": 7,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
+        "superagent/server/src/commands.ts → @superagent/contracts",
         "superagent/server/src/goal-runner.ts → @superagent/contracts",
         "superagent/server/src/http.ts → @superagent/contracts",
         "superagent/server/src/http.ts → @superagent/contracts",
-        "superagent/server/src/narrate.ts → @superagent/contracts",
-        "superagent/server/src/runtime.ts → @superagent/contracts"
+        "superagent/server/src/narrate.ts → @superagent/contracts"
       ]
     },
     {
@@ -531,6 +531,16 @@
       "testOnly": false,
       "evidence": [
         "superagent/server/src/runtime.ts → @superagent/learning"
+      ]
+    },
+    {
+      "from": "server",
+      "to": "loop-policy",
+      "weight": 1,
+      "typeOnly": false,
+      "testOnly": false,
+      "evidence": [
+        "superagent/server/src/commands.ts → @superagent/loop-policy"
       ]
     },
     {
@@ -547,29 +557,29 @@
     {
       "from": "server",
       "to": "project-state",
-      "weight": 7,
+      "weight": 8,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
+        "superagent/server/src/commands.ts → @superagent/project-state",
         "superagent/server/src/files-http.ts → @superagent/project-state",
         "superagent/server/src/goal-runner.ts → @superagent/project-state",
         "superagent/server/src/http.ts → @superagent/project-state",
-        "superagent/server/src/runtime.ts → @superagent/project-state",
-        "superagent/server/src/project-setup.ts → @superagent/project-state"
+        "superagent/server/src/runtime.ts → @superagent/project-state"
       ]
     },
     {
       "from": "server",
       "to": "testkit",
-      "weight": 6,
+      "weight": 7,
       "typeOnly": false,
       "testOnly": false,
       "evidence": [
         "superagent/server/src/dsh-setup.ts → @superagent/testkit",
         "superagent/server/test/appearance.test.ts → @superagent/testkit",
+        "superagent/server/test/commands.test.ts → @superagent/testkit",
         "superagent/server/test/files.test.ts → @superagent/testkit",
-        "superagent/server/test/project-setup.test.ts → @superagent/testkit",
-        "superagent/server/test/requests.test.ts → @superagent/testkit"
+        "superagent/server/test/project-setup.test.ts → @superagent/testkit"
       ]
     },
     {

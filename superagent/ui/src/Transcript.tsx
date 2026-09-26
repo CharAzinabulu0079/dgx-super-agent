@@ -1,6 +1,7 @@
 /** What one Worker attempt actually did: its prompt and DSH tool calls, results and text. */
 import { useEffect, useState } from 'react'
 import { api, fmtModel, type TranscriptStep, type Worker } from './api.ts'
+import { Markdown } from './Markdown.tsx'
 
 export function TranscriptDrawer({ projectId, workerId, onClose, onError }: { projectId: string; workerId: string; onClose: () => void; onError: (e: string) => void }) {
   const [t, setT] = useState<{ worker: Worker; prompt: string | null; steps: TranscriptStep[]; truncated: boolean; stderr: string | null } | null>(null)
@@ -27,7 +28,7 @@ export function TranscriptDrawer({ projectId, workerId, onClose, onError }: { pr
                   <details><summary>input / result</summary><pre>{JSON.stringify(s.input, null, 2)}</pre>{results.get(s.callId)?.result && <pre className="result">{results.get(s.callId)!.result}</pre>}</details>
                 </li>
               ) : (
-                <li key={i} className="step text" data-testid="step-text"><pre>{s.text}</pre></li>
+                <li key={i} className="step text" data-testid="step-text"><Markdown text={s.text ?? ''} projectId={projectId} /></li>
               ))}
             </ol>
             {t.stderr && <details><summary>stderr</summary><pre>{t.stderr}</pre></details>}

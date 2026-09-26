@@ -1,6 +1,7 @@
 /** Talk to the project's Chief: the same persistent session that handles automatic wakes. */
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, type ChiefMessage } from './api.ts'
+import { Markdown } from './Markdown.tsx'
 
 export function ChiefChat({ projectId, refreshKey, onError }: { projectId: string; refreshKey: number; onError: (e: string) => void }) {
   const [data, setData] = useState<{ available: boolean; busy: boolean; messages: ChiefMessage[] } | null>(null)
@@ -28,7 +29,7 @@ export function ChiefChat({ projectId, refreshKey, onError }: { projectId: strin
       {!data.available && <p className="muted">Chat needs the Chief profile: run <code>sa dsh setup</code> and restart <code>sa serve</code>.</p>}
       <div className="chat-log" data-testid="chat-log">
         {data.messages.length === 0 && <p className="muted">Ask the Chief anything about this project — progress, why something failed, what to do next. It can also send you files.</p>}
-        {data.messages.map(m => <ChatMessage key={m.id} m={m} />)}
+        {data.messages.map(m => <ChatMessage key={m.id} m={m} projectId={projectId} />)}
         {data.busy && <div className="msg chief typing" data-testid="chat-busy">Chief is working…</div>}
         <div ref={end} />
       </div>
@@ -41,7 +42,7 @@ export function ChiefChat({ projectId, refreshKey, onError }: { projectId: strin
   )
 }
 
-function ChatMessage({ m }: { m: ChiefMessage }) {
+function ChatMessage({ m, projectId }: { m: ChiefMessage; projectId: string }) {
   const time = new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   if (m.role === 'tool') return <div className="msg tool" data-testid="chat-tool">⚙ {m.text}</div>
   if (m.role === 'wake') {
@@ -54,7 +55,7 @@ function ChatMessage({ m }: { m: ChiefMessage }) {
   }
   return (
     <div className={`msg ${m.role}`} data-testid={`chat-${m.role}`}>
-      <pre>{m.text}</pre>
+      {m.role === 'chief' ? <Markdown text={m.text} projectId={projectId} /> : <pre>{m.text}</pre>}
       <time>{time}</time>
     </div>
   )

@@ -48,7 +48,7 @@ export function defaultHome(): string {
 
 type Collection = 'goals' | 'tasks' | 'workers' | 'receipts' | 'human-gates' | RecordCollection
 /** Generic per-project record collections (putRecord/getRecord/listRecords). */
-export type RecordCollection = 'wakes' | 'files' | 'chief-chat'
+export type RecordCollection = 'wakes' | 'files' | 'chief-chat' | 'commands'
 
 export type NewEvent = Omit<SuperAgentEvent, 'seq' | 'ts'> & { ts?: string }
 

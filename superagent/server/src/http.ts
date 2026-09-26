@@ -20,6 +20,7 @@ import { LinkSigner, listProjectDir, sendFile } from './files-http.ts'
 import { ShareError, mimeOf as mimeOfName, resolveProjectFile, shareFile, sharedFilePath } from '@superagent/project-state'
 import type { ChiefMessage, SharedFile } from '@superagent/contracts'
 import { workerTranscript } from './transcript.ts'
+import { CommandError, CommandRunner } from './commands.ts'
 import { AppearanceError, GRADIENT_PRESETS, MAX_BACKGROUND_BYTES, deleteBackground, findBackground, listBackgrounds, loadAppearance, saveAppearance, saveBackground } from './appearance.ts'
 import { ChiefDriver, DshChiefChannel, GateRegistryError, WakeMonitor, type ChiefChannel } from '@superagent/chief-worker'
 
@@ -127,6 +128,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
   }
   const goals = runtime.goals
   const links = new LinkSigner()
+  const commands = new CommandRunner(store)
   let chiefDriver: ChiefDriver | undefined
   let chiefChannel: ChiefChannel | undefined
   const chatAbort = new AbortController()
@@ -335,6 +337,21 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     return appearanceView()
   }), 'human')
 
+  // ---------------------------------------------------------------- human-run commands (▷ on code blocks)
+  const commandErrors = <T>(fn: () => T): T => {
+    try {
+      return fn()
+    } catch (error) {
+      if (error instanceof CommandError) throw new HttpError(400, error.message)
+      throw error
+    }
+  }
+  route('POST', '/api/projects/:pid/commands/check', ({ params, body }) => commands.check(project(params.pid!).id, String(body?.command ?? '')), 'human')
+  route('POST', '/api/projects/:pid/commands', ({ params, body }) => commandErrors(() => commands.start(project(params.pid!).id, String(body?.command ?? ''), body?.confirmDanger === true)), 'human')
+  route('GET', '/api/projects/:pid/commands', ({ params }) => commands.list(project(params.pid!).id), 'human')
+  route('GET', '/api/projects/:pid/commands/:cid', ({ params }) => commandErrors(() => commands.get(project(params.pid!).id, params.cid!)), 'human')
+  route('POST', '/api/projects/:pid/commands/:cid/stop', ({ params }) => commandErrors(() => commands.stop(project(params.pid!).id, params.cid!)), 'human')
+
   // ---------------------------------------------------------------- Chief conversation + Worker transcripts
   route('GET', '/api/projects/:pid/chief/messages', ({ params, query }) => {
     const p = project(params.pid!)
@@ -533,6 +550,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     close: async () => {
       chiefDriver?.stop()
       chatAbort.abort()
+      commands.stopAll()
       clearInterval(pump)
       clearInterval(heartbeat)
       for (const w of watchers.values()) w.close()

@@ -45,7 +45,7 @@ test('UI on a phone over a remote bind: chat, files (preview/download), transcri
     chat: async (projectId, text) => {
       appendChiefMessage(runtime.store, projectId, 'human', text)
       appendChiefMessage(runtime.store, projectId, 'tool', 'superagent_status calc', 'superagent_status')
-      appendChiefMessage(runtime.store, projectId, 'chief', 'All tasks passed. I sent you the fix report under Files.')
+      appendChiefMessage(runtime.store, projectId, 'chief', 'All tasks passed. I sent you the fix report under Files.\nRe-run the tests yourself:\n```bash\n$ node --test\n```\nOr start over:\n```bash\nrm -rf src\n```')
       return {}
     },
   }
@@ -72,15 +72,29 @@ test('UI on a phone over a remote bind: chat, files (preview/download), transcri
     assert.ok(await noHScroll(), 'overview fits the phone width')
 
     // Chief chat.
-    await page.getByTestId('tab-chat').tap()
+    await page.getByTestId('nav-chat').tap()
     await page.getByTestId('chat-input').fill('How is it going?')
     await page.getByTestId('chat-send').tap()
     await page.getByTestId('chat-chief').filter({ hasText: 'I sent you the fix report' }).waitFor()
     await page.getByTestId('chat-tool').filter({ hasText: 'superagent_status' }).waitFor()
     assert.ok(await noHScroll(), 'chat fits')
+    // ▷ on a code block the Chief wrote: confirm sheet shows the exact command, then live output.
+    const blocks = page.getByTestId('codeblock')
+    await blocks.nth(0).getByTestId('code-run').tap()
+    assert.equal(await page.getByTestId('run-command').inputValue(), 'node --test', 'prompt marker stripped')
+    await page.getByTestId('run-confirm').tap()
+    await page.getByTestId('run-sheet').getByTestId('command-status').filter({ hasText: 'exit 0' }).waitFor({ timeout: 30_000 })
+    assert.match(await page.getByTestId('run-sheet').getByTestId('command-output').locator('pre').innerText(), /pass 1/)
+    await page.getByTestId('run-close').tap()
+    // A flagged command cannot run without an explicit acknowledgement.
+    await blocks.nth(1).getByTestId('code-run').tap()
+    await page.getByTestId('run-danger').waitFor()
+    assert.equal(await page.getByTestId('run-confirm').isDisabled(), true)
+    await page.getByTestId('run-close').tap()
+    assert.ok(existsSync(join(root, 'src')), 'nothing was deleted')
 
     // A file the Worker sent: preview then download.
-    await page.getByTestId('tab-files').tap()
+    await page.getByTestId('nav-files').tap()
     const item = page.getByTestId('shared-REPORT.md')
     await item.getByText('what I changed').waitFor()
     await item.getByTestId('preview').tap()
@@ -98,14 +112,38 @@ test('UI on a phone over a remote bind: chat, files (preview/download), transcri
     await page.getByTestId('close-preview').tap()
 
     // Worker transcript.
-    await page.getByTestId('tab-workers').tap()
+    await page.getByTestId('nav-more').tap()
+    await page.getByTestId('more-workers').tap()
     await page.locator('[data-testid^="worker-wkr_"]').first().tap()
     await page.getByTestId('step-tool').filter({ hasText: 'src/calc.js' }).waitFor()
     await page.getByTestId('step-text').filter({ hasText: 'Fixed add() to return the sum.' }).waitFor()
     await page.getByTestId('close-transcript').tap()
 
     // The activity feed tells the story in plain words.
-    await page.getByTestId('tab-overview').tap()
+    // Terminal tab: run a command in the project from the phone.
+    await page.getByTestId('nav-terminal').tap()
+    await page.getByTestId('term-input').fill('git status --short && echo from-phone')
+    await page.getByTestId('term-run').tap()
+    await page.getByTestId('run-confirm').tap()
+    await page.getByTestId('run-sheet').getByTestId('command-status').filter({ hasText: 'exit 0' }).waitFor({ timeout: 30_000 })
+    assert.match(await page.getByTestId('run-sheet').getByTestId('command-output').locator('pre').innerText(), /from-phone/)
+    await page.getByTestId('run-close').tap()
+    assert.ok(await noHScroll(), 'terminal fits')
+
+    // Appearance from the phone: glass + gradient, this device only.
+    await page.getByTestId('nav-more').tap()
+    await page.getByTestId('more-appearance').tap()
+    await page.getByTestId('style-glass').tap()
+    await page.getByTestId('bg-kind-gradient').tap()
+    await page.getByTestId('preset-dusk').tap()
+    await page.getByTestId('scope-device').tap()
+    await page.getByTestId('appearance-save').tap()
+    await page.locator('[data-testid="bg-layer"][data-kind="gradient"]').waitFor()
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.style), 'glass')
+    const shared = await page.request.get(`${base}/api/ui/appearance`, { headers: { authorization: `Bearer ${token}` } })
+    assert.equal((await shared.json()).appearance.style, 'solid', 'device-only choice does not change other devices')
+
+    await page.getByTestId('nav-overview').tap()
     await page.getByTestId('activity').getByText('the Worker shared a file: REPORT.md — what I changed').waitFor()
     assert.deepEqual(errors, [])
   } finally {

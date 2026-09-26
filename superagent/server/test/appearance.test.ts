@@ -28,7 +28,8 @@ test('API: appearance is human-writable, uploads are checked by content, backgro
   const server = await startServer({ runtime, port: 0, humanToken: 'h' })
   try {
     const initial = await call(server.url, 'GET', '/api/ui/appearance')
-    assert.equal(initial.json.appearance.background.preset, 'aurora')
+    assert.equal(initial.json.appearance.style, 'solid')
+    assert.equal(initial.json.appearance.background.kind, 'none')
     assert.equal((await call(server.url, 'POST', '/api/ui/appearance', { theme: 'dark' }, server.agentToken)).status, 403, 'agents cannot restyle the UI')
     assert.equal((await call(server.url, 'POST', '/api/ui/backgrounds', PNG, server.agentToken, 'image/png')).status, 403)
     // Declared type is not trusted: SVG/HTML bytes labelled as PNG are refused; SVG as a type is not accepted at all.

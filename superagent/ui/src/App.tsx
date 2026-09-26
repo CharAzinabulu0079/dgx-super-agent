@@ -1,14 +1,24 @@
-/** SuperAgent minimal Web/PWA (Freeze §12.1): projects, goal, workers/loop, architecture, model selection, approve/stop/steer. */
+/** SuperAgent Web/PWA (Freeze §12.1): ask, Chief chat, files, terminal, workers/loop, architecture, policy — desktop and phone. */
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { api, eventStream, fmtModel, type ActivityLine, type ProjectDetail, type Project, type SAEvent, type Task } from './api.ts'
+import { activityStream, api, eventStream, fmtModel, type ActivityEvent, type ActivityLine, type ProjectDetail, type Project, type SAEvent, type Task } from './api.ts'
+import { useAppearance } from './theme.ts'
+import { BackgroundLayer } from './Background.tsx'
+import { AppearancePanel } from './Appearance.tsx'
+import { TerminalPanel } from './Terminal.tsx'
+import { inline } from './Markdown.tsx'
 import { ArchitectureView } from './ArchitectureView.tsx'
 import { HealthPanel, LearningPanel, PolicyPanel } from './Panels.tsx'
 import { ChiefChat } from './Chat.tsx'
 import { FilesPanel } from './Files.tsx'
 import { TranscriptDrawer } from './Transcript.tsx'
 
-type Tab = 'overview' | 'chat' | 'files' | 'workers' | 'architecture' | 'learning' | 'policy' | 'events'
-const TABS: Array<[Tab, string]> = [['overview', 'Overview'], ['chat', 'Chief'], ['files', 'Files'], ['workers', 'Workers'], ['architecture', 'Architecture'], ['learning', 'Learning'], ['policy', 'Policy'], ['events', 'Events']]
+type Tab = 'overview' | 'chat' | 'files' | 'terminal' | 'workers' | 'architecture' | 'learning' | 'policy' | 'events'
+const TABS: Array<[Tab, string, string]> = [
+  ['overview', 'Overview', '◎'], ['chat', 'Chief', '✦'], ['files', 'Files', '▤'], ['terminal', 'Terminal', '›_'], ['workers', 'Workers', '⚙'],
+  ['architecture', 'Architecture', '◇'], ['learning', 'Learning', '✧'], ['policy', 'Policy', '⚖'], ['events', 'Events', '≡'],
+]
+/** Shown in the phone's bottom bar; the rest sit behind "More". */
+const PRIMARY: Tab[] = ['overview', 'chat', 'files', 'terminal']
 
 export function App() {
   const [projects, setProjects] = useState<Project[]>([])
@@ -20,6 +30,12 @@ export function App() {
   const [chatKey, setChatKey] = useState(0)
   const [filesKey, setFilesKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [showAppearance, setShowAppearance] = useState(false)
+  const [more, setMore] = useState(false)
+  const [cmdKey, setCmdKey] = useState(0)
+  const [activity, setActivity] = useState<ActivityEvent[]>([])
+  const [chiefFeed, setChiefFeed] = useState<Array<{ seq: number; projectId: string; role: string; text: string }>>([])
+  const look = useAppearance(setError)
 
   const loadProjects = useCallback(() => api<Project[]>('GET', '/api/projects').then(p => {
     setProjects(p)
@@ -42,20 +58,35 @@ export function App() {
       if (e.type.startsWith('architecture/') || e.type === 'receipt/created' || e.type === 'worker/started' || e.type === 'worker/exited') setArchKey(k => k + 1)
       if (e.type === 'chief/message') setChatKey(k => k + 1)
       if (e.type === 'file/shared') setFilesKey(k => k + 1)
+      if (e.type === 'command/updated') setCmdKey(k => k + 1)
+      if (e.type === 'chief/message') setChiefFeed(prev => [...prev, { seq: e.seq, projectId: e.projectId, role: String(e.data.role), text: String(e.data.text) }].slice(-50))
       window.clearTimeout(timer)
       timer = window.setTimeout(loadDetail, 150)
     })
+    const stopActivity = activityStream(current, a => setActivity(prev => [...prev, a].slice(-50)))
     const poll = window.setInterval(loadDetail, 5000)
-    return () => { stop(); window.clearInterval(poll); window.clearTimeout(timer) }
+    return () => { stop(); stopActivity(); window.clearInterval(poll); window.clearTimeout(timer) }
   }, [current, loadDetail])
   useEffect(() => { localStorage.setItem('superagent-tab', tab) }, [tab])
 
   const act = (p: Promise<unknown>) => p.then(() => { setError(null); loadDetail(); void loadProjects() }, e => setError(String(e)))
 
+  const b = look.effective.background
+  const bgUrl = look.assetUrl(b.assetId)
+  const chatAsHuman = (text: string) => { if (current) act(api('POST', `/api/projects/${current}/chief/messages`, { text })) }
+  const go = (t: Tab) => { setTab(t); setMore(false) }
   return (
+    <>
+    <BackgroundLayer a={look.effective} url={bgUrl} theme={look.resolvedTheme}
+      feed={{ activity, chief: chiefFeed, project: detail ? { id: detail.project.id, name: detail.project.name } : null }}
+      onChat={chatAsHuman} onNotice={setError} />
+    {showAppearance && <AppearancePanel view={look.view} current={look.effective} isLocal={look.isLocal} onSave={look.save} onReload={look.reload} onClose={() => setShowAppearance(false)} onError={setError} />}
     <div className="layout">
       <aside className="sidebar">
-        <h1>SuperAgent</h1>
+        <div className="brand">
+          <h1><span className="brand-mark">✳</span> SuperAgent</h1>
+          <button className="icon" title="Appearance" aria-label="Appearance" onClick={() => setShowAppearance(true)} data-testid="open-appearance">◐</button>
+        </div>
         <nav data-testid="project-list">
           {projects.map(p => (
             <button key={p.id} className={p.id === current ? 'active' : ''} onClick={() => setCurrent(p.id)} data-testid={`project-${p.id}`}>
@@ -73,17 +104,30 @@ export function App() {
             <header className="project-header">
               <h2 data-testid="project-title">{detail.project.name}</h2>
               <code>{detail.project.root}</code>
-              <div className="tabs">
+              <div className="tabs" role="tablist">
                 {TABS.map(([t, label]) => (
-                  <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)} data-testid={`tab-${t}`}>{label}</button>
+                  <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={() => go(t)} data-testid={`tab-${t}`}>{label}</button>
                 ))}
               </div>
             </header>
+            <nav className="bottom-bar" aria-label="sections">
+              {TABS.filter(([t]) => PRIMARY.includes(t)).map(([t, label, icon]) => (
+                <button key={t} className={tab === t ? 'active' : ''} onClick={() => go(t)} data-testid={`nav-${t}`}><span className="nav-icon">{icon}</span>{label}</button>
+              ))}
+              <button className={!PRIMARY.includes(tab) ? 'active' : ''} onClick={() => setMore(m => !m)} data-testid="nav-more"><span className="nav-icon">⋯</span>More</button>
+              {more && (
+                <div className="more-sheet" data-testid="more-sheet">
+                  {TABS.filter(([t]) => !PRIMARY.includes(t)).map(([t, label, icon]) => <button key={t} onClick={() => go(t)} data-testid={`more-${t}`}><span className="nav-icon">{icon}</span>{label}</button>)}
+                  <button onClick={() => { setMore(false); setShowAppearance(true) }} data-testid="more-appearance"><span className="nav-icon">◐</span>Appearance</button>
+                </div>
+              )}
+            </nav>
             {tab === 'overview' && <><Ask detail={detail} act={act} /><Activity projectId={detail.project.id} refreshKey={events.length} /><HealthPanel projectId={detail.project.id} refreshKey={archKey} /><Overview detail={detail} act={act} /></>}
             {tab === 'learning' && <LearningPanel projectId={detail.project.id} onError={setError} refreshKey={events.length} />}
             {tab === 'policy' && <PolicyPanel projectId={detail.project.id} onError={setError} />}
             {tab === 'chat' && <ChiefChat projectId={detail.project.id} refreshKey={chatKey} onError={setError} />}
             {tab === 'files' && <FilesPanel projectId={detail.project.id} refreshKey={filesKey} onError={setError} />}
+            {tab === 'terminal' && <TerminalPanel projectId={detail.project.id} root={detail.project.root} refreshKey={cmdKey} onError={setError} />}
             {tab === 'workers' && <Workers detail={detail} onError={setError} />}
             {tab === 'architecture' && <ArchitectureView projectId={detail.project.id} refreshKey={archKey} />}
             {tab === 'events' && <Events events={events} />}
@@ -91,6 +135,7 @@ export function App() {
         )}
       </main>
     </div>
+    </>
   )
 }
 
@@ -130,7 +175,7 @@ function Activity({ projectId, refreshKey }: { projectId: string; refreshKey: nu
     <section className="card">
       <h3>Activity</h3>
       <ol className="activity" data-testid="activity">{[...lines].reverse().map(l => (
-        <li key={l.seq} className={`tone-${l.tone}`}><time>{new Date(l.ts).toLocaleTimeString()}</time> {l.text}</li>
+        <li key={l.seq} className={`tone-${l.tone}`}><time>{new Date(l.ts).toLocaleTimeString()}</time> {inline(l.text)}</li>
       ))}</ol>
     </section>
   )

@@ -63,6 +63,9 @@ export function narrate(e: SuperAgentEvent, titleOf: (taskId: string) => string 
     case 'human-gate/opened': return line('attention', `Needs your decision (${d.reason}): ${String(d.detail ?? '').slice(0, 240)}`)
     case 'human-gate/resolved': return line('info', `You ${d.decision} a decision${d.resolution ? `: ${d.resolution}` : ''}`)
     case 'file/shared': return line('good', `${d.from === 'worker' ? `${task}: the Worker` : d.from === 'chief' ? 'The Chief' : 'You'} shared a file: ${d.name}${d.note ? ` — ${d.note}` : ''}`)
+    case 'command/updated':
+      if (d.status === 'running') return line(d.flagged ? 'attention' : 'info', `You ran \`${d.command}\`${d.flagged ? ` (flagged: ${d.flagged}; you confirmed)` : ''}`)
+      return line(d.status === 'exited' && d.exitCode === 0 ? 'good' : 'bad', `\`${d.command}\` ${d.status === 'exited' ? `finished with exit ${d.exitCode}` : d.status}`)
     case 'learning/promoted': return line('good', `Learned something reusable: ${d.name ?? ''}`)
     default: return undefined
   }

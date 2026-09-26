@@ -42,9 +42,10 @@ export interface Appearance {
   }
 }
 
+/** Default: the calm, solid "terminal-app" look (warm neutrals, one accent), no background. */
 export const DEFAULT_APPEARANCE: Appearance = {
-  style: 'glass', theme: 'auto', accent: '#6366f1', panelOpacity: 0.72,
-  background: { kind: 'gradient', preset: 'aurora', blur: 0, dim: 0 },
+  style: 'solid', theme: 'auto', accent: '#d97757', panelOpacity: 0.72,
+  background: { kind: 'none', blur: 0, dim: 0 },
 }
 
 export class AppearanceError extends Error {}

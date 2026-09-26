@@ -9,7 +9,29 @@
 - **Worker transcripts:** tap a Worker to see its prompt and every DSH tool call, result and message.
 - **Remote access (WireGuard):** binding to a non-loopback `--host` requires the token for every request. `SUPERAGENT_HUMAN_TOKEN` keeps the login link stable across restarts, and `sa serve` prints the reachable URLs.
 - **Phone layout:** a responsive UI for small screens.
-- **Verification:** red-team RT-20 (file-sharing abuse); new evals for Chief chat, file sharing and transcripts (real DSH) and the phone-viewport UI. Totals: evals 12/12, red-team 20/20.
+- **Redesigned UI.**
+  - The default **Clean** style is calm: warm neutrals, hairline borders, one accent, monospace for anything runnable. An optional **Glass** style puts translucent cards over a background. Themes are light, dark and auto.
+  - On phones, a bottom bar holds Overview / Chief / Files / Terminal / More.
+  - Markdown in Chief replies and Worker transcripts.
+- **Code blocks with ⧉ Copy and ▷ Run.** Run executes a command in the project on the server, from any device including your phone over WireGuard.
+  - A confirmation sheet shows the exact command before it runs.
+  - Commands the pre-tool classifier flags (destructive, credentials, production…) need an explicit acknowledgement.
+  - SuperAgent credentials are scrubbed from the command's environment; there are a timeout and a Stop button.
+  - Output streams back live. Each run is recorded in the activity feed.
+- **Terminal tab:** type any command, see live output and the history of past runs. The endpoints are human-only: `/api/projects/:p/commands`.
+- **Appearance panel.**
+  - Style, theme, accent and card opacity.
+  - Background: none, gradient presets, an uploaded image/video, or a **web page** (e.g. the Web Digital Human), with blur/dim.
+  - Settings apply to **all devices** (server) or **this device only**.
+  - Uploads are checked by content: PNG/JPEG/GIF/WebP/AVIF/MP4/WebM only, never SVG/HTML. Appearance is human-only: `/api/ui/appearance`, `/api/ui/backgrounds`.
+- **Digital Human background bridge** (`docs/DIGITAL_HUMAN_BACKGROUND.md`).
+  - The embedded page receives `hello` / `activity` / `chief` messages and can send `chat` to the Chief (off by default; opt-in).
+  - It runs sandboxed; a same-origin page never gets `allow-same-origin`.
+  - The SSE stream now also emits plain-language `activity` events, so a standalone Digital Human can follow along.
+- **Verification:**
+  - New red-team scenarios: RT-20 (file-sharing abuse) and RT-21 (UI remote-control abuse).
+  - New evals for Chief chat, file sharing and transcripts (real DSH), the phone-viewport UI (incl. ▷ Run, Terminal, Appearance) and appearance/Digital Human embed.
+  - Totals: `pnpm check` 97/97, evals 13/13, red-team 21/21 (87 tests).
 
 ## cloud-v1.0 — 2026-09-25
 
