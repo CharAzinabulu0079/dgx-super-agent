@@ -406,6 +406,19 @@ export class StateStore {
     }
   }
 
+  /** Remove a lease whose holder process no longer exists. @returns whether it was removed. */
+  removeStaleLease(pid: ProjectId, taskId: TaskId): boolean {
+    const holder = this.readLease(pid, taskId)
+    if (!holder || processAlive(holder.pid)) return false
+    try {
+      unlinkSync(join(this.projectDir(pid), 'leases', `${taskId}.lock`))
+      return true
+    } catch (gone) {
+      void gone
+      return false
+    }
+  }
+
   // ------------------------------------------------------------ generic records (wakes, meta)
 
   /** Durable per-project record in a named collection (e.g. Chief wakes). */

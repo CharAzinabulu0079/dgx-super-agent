@@ -7,6 +7,7 @@ import { PROVIDER_APIS, ProviderError, listProviders, probeProvider, removeProvi
 import { PresetError, applyPreset, presetViews, savePresets } from './ops/presets.ts'
 import { UpdateError, isSupervised, scheduleRestart, type UpdateManager } from './ops/update.ts'
 import { ScanError, initGit, listDirs, scanProject } from './ops/project-scan.ts'
+import { CLEANUP_KINDS, applyCleanup, previewCleanup, type CleanupContext } from './ops/cleanup.ts'
 import { BackupError, createBackup, deleteBackup, importBackup, listBackups, restoreBackup } from './ops/backup.ts'
 
 type Role = 'human' | 'agent' | 'anonymous'
@@ -25,6 +26,7 @@ export interface SystemDeps {
   readonly update?: UpdateManager
   /** Restart through the supervisor (default: exit 75 when supervised). */
   readonly restart?: () => boolean
+  readonly cleanupCtx: () => CleanupContext
 }
 
 const as400 = async <T>(fn: () => T | Promise<T>, ...types: Array<new (...a: any[]) => Error>): Promise<T> => {
@@ -92,6 +94,16 @@ export function registerSystemRoutes(route: RouteFn, deps: SystemDeps): void {
   route('GET', '/api/system/dirs', ({ query }) => as400(() => listDirs(query.get('path') ?? undefined, query.get('hidden') === '1'), ScanError), 'human')
   route('POST', '/api/system/scan', ({ body }) => as400(() => scanProject(String(body?.root ?? ''), store), ScanError), 'human')
   route('POST', '/api/system/scan/git-init', ({ body }) => as400(() => { initGit(String(body?.root ?? '')); return scanProject(String(body.root), store) }, ScanError), 'human')
+
+  // Cleanup: preview, then apply the chosen kinds.
+  route('GET', '/api/system/cleanup', ({ query }) => ({ items: previewCleanup({ ...deps.cleanupCtx(), days: Number(query.get('days') ?? 14) || 14 }), kinds: CLEANUP_KINDS }), 'human')
+  route('POST', '/api/system/cleanup', ({ body }) => {
+    const kinds = Array.isArray(body?.kinds) ? body.kinds.filter((k: unknown) => CLEANUP_KINDS.includes(k as never)) : []
+    if (!kinds.length) throw new HttpError(400, `choose what to clean: ${CLEANUP_KINDS.join(', ')}`)
+    const ctx = { ...deps.cleanupCtx(), days: Number(body?.days ?? 14) || 14 }
+    const done = applyCleanup(ctx, kinds)
+    return { done, items: previewCleanup(ctx) }
+  }, 'human')
 
   // Update / Rollback / Restart.
   const supervised = () => isSupervised() || !!deps.restart

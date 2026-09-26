@@ -404,6 +404,10 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     appVersion: () => appVersion(),
     update: updateManager,
     restart: options.update?.restart,
+    cleanupCtx: () => ({
+      store, engine, update: updateManager,
+      pendingLearningTasks: () => new Set(runtime.learning.learning.list().filter(c => c.status === 'candidate' || c.status === 'evaluating').map(c => c.evidence.taskId)),
+    }),
   })
 
   // ---------------------------------------------------------------- human-run commands (▷ on code blocks)
