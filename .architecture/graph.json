@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "dgx-super-agent",
-  "generatedAt": "2026-09-26T14:35:39.483Z",
-  "commit": "6f0eaac",
+  "generatedAt": "2026-09-26T14:46:16.896Z",
+  "commit": "feb65fb",
   "layers": [
     "foundation",
     "capability",
@@ -1156,11 +1156,8 @@
   "changes": {
     "base": "HEAD",
     "files": [
-      "ARCHITECTURE.md",
-      "CHANGELOG.md",
-      "DECISIONS.md",
-      "SETUP_DGX.md",
-      "scripts/redteam-report.ts"
+      "CURRENT_STATE.md",
+      "REDTEAM_REPORT.md"
     ],
     "modules": [],
     "impacted": [],
@@ -1242,6 +1239,6 @@
     "files": 180,
     "modules": 15,
     "edges": 54,
-    "scanMs": 754
+    "scanMs": 763
   }
 }
