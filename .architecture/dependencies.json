@@ -236,7 +236,7 @@
     {
       "from": "evals",
       "to": "chief-worker",
-      "weight": 14,
+      "weight": 15,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -284,7 +284,7 @@
     {
       "from": "evals",
       "to": "server",
-      "weight": 12,
+      "weight": 13,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [
@@ -298,7 +298,7 @@
     {
       "from": "evals",
       "to": "testkit",
-      "weight": 14,
+      "weight": 15,
       "typeOnly": false,
       "testOnly": true,
       "evidence": [

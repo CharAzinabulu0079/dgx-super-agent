@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased (after cloud-v1.1) — one-click operations
+
+The goal is that nothing routine costs model tokens: buttons for everything that repeats (ADR-0023). Everything is under **⚙ System** (on phones: More → System) and at `/api/system/*`, and every operation is human-only.
+
+- **Health Check.** Checks the runtime, DSH version and profiles, SuperAgent bundle, browser, UI build, state directory, disk space, secret permissions, each model server in use (via `/models`, which costs no tokens; **Test models** sends one tiny request each), leftovers of interrupted runs, failed Chief wakes, each project (folder, git, test gates, hidden tests) and remote access.
+  - Results are green, yellow or red, each with a fix: a copyable command or a button.
+  - The sidebar shows a health dot.
+  - **Starting work is refused while something is red.** The ask box explains why and offers **Run anyway**.
+- **Model servers (Provider wizard).** Enter the Base URL and key → **Connect** lists the models → pick models → optional 1-token test → Save.
+  - Supports OpenAI-compatible servers (vLLM, SGLang, Ollama, LM Studio, API gateways) and Anthropic-compatible ones.
+  - Saved as a DSH `llm-pi-ai` route. The key goes into `model-routes.json` (0600) and is never shown again.
+  - A server can also be made the **local default**.
+- **Model presets.** All local / Budget / Default / Max.
+  - Fill a preset once in the editor; one click switches Chief, Planner, Workers, Reviewer and Escalation.
+  - A preset that names an unconfigured server is shown as unavailable.
+  - The ask box can use a preset **for one request only**.
+- **Project wizard.** Browse folders on the server → **Scan** → review → Create.
+  - The scan reports languages, package manager and git state (with **Initialize git**).
+  - It proposes checks: tests, E2E and architecture, plus optional build, lint and typecheck; Go and Rust are detected.
+  - It also flags whether a browser is needed, declared architecture, and warnings.
+- **Backup / Restore.**
+  - A backup is a `.tar.gz` with a manifest. Secrets and DSH sessions are opt-in, and keys are stripped otherwise.
+  - Backups can be downloaded, uploaded and deleted.
+  - Restore refuses while work runs and refuses newer state formats. It backs up the current state first, then swaps the state in, keeping the replaced state aside.
+- **Update / Rollback.** `sa install` sets up a managed install: each release is a git worktree and `current` is a symlink.
+  - **Check for updates** lists tagged versions. **Update** builds the new version beside the running one, backs up state, switches and restarts under systemd.
+  - If the new version is red at start-up, it switches back by itself. Manual **Roll back** is also available.
+  - Update refuses while work runs or when the target can't read the current state format. A failed build leaves everything as it was.
+- **Service and restart.** `sa service install` writes a systemd user unit (auto-start, restart after update, env file for a stable phone link). **Restart** works under the supervisor.
+- **Cleanup.** Preview, then clean selected items: orphaned Workers, stale leases, old verification snapshots in project repositories (kept for open tasks and pending learning), old logs and command output, temp folders, old backups, restore leftovers and old releases.
+- **Verification:** red-team RT-22 (misuse of the one-click operations); unit/API tests for every operation; a browser test that clicks through the whole System page on desktop and phone; a real `sa install` of this repository.
+
 ## cloud-v1.1 — 2026-09-26
 
 The features below were added after cloud-v1.0. The release audit then reviewed all of it independently (Chief chat, transcripts, file sharing/downloads, WireGuard remote access, the phone UI, ▷ Run / Terminal, Appearance/background upload and the Digital Human bridge). It fixed the confirmed defects listed next, each with a regression test that fails on the pre-fix code. Full report: `docs/RELEASE_AUDIT_cloud-v1.1.md`.

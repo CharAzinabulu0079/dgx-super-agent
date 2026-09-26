@@ -91,8 +91,9 @@ test('System page: models, presets, backup/restore, update, cleanup, health; ask
     // Update: check → update → switched, restart requested.
     await page.getByTestId('sys-update').click()
     await page.getByTestId('update-check').click()
-    await page.getByText('v1.1.0').waitFor()
-    await page.locator('li', { hasText: 'v1.1.0' }).getByRole('button', { name: 'Update' }).click()
+    const v11 = page.getByTestId('update').locator('li', { hasText: 'v1.1.0' })
+    await v11.waitFor()
+    await v11.getByRole('button', { name: 'Update' }).click()
     await page.getByTestId('update-job').filter({ hasText: /installed/ }).waitFor({ timeout: 30_000 })
     assert.equal(restarts, 1)
     await page.getByTestId('update-rollback').waitFor()

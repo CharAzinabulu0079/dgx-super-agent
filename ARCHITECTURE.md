@@ -153,6 +153,17 @@ Roles `chief | worker | reviewer | escalation | planner`; layers defaults ← gl
 
 API (localhost; roles anonymous/agent/human, see §3b; JSON-only POST + same-origin guard): `GET /api/policy`, `POST /api/policy` (human), `POST /api/projects/:p/policy` (human), `GET /api/projects/:p/chief`, `GET/POST /api/projects`, `GET /api/projects/:p`, `POST …/requests` (plan + run a plain-language request), `GET|POST …/chief/messages` (human ↔ Chief chat in the persistent Chief session, serialized with wakes), `GET|POST …/files` (files agents shared; `superagent_share_file`), `GET …/tree` (read-only project browser), `POST /api/links` → `GET /dl/<signed>` (15-min HMAC links for preview/download; nosniff, CSP sandbox for active types, Range), `GET …/workers/:w/transcript` (a Worker's DSH trajectory), `POST …/commands[/check]`, `GET …/commands[/:c]`, `POST …/commands/:c/stop` (human-run commands in the project; classifier-flagged ones need `confirmDanger`), `GET|POST /api/ui/appearance`, `POST /api/ui/backgrounds` (raw image/video, magic-byte checked; served via signed links), SSE `event: activity` (plain-language lines for voice/avatar clients; Digital Human embed protocol in `docs/DIGITAL_HUMAN_BACKGROUND.md`), `GET …/activity` (narrated feed), `POST …/goals`, `POST …/goals/:g/tasks`, `POST …/goals/:g/run` (start or queue), `POST …/tasks/:t/{stop,steer,model}`, `POST …/human-gates/:h`, `GET …/receipts|events|workers/:w/reports`, `GET|POST …/architecture[/scan]`, `GET/POST /api/learning…`, `GET /api/events/stream` (SSE, gap-free: consumers follow `events.jsonl` with `StateStore.tailEvents` from a cached byte offset; this is the Realtime surface a Digital Human client would subscribe to).
 
+Operations (ADR-0023), all human-only:
+- health: `GET /api/system/health`, deep `POST`;
+- providers: `/api/system/providers[/probe|/test|/:name/delete]`;
+- presets: `/api/system/presets[/:id/apply]`;
+- project wizard: `/api/system/dirs|scan|scan/git-init`;
+- backups: `/api/system/backups[/upload|/:id/restore|/:id/delete]`, downloads via signed `/dl` links;
+- updates: `/api/system/update[/check|/rollback]`, `POST /api/system/restart`;
+- cleanup: `/api/system/cleanup`.
+
+Starting a goal or request runs the health preflight first. A managed install is `<base>/{source, releases/<id>, current→releases/<id>, releases.json}`, and a fresh release verifies itself at start (`verifyAfterStart`).
+
 Remote access: a non-loopback `--host` (LAN/WireGuard) forces the token for every request; `SUPERAGENT_HUMAN_TOKEN` gives a stable human token. The UI is responsive for phones (tabs Overview · Chief · Files · Workers · Architecture · Learning · Policy · Events).
 
 Project onboarding: with no gates given, `detectGates` proposes `unit` (npm test / node --test / pytest), `e2e` (Playwright config) and `architecture` from the repository — a human action at registration time.

@@ -288,7 +288,7 @@
     "description": "Minimal Web/PWA",
     "protected": false,
     "declared": true,
-    "files": 22,
+    "files": 24,
     "gates": [
       "e2e-ui"
     ],
@@ -331,7 +331,7 @@
     "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
     "protected": false,
     "declared": true,
-    "files": 15,
+    "files": 16,
     "gates": [
       "evals"
     ],
@@ -350,6 +350,7 @@
       "superagent/evals/test/pre-tool-guard.integration.test.ts",
       "superagent/evals/test/ui-appearance.e2e.test.ts",
       "superagent/evals/test/ui-mobile.e2e.test.ts",
+      "superagent/evals/test/ui-system.e2e.test.ts",
       "superagent/evals/test/ui.e2e.test.ts"
     ],
     "externalDeps": []
