@@ -286,7 +286,9 @@ export class DshChiefChannel implements ChiefChannel {
       args, cwd: project.root, signal, timeoutMs: this.o.timeoutMs ?? 10 * 60_000, keepCredentials: true,
       env: {
         DSH_HOME: join(this.o.stateHome, 'dsh-home'), SUPERAGENT_ROLE: 'chief', SUPERAGENT_API_URL: this.o.apiUrl,
-        SUPERAGENT_AGENT_TOKEN: this.o.agentToken, SUPERAGENT_HOME: this.o.stateHome, ...this.o.env,
+        SUPERAGENT_AGENT_TOKEN: this.o.agentToken, SUPERAGENT_HOME: this.o.stateHome,
+        // Provider keys saved by the Models wizard (as for Workers); DSH resolves apiKeyEnv from these.
+        ...loadModelRoutes(this.o.stateHome).env, ...this.o.env,
       },
       onEvent: e => {
         if (e.type === 'session' && typeof e.sessionId === 'string') sessionId = e.sessionId

@@ -219,7 +219,7 @@ export async function runAdvisor(o: DshAdvisorOptions, role: 'planner' | 'review
   const r = await runDshStreaming({
     args: [...args, '--json', prompt], cwd: project.root, signal, timeoutMs: o.timeoutMs ?? 5 * 60_000,
     // SUPERAGENT_HOME makes the bundle guard forbid the state/held-out store for this session.
-    env: { DSH_HOME: join(o.stateHome, 'dsh-home'), SUPERAGENT_ROLE: role, SUPERAGENT_HOME: o.stateHome, ...o.env },
+    env: { DSH_HOME: join(o.stateHome, 'dsh-home'), SUPERAGENT_ROLE: role, SUPERAGENT_HOME: o.stateHome, ...loadModelRoutes(o.stateHome).env, ...o.env },
     onEvent: e => { if (e.type === 'final' && typeof e.text === 'string') text = e.text },
   })
   if (r.exitCode !== 0) throw new Error(`${role} session exited ${r.exitCode}${r.timedOut ? ' (timeout)' : ''}: ${r.stderrTail.slice(-300)}`)

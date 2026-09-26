@@ -117,10 +117,21 @@ export class Verifier {
     for (const spec of gates) {
       if (!spec.parser || spec.parser === 'exit-code') continue
       const r = await this.runGate(spec, { projectRoot, task, changedFiles: [] })
-      out[spec.id] = { status: r.status, tests: [...new Set((r.tests ?? []).map(t => t.name))].sort() }
+      const named = (r.tests ?? []).filter(t => !isLoadFailure(t))
+      out[spec.id] = { status: r.status, tests: [...new Set(named.map(t => t.name))].sort() }
     }
     return { takenAt: new Date().toISOString(), snapshot, gates: out }
   }
+}
+
+/**
+ * `node --test` reports a test file that cannot load (e.g. it imports the function the
+ * task is about to add) as one failing entry named after the file; once it loads, that
+ * entry is replaced by the file's real tests. It is not a named test to keep. Removing or
+ * editing the file itself is still caught by the verification-asset integrity check.
+ */
+function isLoadFailure(t: { name: string; ok: boolean }): boolean {
+  return !t.ok && /^[\w./-]+\.[cm]?[jt]sx?$/.test(t.name)
 }
 
 /** Baseline tests that disappeared from (or did not pass in) a gate result. */

@@ -106,7 +106,7 @@ export class DshReflector {
     const r = await runDshStreaming({
       args: [...this.modelArgs(projectId), '--json', reflectionPrompt(traceSummary(store, projectId, taskId))],
       cwd: project.root, signal, timeoutMs: this.o.timeoutMs ?? 5 * 60_000,
-      env: { DSH_HOME: join(this.o.stateHome, 'dsh-home'), SUPERAGENT_ROLE: 'chief', ...this.o.env },
+      env: { DSH_HOME: join(this.o.stateHome, 'dsh-home'), SUPERAGENT_ROLE: 'chief', ...loadModelRoutes(this.o.stateHome).env, ...this.o.env },
       onEvent: e => { if (e.type === 'final' && typeof e.text === 'string') final = e.text },
     })
     if (r.exitCode !== 0) throw new Error(`reflection session exited ${r.exitCode}: ${r.stderrTail.slice(-300)}`)

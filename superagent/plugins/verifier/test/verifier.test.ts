@@ -4,7 +4,7 @@ import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { calcProject, gitRepo, FIXED_CALC, NODE_TEST_GATE } from '@superagent/testkit'
 import type { GateResult } from '@superagent/contracts'
-import { decideVerdict, failureSignature, parseNodeTest, parsePlaywrightJson, runCommandGate, scanHygiene, receiptSignature } from '../src/index.ts'
+import { baselineFindings, decideVerdict, failureSignature, parseNodeTest, parsePlaywrightJson, runCommandGate, scanHygiene, receiptSignature, Verifier } from '../src/index.ts'
 
 const r = (over: Partial<GateResult>): GateResult => ({ gateId: 'g', kind: 'command', status: 'pass', required: true, durationMs: 1, summary: '', outputTail: '', ...over })
 
@@ -68,4 +68,23 @@ test('timed-out gates get SIGTERM first so runners can stop their own servers', 
   const res = await runCommandGate({ id: 'srv', kind: 'command', command: `trap 'echo ok > ${marker}; exit 0' TERM; sleep 30 & wait`, required: true, timeoutMs: 300 }, root)
   assert.equal(res.failureSignature, 'srv:timeout')
   assert.equal(existsSync(marker), true, 'the TERM handler ran')
+})
+
+test('baseline: a test file that cannot load yet is not a named test to keep (found on DGX)', async () => {
+  const root = gitRepo({
+    'package.json': '{"type":"module"}',
+    'calc.js': 'export function add(a, b) { return a + b }\n',
+    'calc.test.js': "import { test } from 'node:test'\nimport assert from 'node:assert/strict'\nimport { add, multiply } from './calc.js'\ntest('add', () => assert.equal(add(2, 3), 5))\ntest('multiply', () => assert.equal(multiply(4, 5), 20))\n",
+  })
+  const v = new Verifier()
+  const task = { id: 'task_1' } as any
+  const base = await v.baseline(task, root, [NODE_TEST_GATE])
+  assert.equal(base.gates.unit!.status, 'fail')
+  assert.deepEqual(base.gates.unit!.tests, [], 'the file-level load failure is not recorded')
+  writeFileSync(join(root, 'calc.js'), 'export function add(a, b) { return a + b }\nexport function multiply(a, b) { return a * b }\n')
+  const after = await v.runGate(NODE_TEST_GATE, { projectRoot: root, task, changedFiles: ['calc.js'] })
+  assert.equal(after.status, 'pass')
+  assert.deepEqual(baselineFindings([after], base), [])
+  // A named test that existed at baseline must still be there.
+  assert.equal(baselineFindings([after], { ...base, gates: { unit: { status: 'fail', tests: ['add', 'subtract'] } } })[0]!.kind, 'baseline-test-missing')
 })
