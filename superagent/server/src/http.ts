@@ -20,6 +20,7 @@ import { LinkSigner, listProjectDir, sendFile } from './files-http.ts'
 import { ShareError, mimeOf as mimeOfName, resolveProjectFile, shareFile, sharedFilePath } from '@superagent/project-state'
 import type { ChiefMessage, SharedFile } from '@superagent/contracts'
 import { workerTranscript } from './transcript.ts'
+import { AppearanceError, GRADIENT_PRESETS, MAX_BACKGROUND_BYTES, deleteBackground, findBackground, listBackgrounds, loadAppearance, saveAppearance, saveBackground } from './appearance.ts'
 import { ChiefDriver, DshChiefChannel, GateRegistryError, WakeMonitor, type ChiefChannel } from '@superagent/chief-worker'
 
 export interface ServerOptions {
@@ -112,11 +113,12 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     if (given && sameSecret(given, agentToken)) return 'agent'
     return 'anonymous'
   }
-  const routes: Array<{ method: string; pattern: RegExp; keys: string[]; level: Level; handler: Handler }> = []
-  const route = (method: string, path: string, handler: Handler, level: Level = method === 'GET' ? 'read' : 'agent'): void => {
+  type Raw = { readonly types: RegExp; readonly maxBytes: number }
+  const routes: Array<{ method: string; pattern: RegExp; keys: string[]; level: Level; handler: Handler; raw?: Raw }> = []
+  const route = (method: string, path: string, handler: Handler, level: Level = method === 'GET' ? 'read' : 'agent', raw?: Raw): void => {
     const keys: string[] = []
     const pattern = new RegExp(`^${path.replace(/:(\w+)/g, (_, k: string) => { keys.push(k); return '([^/]+)' })}$`)
-    routes.push({ method, pattern, keys, level, handler })
+    routes.push({ method, pattern, keys, level, handler, raw })
   }
   const project = (pid: string): Project => {
     const p = store.getProject(pid)
@@ -300,6 +302,39 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
       throw error
     }
   }, 'read')
+  // ---------------------------------------------------------------- appearance (theme, background, digital-human embed)
+  const BG_TTL = 24 * 3_600_000
+  const bgUrl = (id: string) => `/dl/${links.sign({ p: '', f: id, d: 0, k: 'bg' }, BG_TTL).token}`
+  const appearanceView = () => {
+    const appearance = loadAppearance(store.home)
+    return {
+      appearance,
+      backgroundUrl: appearance.background.assetId ? bgUrl(appearance.background.assetId) : null,
+      assets: listBackgrounds(store.home).map(a => ({ id: a.id, mime: a.mime, size: a.size, url: bgUrl(a.id) })),
+      presets: GRADIENT_PRESETS,
+    }
+  }
+  const appearanceErrors = <T>(fn: () => T): T => {
+    try {
+      return fn()
+    } catch (error) {
+      if (error instanceof AppearanceError) throw new HttpError(400, error.message)
+      throw error
+    }
+  }
+  route('GET', '/api/ui/appearance', () => appearanceView())
+  route('POST', '/api/ui/appearance', ({ body }) => appearanceErrors(() => { saveAppearance(store.home, body); return appearanceView() }), 'human')
+  route('POST', '/api/ui/backgrounds', ({ body }) => appearanceErrors(() => {
+    if (!Buffer.isBuffer(body)) throw new AppearanceError('send the image/video bytes with its content-type')
+    const a = saveBackground(store.home, body)
+    return { id: a.id, mime: a.mime, size: a.size, url: bgUrl(a.id) }
+  }), 'human', { types: /^(image\/(png|jpeg|gif|webp|avif)|video\/(mp4|webm))\b/, maxBytes: MAX_BACKGROUND_BYTES.video })
+  route('POST', '/api/ui/backgrounds/:id/delete', ({ params }) => appearanceErrors(() => {
+    if (loadAppearance(store.home).background.assetId === params.id) throw new AppearanceError('this background is in use; pick another one first')
+    deleteBackground(store.home, params.id!)
+    return appearanceView()
+  }), 'human')
+
   // ---------------------------------------------------------------- Chief conversation + Worker transcripts
   route('GET', '/api/projects/:pid/chief/messages', ({ params, query }) => {
     const p = project(params.pid!)
@@ -361,7 +396,12 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
         if (!client.cursor.has(pid)) { client.cursor.set(pid, store.lastEventSeq(pid)); continue }
         // Oldest first, bounded per tick; a burst drains over the next ticks without gaps.
         const events: SuperAgentEvent[] = store.tailEvents(pid, client.cursor.get(pid)!, 500)
-        for (const e of events) client.res.write(`id: ${pid}:${e.seq}\nevent: superagent\ndata: ${JSON.stringify(e)}\n\n`)
+        for (const e of events) {
+          client.res.write(`id: ${pid}:${e.seq}\nevent: superagent\ndata: ${JSON.stringify(e)}\n\n`)
+          // Plain-language line for voice/avatar clients (Digital Human) and the UI's embed bridge.
+          const line = narrate(e, id => store.getTask(pid, id)?.title)
+          if (line) client.res.write(`event: activity\ndata: ${JSON.stringify({ projectId: pid, ...line })}\n\n`)
+        }
         if (events.length) client.cursor.set(pid, events.at(-1)!.seq)
       }
     }
@@ -399,7 +439,8 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
         // preflight we never grant) and reject foreign Origins outright.
         const origin = req.headers.origin
         if (origin && origin !== `http://${req.headers.host}`) throw new HttpError(403, 'cross-origin request refused')
-        if (req.method === 'POST' && !String(req.headers['content-type'] ?? '').startsWith('application/json')) throw new HttpError(415, 'POST requires application/json')
+        const contentType = String(req.headers['content-type'] ?? '')
+        const isJson = contentType.startsWith('application/json')
         const role = roleOf(req, url)
         if (url.pathname === '/api/events/stream') {
           if (options.protectReads && role === 'anonymous') throw new HttpError(401, 'unauthorized')
@@ -415,9 +456,12 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
           const m = r.pattern.exec(url.pathname)
           if (!m) continue
           const params = Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1]!)]))
+          // Non-JSON POSTs only on declared binary routes, with a non-"simple" media type
+          // (image/*, video/*), which browsers cannot send cross-origin without preflight.
+          if (req.method === 'POST' && !isJson && !(r.raw && r.raw.types.test(contentType))) throw new HttpError(415, r.raw ? `unsupported upload type ${contentType || '(none)'}` : 'POST requires application/json')
           const need = r.level === 'read' && options.protectReads ? NEED.agent : NEED[r.level]
           if (RANK[role] < need) throw new HttpError(role === 'anonymous' ? 401 : 403, `${r.level} credential required`)
-          const body = req.method === 'POST' ? await readBody(req) : undefined
+          const body = req.method === 'POST' ? (r.raw && !isJson ? await readRaw(req, r.raw.maxBytes) : await readBody(req)) : undefined
           const result = await r.handler({ req, res, params, body, query: url.searchParams, role })
           sendJson(res, 200, result ?? null)
           return
@@ -427,6 +471,12 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
       if (url.pathname.startsWith('/dl/') && (req.method === 'GET' || req.method === 'HEAD')) {
         const link = links.verify(url.pathname.slice(4))
         if (!link) throw new HttpError(403, 'link expired or invalid — open the file again from SuperAgent')
+        if (link.k === 'bg') {
+          const a = findBackground(store.home, link.f ?? '')
+          if (!a) throw new HttpError(404, 'background not found')
+          sendFile(req, res, a.file, `${a.id}${a.file.slice(a.file.lastIndexOf('.'))}`, false, a.mime)
+          return
+        }
         const p = project(link.p)
         if (link.f) {
           const f = sharedFile(p.id, link.f)
@@ -512,4 +562,15 @@ async function readBody(req: IncomingMessage): Promise<any> {
   } catch (invalid) {
     throw new HttpError(400, `invalid JSON: ${String(invalid)}`)
   }
+}
+
+async function readRaw(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length
+    if (size > maxBytes) throw new HttpError(413, `upload too large (max ${maxBytes} bytes)`)
+    chunks.push(chunk as Buffer)
+  }
+  return Buffer.concat(chunks)
 }
