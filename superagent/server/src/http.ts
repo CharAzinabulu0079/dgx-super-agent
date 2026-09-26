@@ -34,7 +34,10 @@ export interface ServerOptions {
   readonly humanToken?: string
   /** Credential for Chief/agent clients (goals, tasks by registry id, runs). Default random. */
   readonly agentToken?: string
-  /** Also require a token for reads (default: reads open on localhost). */
+  /**
+   * Also require a token for reads (default: reads open on localhost). Always on when
+   * the server listens on a non-loopback address (LAN / WireGuard).
+   */
   readonly protectReads?: boolean
   /**
    * Chief auto-wake. `true` delivers wakes to a persistent DSH Chief session
@@ -91,7 +94,13 @@ const MIME: Record<string, string> = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon',
 }
 
-export async function startServer(options: ServerOptions): Promise<RunningServer> {
+export function isLoopbackHost(host: string): boolean {
+  return host === 'localhost' || host === '::1' || /^127\./.test(host)
+}
+
+export async function startServer(input: ServerOptions): Promise<RunningServer> {
+  // Anything beyond loopback (e.g. a WireGuard address or 0.0.0.0) gets no anonymous reads.
+  const options: ServerOptions = { ...input, protectReads: input.protectReads || !isLoopbackHost(input.host ?? '127.0.0.1') }
   const { runtime } = options
   const { store, engine, chief, observatory } = runtime
   const humanToken = options.humanToken ?? randomBytes(24).toString('base64url')

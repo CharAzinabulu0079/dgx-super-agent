@@ -64,3 +64,63 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 .activity .tone-bad { color: var(--bad, #c0392b); }
 .activity .tone-attention { color: var(--warn, #b8860b); font-weight: 600; }
 .badge { margin-left: .4rem; }
+
+/* ---- chat, files, transcript, modal ---- */
+.chat { display: flex; flex-direction: column; }
+.chat-log { display: flex; flex-direction: column; gap: 6px; max-height: 62vh; overflow: auto; padding: 4px 0; }
+.msg { max-width: 85%; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border); }
+.msg pre { font: inherit; white-space: pre-wrap; word-break: break-word; }
+.msg time { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.msg.human { align-self: flex-end; background: color-mix(in srgb, var(--accent) 18%, var(--panel)); }
+.msg.chief { align-self: flex-start; background: var(--bg); }
+.msg.error { align-self: flex-start; color: var(--danger); }
+.msg.tool { align-self: flex-start; border: none; padding: 0 10px; font-size: 12px; color: var(--muted); }
+.msg.wake { align-self: stretch; max-width: 100%; border-style: dashed; }
+.msg.typing { color: var(--muted); font-style: italic; }
+.chat-input { display: flex; gap: 6px; margin-top: 8px; }
+.chat-input textarea { flex: 1; font-size: 16px; }
+.file-list { list-style: none; padding: 0; margin: 0; }
+.file-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.file-main { flex: 1; min-width: 12rem; word-break: break-word; }
+.file-actions { display: flex; gap: 6px; }
+button.link { border: none; background: none; padding: 2px 0; color: var(--accent); text-align: left; word-break: break-all; }
+button.small { padding: 1px 6px; }
+.crumbs { margin-bottom: 6px; } .crumbs button { border: none; background: none; color: var(--accent); padding: 0 2px; }
+.modal { position: fixed; inset: 0; background: #0009; display: flex; align-items: center; justify-content: center; z-index: 50; padding: 12px; }
+.modal-body { background: var(--panel); border-radius: 12px; width: min(900px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.modal-body.wide { width: min(1100px, 100%); }
+.modal-body header { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.modal-body .spacer { flex: 1; }
+.modal-content { overflow: auto; padding: 12px; }
+.modal-content img, .modal-content video { max-width: 100%; max-height: 75vh; display: block; margin: 0 auto; }
+.modal-content iframe { width: 100%; height: 75vh; border: 0; background: #fff; }
+.file-text { max-height: 75vh; overflow: auto; }
+.steps { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+.step.tool { font-size: 13px; } .step.text pre { font: inherit; white-space: pre-wrap; background: var(--bg); padding: 8px; border-radius: 8px; }
+.step pre.result { margin-top: 4px; opacity: .85; }
+tr.clickable { cursor: pointer; } tr.clickable:hover { background: var(--bg); }
+.add-project-box summary { font-size: 13px; color: var(--fg); padding: 4px 0; }
+
+/* ---- phones (WireGuard access from a mobile browser) ---- */
+@media (max-width: 760px) {
+  body { font-size: 15px; }
+  .layout { display: flex; flex-direction: column; min-height: 100vh; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); padding: 8px 10px; gap: 6px; position: sticky; top: 0; z-index: 10; }
+  .sidebar h1 { font-size: 16px; margin: 0; }
+  .sidebar nav { flex-direction: row; overflow-x: auto; gap: 6px; }
+  .sidebar nav button { flex: 0 0 auto; min-width: 8rem; }
+  .add-project { margin-top: 6px; }
+  main { padding: 10px; }
+  .project-header { gap: 6px; }
+  .project-header code { display: none; }
+  .tabs { margin-left: 0; width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
+  .tabs button { flex: 0 0 auto; }
+  button { min-height: 36px; }
+  input, textarea { font-size: 16px; }
+  .card { padding: 10px; border-radius: 8px; }
+  table.tasks { display: block; overflow-x: auto; white-space: nowrap; }
+  .msg { max-width: 92%; }
+  .chat-log { max-height: none; }
+  .modal { padding: 0; } .modal-body { border-radius: 0; height: 100%; }
+  .ask-row button { width: 100%; margin-left: 0; }
+}

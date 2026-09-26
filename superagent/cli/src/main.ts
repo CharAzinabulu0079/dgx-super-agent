@@ -10,7 +10,8 @@ import { parseGateSpec, type GateSpec } from '@superagent/contracts'
 import { effectiveModels, formatModel, loadGlobalPolicy, parseModelSpec, parsePolicyLayer, saveGlobalPolicy } from '@superagent/model-policy'
 import { scanHygiene } from '@superagent/verifier'
 import { Observatory } from '@superagent/architecture-observatory'
-import { BROWSER_PATCH, CHIEF_PROFILE, createRuntime, narrate, registerHeldOut, setupDshProfiles, startServer } from '@superagent/server'
+import { BROWSER_PATCH, CHIEF_PROFILE, createRuntime, isLoopbackHost, narrate, registerHeldOut, setupDshProfiles, startServer } from '@superagent/server'
+import { networkInterfaces } from 'node:os'
 import { defaultHome } from '@superagent/project-state'
 import { REPO_ROOT } from '@superagent/testkit'
 
@@ -19,7 +20,9 @@ const HELP = `sa — DGX Super Agent CLI
   sa dsh setup [--no-chief]                    create DSH profiles superagent-worker (+browser) / superagent-chief
   sa chief                                      print how to open the Chief (DSH Web with SuperAgent tools)
   sa serve [--port 7788] [--host 127.0.0.1] [--no-watch] [--browser] [--no-chief] [--reflect] [--worker-patch file.yml]...
-                                                Chief auto-wake is on when "sa dsh setup" created superagent-chief-cli
+                                                Chief auto-wake + UI chat are on when "sa dsh setup" created superagent-chief-cli
+                                                phone over WireGuard: --host <wg address> (all requests then need the token);
+                                                SUPERAGENT_HUMAN_TOKEN=<24+ chars> keeps the link stable across restarts
   sa project add <name> <root> [--gate 'id=command'...] [--protect module...]
   sa project list
   sa heldout add <project> <gateId> <testsDir> --mount <dir> --command "<cmd>"
@@ -131,17 +134,27 @@ async function main(argv: string[]): Promise<number> {
   const { store, chief, engine } = rt
   switch (cmd) {
     case 'serve': {
+      const host = values.host ?? '127.0.0.1'
+      const envToken = process.env.SUPERAGENT_HUMAN_TOKEN
+      if (envToken !== undefined && envToken.length < 24) throw new Error('SUPERAGENT_HUMAN_TOKEN must be at least 24 characters (e.g. `openssl rand -base64 24`)')
+      const chiefProfile = existsSync(join(dshHome, 'profiles', 'superagent-chief-cli', 'package.json'))
       const s = await startServer({
-        runtime: rt, port: Number(values.port ?? 7788), host: values.host,
+        runtime: rt, port: Number(values.port ?? 7788), host, humanToken: envToken, chiefChat: chiefProfile,
         uiDir: join(REPO_ROOT, 'superagent/ui/dist'), watch: !values['no-watch'],
-        chiefWake: !values['no-chief'] && existsSync(join(dshHome, 'profiles', 'superagent-chief-cli', 'package.json')),
+        chiefWake: !values['no-chief'] && chiefProfile,
         resumeGoals: true,
       })
       // Agent token for the Chief launcher (0600, outside any worktree). The human token
       // is printed once and kept only in this process's memory.
       mkdirSync(join(store.home, 'secrets'), { recursive: true, mode: 0o700 })
       writeFileSync(join(store.home, 'secrets', 'agent-token'), s.agentToken, { mode: 0o600 })
-      console.log(`SuperAgent API + UI: ${s.url}/?token=${s.humanToken}\n  (human link — keep private; valid until restart)  state: ${store.home}`)
+      const port = new URL(s.url).port
+      const hosts = host === '0.0.0.0' || host === '::'
+        ? Object.values(networkInterfaces()).flat().filter(a => a && a.family === 'IPv4' && !a.internal).map(a => a!.address)
+        : [new URL(s.url).hostname]
+      for (const h of hosts) console.log(`SuperAgent UI: http://${h}:${port}/?token=${s.humanToken}`)
+      console.log(`  human link — keep private; ${envToken ? 'token from SUPERAGENT_HUMAN_TOKEN (stable across restarts)' : 'valid until restart (set SUPERAGENT_HUMAN_TOKEN for a stable link)'}. State: ${store.home}`)
+      if (!isLoopbackHost(host)) console.log('  listening beyond localhost: every request needs the token; traffic is plain HTTP — use it only inside WireGuard/VPN (or behind TLS).')
       await new Promise(() => {})
       return 0
     }

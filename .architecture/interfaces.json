@@ -393,6 +393,7 @@
       "createRuntime",
       "detectGates",
       "ensureBundleBuilt",
+      "isLoopbackHost",
       "listProjectDir",
       "narrate",
       "registerHeldOut",

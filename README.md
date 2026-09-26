@@ -16,7 +16,7 @@ Authoritative specs: [`DGX_SUPER_AGENT_FOUNDATION_FREEZE_v1.md`](DGX_SUPER_AGENT
 | [`NEXT_STEPS.md`](NEXT_STEPS.md) | prioritized follow-up work |
 | [`DECISIONS.md`](DECISIONS.md) | ADRs |
 | [`REDTEAM_REPORT.md`](REDTEAM_REPORT.md) | adversarial scenarios and their evidence |
-| [`CHANGELOG.md`](CHANGELOG.md) | release notes (cloud-v1.0) |
+| [`CHANGELOG.md`](CHANGELOG.md) | release notes (cloud-v1.0 + unreleased) |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | licenses |
 | `.architecture/` | this repo's own machine-generated architecture map |
 
@@ -27,4 +27,5 @@ pnpm smoke:dsh        # DSH core boots and runs tools (keyless)
 pnpm test:evals       # real-browser / real-DSH end-to-end scenarios
 pnpm redteam          # adversarial suite → REDTEAM_REPORT.md
 pnpm sa dsh setup && pnpm sa serve --browser   # API + UI on http://127.0.0.1:7788 (open the printed human link, type what you want)
+pnpm sa serve --host <wireguard-ip>            # same UI on your phone over WireGuard (chat with the Chief, receive/preview/download files)
 ```

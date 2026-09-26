@@ -3,8 +3,12 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api, eventStream, fmtModel, type ActivityLine, type ProjectDetail, type Project, type SAEvent, type Task } from './api.ts'
 import { ArchitectureView } from './ArchitectureView.tsx'
 import { HealthPanel, LearningPanel, PolicyPanel } from './Panels.tsx'
+import { ChiefChat } from './Chat.tsx'
+import { FilesPanel } from './Files.tsx'
+import { TranscriptDrawer } from './Transcript.tsx'
 
-type Tab = 'overview' | 'workers' | 'architecture' | 'learning' | 'policy' | 'events'
+type Tab = 'overview' | 'chat' | 'files' | 'workers' | 'architecture' | 'learning' | 'policy' | 'events'
+const TABS: Array<[Tab, string]> = [['overview', 'Overview'], ['chat', 'Chief'], ['files', 'Files'], ['workers', 'Workers'], ['architecture', 'Architecture'], ['learning', 'Learning'], ['policy', 'Policy'], ['events', 'Events']]
 
 export function App() {
   const [projects, setProjects] = useState<Project[]>([])
@@ -13,6 +17,8 @@ export function App() {
   const [tab, setTab] = useState<Tab>(() => (localStorage.getItem('superagent-tab') as Tab) ?? 'overview')
   const [events, setEvents] = useState<SAEvent[]>([])
   const [archKey, setArchKey] = useState(0)
+  const [chatKey, setChatKey] = useState(0)
+  const [filesKey, setFilesKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   const loadProjects = useCallback(() => api<Project[]>('GET', '/api/projects').then(p => {
@@ -34,6 +40,8 @@ export function App() {
     const stop = eventStream(current, e => {
       setEvents(prev => [e, ...prev].slice(0, 300))
       if (e.type.startsWith('architecture/') || e.type === 'receipt/created' || e.type === 'worker/started' || e.type === 'worker/exited') setArchKey(k => k + 1)
+      if (e.type === 'chief/message') setChatKey(k => k + 1)
+      if (e.type === 'file/shared') setFilesKey(k => k + 1)
       window.clearTimeout(timer)
       timer = window.setTimeout(loadDetail, 150)
     })
@@ -56,7 +64,7 @@ export function App() {
             </button>
           ))}
         </nav>
-        <AddProject onAdd={(name, root) => act(api('POST', '/api/projects', { name, root }))} />
+        <AddProject open={projects.length === 0} onAdd={(name, root) => act(api('POST', '/api/projects', { name, root }))} />
       </aside>
       <main>
         {error && <div className="error" onClick={() => setError(null)} data-testid="error">{error}</div>}
@@ -66,15 +74,17 @@ export function App() {
               <h2 data-testid="project-title">{detail.project.name}</h2>
               <code>{detail.project.root}</code>
               <div className="tabs">
-                {(['overview', 'workers', 'architecture', 'learning', 'policy', 'events'] as Tab[]).map(t => (
-                  <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)} data-testid={`tab-${t}`}>{t}</button>
+                {TABS.map(([t, label]) => (
+                  <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)} data-testid={`tab-${t}`}>{label}</button>
                 ))}
               </div>
             </header>
             {tab === 'overview' && <><Ask detail={detail} act={act} /><Activity projectId={detail.project.id} refreshKey={events.length} /><HealthPanel projectId={detail.project.id} refreshKey={archKey} /><Overview detail={detail} act={act} /></>}
             {tab === 'learning' && <LearningPanel projectId={detail.project.id} onError={setError} refreshKey={events.length} />}
             {tab === 'policy' && <PolicyPanel projectId={detail.project.id} onError={setError} />}
-            {tab === 'workers' && <Workers detail={detail} />}
+            {tab === 'chat' && <ChiefChat projectId={detail.project.id} refreshKey={chatKey} onError={setError} />}
+            {tab === 'files' && <FilesPanel projectId={detail.project.id} refreshKey={filesKey} onError={setError} />}
+            {tab === 'workers' && <Workers detail={detail} onError={setError} />}
             {tab === 'architecture' && <ArchitectureView projectId={detail.project.id} refreshKey={archKey} />}
             {tab === 'events' && <Events events={events} />}
           </>
@@ -126,16 +136,19 @@ function Activity({ projectId, refreshKey }: { projectId: string; refreshKey: nu
   )
 }
 
-function AddProject({ onAdd }: { onAdd: (name: string, root: string) => void }) {
+function AddProject({ onAdd, open }: { onAdd: (name: string, root: string) => void; open: boolean }) {
   const [name, setName] = useState('')
   const [root, setRoot] = useState('')
   const submit = (e: FormEvent) => { e.preventDefault(); if (name && root) { onAdd(name, root); setName(''); setRoot('') } }
   return (
-    <form className="add-project" onSubmit={submit}>
-      <input placeholder="project name" value={name} onChange={e => setName(e.target.value)} data-testid="new-project-name" />
-      <input placeholder="/absolute/path" value={root} onChange={e => setRoot(e.target.value)} data-testid="new-project-root" />
-      <button type="submit" data-testid="add-project">Add project</button>
-    </form>
+    <details className="add-project-box" open={open || undefined}>
+      <summary data-testid="add-project-toggle">＋ Add project</summary>
+      <form className="add-project" onSubmit={submit}>
+        <input placeholder="project name" value={name} onChange={e => setName(e.target.value)} data-testid="new-project-name" />
+        <input placeholder="/absolute/path" value={root} onChange={e => setRoot(e.target.value)} data-testid="new-project-root" />
+        <button type="submit" data-testid="add-project">Add project</button>
+      </form>
+    </details>
   )
 }
 
@@ -254,15 +267,17 @@ function HumanGateCard({ gate, task, onDecide }: { gate: ProjectDetail['humanGat
   )
 }
 
-function Workers({ detail }: { detail: ProjectDetail }) {
+function Workers({ detail, onError }: { detail: ProjectDetail; onError: (e: string) => void }) {
   const workers = [...detail.workers].sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+  const [open, setOpen] = useState<string | null>(null)
   return (
     <section className="card">
-      <h3>Workers / Loop</h3>
+      <h3>Workers / Loop <span className="muted">— tap a Worker to see exactly what it did</span></h3>
+      {open && <TranscriptDrawer projectId={detail.project.id} workerId={open} onClose={() => setOpen(null)} onError={onError} />}
       <table className="tasks" data-testid="workers">
         <thead><tr><th>Worker</th><th>Task</th><th>Attempt</th><th>Status</th><th>Model</th><th>Last report</th><th>Modules</th></tr></thead>
         <tbody>{workers.map(w => (
-          <tr key={w.id}>
+          <tr key={w.id} className="clickable" onClick={() => setOpen(w.id)} data-testid={`worker-${w.id}`}>
             <td><code>{w.id}</code><div className="muted">{w.executor}</div></td>
             <td>{detail.tasks.find(t => t.id === w.taskId)?.title ?? w.taskId}</td>
             <td>{w.attempt}</td>

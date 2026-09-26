@@ -51,3 +51,15 @@ export function eventStream(project: string | undefined, onEvent: (e: SAEvent) =
 }
 
 export const fmtModel = (m?: ModelRef): string => (m ? `${m.provider}/${m.model}` : '—')
+
+export interface SharedFile { id: string; name: string; size: number; mime: string; source: string; note?: string; from: { role: 'worker' | 'chief' | 'human'; workerId?: string; taskId?: string }; createdAt: string }
+export interface TreeEntry { name: string; path: string; type: 'dir' | 'file'; size?: number; mime?: string }
+export interface ChiefMessage { id: string; role: 'human' | 'chief' | 'tool' | 'wake' | 'error'; text: string; tool?: string; at: string }
+export interface TranscriptStep { type: 'text' | 'tool_call' | 'tool_result' | 'final'; callId?: string; tool?: string; input?: unknown; status?: string; result?: string; text?: string }
+export interface FileLink { url: string; expiresAt: string; name: string; mime: string; size: number }
+
+/** A short-lived link the browser (or phone) can open without the token. */
+export const fileLink = (project: string, target: { file: string } | { path: string }, download = false): Promise<FileLink> =>
+  api<FileLink>('POST', '/api/links', { project, ...target, download })
+
+export const fmtSize = (n: number): string => (n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB` : n < 1024 ** 3 ? `${(n / 1024 ** 2).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`)

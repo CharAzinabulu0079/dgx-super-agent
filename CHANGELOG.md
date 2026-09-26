@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased (after cloud-v1.0)
+
+- **Agents send you files:** `superagent_share_file` for Workers and the Chief. Only regular project files can be shared: no `.git`, no SuperAgent state and no links that escape the project, up to 200 MB. Each file is copied into the store and shows up in the UI's **Files** tab and in the activity feed.
+- **Preview and download from any browser, phone included.** Images, PDF, text/code, audio and video preview inline, and any file can be downloaded, through signed links that expire after 15 minutes. The links never contain the human token. HTML/SVG/XML are served sandboxed. Byte ranges are supported, so video plays on iOS.
+- **Project file browser:** read-only.
+- **Chief chat in the SuperAgent UI** (the **Chief** tab). It uses the same persistent Chief DSH session as the automatic wakes. Tool calls, replies and wake digests appear in one conversation.
+- **Worker transcripts:** tap a Worker to see its prompt and every DSH tool call, result and message.
+- **Remote access (WireGuard):** binding to a non-loopback `--host` requires the token for every request. `SUPERAGENT_HUMAN_TOKEN` keeps the login link stable across restarts, and `sa serve` prints the reachable URLs.
+- **Phone layout:** a responsive UI for small screens.
+- **Verification:** red-team RT-20 (file-sharing abuse); new evals for Chief chat, file sharing and transcripts (real DSH) and the phone-viewport UI. Totals: evals 12/12, red-team 20/20.
+
 ## cloud-v1.0 — 2026-09-25
 
 The last release built in Claude Cloud. Everything that can be implemented and verified without DGX hardware, a real model endpoint, OS-level Worker isolation or the Digital Human runtime is done; the rest is listed in `NEXT_STEPS.md`. DSH core modifications: **0** (pinned `@deepseek-ai/dsh@0.1.7-rc.2` = `477b4f4`).

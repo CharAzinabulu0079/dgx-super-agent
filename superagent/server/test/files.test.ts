@@ -104,3 +104,24 @@ test('API: share, list, browse, preview and download with safe headers and range
     await server.close()
   }
 })
+
+test('remote bind (LAN/WireGuard): no anonymous reads; signed links still open without a token', async () => {
+  const root = calcProject()
+  writeFileSync(join(root, 'shot.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+  const runtime = createRuntime({ home: tempDir('sa-home-'), executor: new ScriptedExecutor(() => {}) })
+  const server = await startServer({ runtime, port: 0, host: '0.0.0.0', humanToken: 'h'.repeat(24) })
+  const base = server.url.replace('0.0.0.0', '127.0.0.1')
+  try {
+    await runtime.addProject({ name: 'calc', root, defaultGates: [NODE_TEST_GATE] })
+    await assert.rejects(api(base, 'GET', '/api/projects'), (e: any) => e.status === 401)
+    await assert.rejects(api(base, 'GET', '/api/projects/calc/files'), (e: any) => e.status === 401)
+    assert.equal((await api(base, 'GET', '/api/projects', undefined, 'h'.repeat(24))).length, 1)
+    const link = await api(base, 'POST', '/api/links', { project: 'calc', path: 'shot.png' }, 'h'.repeat(24))
+    const res = await fetch(`${base}${link.url}`)
+    assert.equal(res.status, 200)
+    assert.equal(res.headers.get('content-type'), 'image/png')
+    assert.equal(link.url.includes('h'.repeat(24)), false, 'the human token is not in the link')
+  } finally {
+    await server.close()
+  }
+})

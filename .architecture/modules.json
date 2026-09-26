@@ -281,7 +281,7 @@
     "description": "Minimal Web/PWA",
     "protected": false,
     "declared": true,
-    "files": 13,
+    "files": 16,
     "gates": [
       "e2e-ui"
     ],
@@ -324,7 +324,7 @@
     "description": "End-to-end loop scenarios: browser E2E gate, DSH browser Worker, UI in a real browser",
     "protected": false,
     "declared": true,
-    "files": 13,
+    "files": 14,
     "gates": [
       "evals"
     ],
@@ -341,6 +341,7 @@
       "superagent/evals/test/learning-replay.integration.test.ts",
       "superagent/evals/test/model-route.integration.test.ts",
       "superagent/evals/test/pre-tool-guard.integration.test.ts",
+      "superagent/evals/test/ui-mobile.e2e.test.ts",
       "superagent/evals/test/ui.e2e.test.ts"
     ],
     "externalDeps": []
