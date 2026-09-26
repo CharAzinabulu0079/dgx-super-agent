@@ -246,3 +246,39 @@ textarea.mono { width: 100%; font-family: var(--mono); background: var(--code-bg
   .field { grid-template-columns: 1fr; gap: 4px; }
   .ask-row button { width: 100%; margin-left: 0; }
 }
+
+/* system, wizards */
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.health-dot { width: 12px; height: 12px; min-height: 0 !important; padding: 0; border-radius: 50%; border: none; margin-left: auto; margin-right: 2px; }
+.health-dot.green { background: var(--good); } .health-dot.yellow { background: var(--warn); } .health-dot.red { background: var(--bad); animation: pulse 1s infinite alternate; }
+.brand .icon { margin-left: 2px; }
+.add-project-btn { margin-top: auto; border-style: dashed; color: var(--muted); }
+.overall { font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+.overall.green { color: var(--good); background: color-mix(in srgb, var(--good) 15%, transparent); }
+.overall.yellow { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+.overall.red { color: var(--bad); background: color-mix(in srgb, var(--bad) 15%, transparent); }
+.health-group h4, [data-testid="models"] h4 { margin: 16px 0 6px; text-transform: capitalize; color: var(--muted); font-size: 12px; letter-spacing: .04em; }
+.checks { list-style: none; padding: 0; margin: 0; }
+.check { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.check-icon { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; }
+.check.ok .check-icon { background: var(--good); } .check.warn .check-icon { background: var(--warn); } .check.fail .check-icon { background: var(--bad); }
+.fix { margin-top: 4px; font-size: 13px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.preset-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.preset-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.preset-card.active { border-color: var(--accent); }
+.small-text { font-size: 11px; color: var(--muted); word-break: break-word; }
+.warn-text { color: var(--warn); font-size: 12px; } .ok-text { color: var(--good); }
+.warn-box { border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 9%, transparent); padding: 8px 10px; border-radius: var(--radius-sm); margin: 6px 0; display: flex; flex-direction: column; gap: 6px; }
+.ok-box { border: 1px solid color-mix(in srgb, var(--good) 45%, transparent); background: color-mix(in srgb, var(--good) 9%, transparent); padding: 8px 10px; border-radius: var(--radius-sm); margin: 6px 0; }
+.wizard { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; box-shadow: none; }
+.gate-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.gate-list code { background: var(--code-bg); padding: 1px 6px; border-radius: 5px; }
+.picker { border: 1px solid var(--border); border-radius: var(--radius-sm); max-height: 40vh; overflow: auto; }
+.picker-head { position: sticky; top: 0; background: rgb(var(--panel-rgb)); display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.picker ul { list-style: none; margin: 0; padding: 4px 8px; }
+.picker li { display: flex; gap: 8px; align-items: center; padding: 3px 0; }
+.picker li .small { margin-left: auto; }
+a.button { display: inline-block; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--fg); text-decoration: none; }
+.upload-inline { font-size: 13px; color: var(--accent); cursor: pointer; } .upload-inline input { display: none; }
+@media (max-width: 760px) { .preset-cards { grid-template-columns: 1fr; } .modal-body header .seg { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; } }

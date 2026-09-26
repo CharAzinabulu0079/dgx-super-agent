@@ -6,6 +6,9 @@ import { BackgroundLayer } from './Background.tsx'
 import { AppearancePanel } from './Appearance.tsx'
 import { TerminalPanel } from './Terminal.tsx'
 import { inline } from './Markdown.tsx'
+import { SystemPanel, type SystemTab } from './System.tsx'
+import { ProjectWizard } from './ProjectWizard.tsx'
+import type { HealthReport, PresetView } from './api.ts'
 import { ArchitectureView } from './ArchitectureView.tsx'
 import { HealthPanel, LearningPanel, PolicyPanel } from './Panels.tsx'
 import { ChiefChat } from './Chat.tsx'
@@ -31,14 +34,21 @@ export function App() {
   const [filesKey, setFilesKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [showAppearance, setShowAppearance] = useState(false)
+  const [system, setSystem] = useState<SystemTab | null>(null)
+  const [wizard, setWizard] = useState(false)
+  const [health, setHealth] = useState<HealthReport['overall'] | null>(null)
+  const loadHealth = useCallback(() => api<HealthReport>('GET', '/api/system/health').then(h => setHealth(h.overall), () => setHealth(null)), [])
+  useEffect(() => { void loadHealth() }, [loadHealth])
   const [more, setMore] = useState(false)
   const [cmdKey, setCmdKey] = useState(0)
   const [activity, setActivity] = useState<ActivityEvent[]>([])
   const [chiefFeed, setChiefFeed] = useState<Array<{ seq: number; projectId: string; role: string; text: string }>>([])
   const look = useAppearance(setError)
 
+  const [projectsLoaded, setProjectsLoaded] = useState(false)
   const loadProjects = useCallback(() => api<Project[]>('GET', '/api/projects').then(p => {
     setProjects(p)
+    setProjectsLoaded(true)
     if (!current && p[0]) setCurrent(p[0].id)
   }, e => setError(String(e))), [current])
   const loadDetail = useCallback(() => {
@@ -80,11 +90,15 @@ export function App() {
     <BackgroundLayer a={look.effective} url={bgUrl} theme={look.resolvedTheme}
       feed={{ activity, chief: chiefFeed, project: detail ? { id: detail.project.id, name: detail.project.name } : null }}
       onChat={chatAsHuman} onNotice={setError} />
+    {system && <SystemPanel initial={system} onClose={() => { setSystem(null); void loadHealth() }} onError={setError} />}
+    {(wizard || (projectsLoaded && projects.length === 0)) && !system && <ProjectWizard onClose={() => setWizard(false)} onCreated={id => { setWizard(false); setCurrent(id); void loadProjects() }} onError={setError} />}
     {showAppearance && <AppearancePanel view={look.view} current={look.effective} isLocal={look.isLocal} onSave={look.save} onReload={look.reload} onClose={() => setShowAppearance(false)} onError={setError} />}
     <div className="layout">
       <aside className="sidebar">
         <div className="brand">
           <h1><span className="brand-mark">✳</span> SuperAgent</h1>
+          {health && <button className={`health-dot ${health}`} title={`System health: ${health}`} aria-label={`System health ${health}`} onClick={() => setSystem('health')} data-testid="health-dot" />}
+          <button className="icon" title="System" aria-label="System" onClick={() => setSystem('health')} data-testid="open-system">⚙</button>
           <button className="icon" title="Appearance" aria-label="Appearance" onClick={() => setShowAppearance(true)} data-testid="open-appearance">◐</button>
         </div>
         <nav data-testid="project-list">
@@ -95,7 +109,7 @@ export function App() {
             </button>
           ))}
         </nav>
-        <AddProject open={projects.length === 0} onAdd={(name, root) => act(api('POST', '/api/projects', { name, root }))} />
+        <button className="add-project-btn" onClick={() => setWizard(true)} data-testid="add-project-toggle">＋ Add project</button>
       </aside>
       <main>
         {error && <div className="error" onClick={() => setError(null)} data-testid="error">{error}</div>}
@@ -119,10 +133,11 @@ export function App() {
                 <div className="more-sheet" data-testid="more-sheet">
                   {TABS.filter(([t]) => !PRIMARY.includes(t)).map(([t, label, icon]) => <button key={t} onClick={() => go(t)} data-testid={`more-${t}`}><span className="nav-icon">{icon}</span>{label}</button>)}
                   <button onClick={() => { setMore(false); setShowAppearance(true) }} data-testid="more-appearance"><span className="nav-icon">◐</span>Appearance</button>
+                  <button onClick={() => { setMore(false); setSystem('health') }} data-testid="more-system"><span className="nav-icon">⚙</span>System</button>
                 </div>
               )}
             </nav>
-            {tab === 'overview' && <><Ask detail={detail} act={act} /><Activity projectId={detail.project.id} refreshKey={events.length} /><HealthPanel projectId={detail.project.id} refreshKey={archKey} /><Overview detail={detail} act={act} /></>}
+            {tab === 'overview' && <><Ask detail={detail} act={act} onHealth={() => setSystem('health')} /><Activity projectId={detail.project.id} refreshKey={events.length} /><HealthPanel projectId={detail.project.id} refreshKey={archKey} /><Overview detail={detail} act={act} /></>}
             {tab === 'learning' && <LearningPanel projectId={detail.project.id} onError={setError} refreshKey={events.length} />}
             {tab === 'policy' && <PolicyPanel projectId={detail.project.id} onError={setError} />}
             {tab === 'chat' && <ChiefChat projectId={detail.project.id} refreshKey={chatKey} onError={setError} />}
@@ -140,26 +155,37 @@ export function App() {
 }
 
 /** The one box: describe the change; the Chief plans it, Workers build it, checks decide. */
-function Ask({ detail, act }: { detail: ProjectDetail; act: (p: Promise<unknown>) => void }) {
+function Ask({ detail, act, onHealth }: { detail: ProjectDetail; act: (p: Promise<unknown>) => void; onHealth: () => void }) {
   const [request, setRequest] = useState('')
   const [review, setReview] = useState(false)
+  const [preset, setPreset] = useState('')
+  const [presets, setPresets] = useState<PresetView[]>([])
   const [busy, setBusy] = useState(false)
+  const [blocked, setBlocked] = useState<string | null>(null)
+  useEffect(() => { api<{ presets: PresetView[] }>('GET', '/api/system/presets').then(r => setPresets(r.presets.filter(p => p.available)), () => {}) }, [])
   const gates = detail.project.defaultGates ?? []
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
+  const send = (force = false) => {
     if (!request.trim() || busy) return
     setBusy(true)
-    act(api('POST', `/api/projects/${detail.project.id}/requests`, { request, review }).then(() => setRequest('')).finally(() => setBusy(false)))
+    setBlocked(null)
+    api('POST', `/api/projects/${detail.project.id}/requests`, { request, review, force, ...(preset ? { preset } : {}) })
+      .then(() => { setRequest(''); act(Promise.resolve()) }, e => { const m = String((e as Error).message ?? e); if (/^not ready/.test(m)) setBlocked(m); else act(Promise.reject(e)) })
+      .finally(() => setBusy(false))
   }
+  const submit = (e: FormEvent) => { e.preventDefault(); send() }
   return (
     <form className="card ask" onSubmit={submit} data-testid="ask">
       <h3>What do you want?</h3>
       <textarea placeholder="Describe the change in plain words, e.g. “the signup form should reject emails without an @”" value={request} onChange={e => setRequest(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(e) }} data-testid="ask-input" rows={3} />
       <div className="ask-row">
         <label><input type="checkbox" checked={review} onChange={e => setReview(e.target.checked)} data-testid="ask-review" /> also have a reviewer check the change</label>
+        {presets.length > 0 && <select value={preset} onChange={e => setPreset(e.target.value)} title="Models for this request only" data-testid="ask-preset">
+          <option value="">models: current</option>{presets.map(p => <option key={p.id} value={p.id}>this time: {p.name}</option>)}
+        </select>}
         <span className="muted">checks: {gates.length ? gates.map(g => g.id + (g.heldOut ? ' (hidden)' : '')).join(', ') : 'none — add a test gate'}</span>
         <button type="submit" disabled={busy || !request.trim()} data-testid="ask-submit">{busy ? 'Planning…' : 'Go'}</button>
       </div>
+      {blocked && <div className="warn-box" data-testid="ask-blocked">{blocked}<div className="row"><button type="button" onClick={onHealth}>Open Health</button><button type="button" className="danger" onClick={() => send(true)} data-testid="ask-force">Run anyway</button></div></div>}
     </form>
   )
 }
@@ -181,21 +207,6 @@ function Activity({ projectId, refreshKey }: { projectId: string; refreshKey: nu
   )
 }
 
-function AddProject({ onAdd, open }: { onAdd: (name: string, root: string) => void; open: boolean }) {
-  const [name, setName] = useState('')
-  const [root, setRoot] = useState('')
-  const submit = (e: FormEvent) => { e.preventDefault(); if (name && root) { onAdd(name, root); setName(''); setRoot('') } }
-  return (
-    <details className="add-project-box" open={open || undefined}>
-      <summary data-testid="add-project-toggle">＋ Add project</summary>
-      <form className="add-project" onSubmit={submit}>
-        <input placeholder="project name" value={name} onChange={e => setName(e.target.value)} data-testid="new-project-name" />
-        <input placeholder="/absolute/path" value={root} onChange={e => setRoot(e.target.value)} data-testid="new-project-root" />
-        <button type="submit" data-testid="add-project">Add project</button>
-      </form>
-    </details>
-  )
-}
 
 function Overview({ detail, act }: { detail: ProjectDetail; act: (p: Promise<unknown>) => void }) {
   const pid = detail.project.id

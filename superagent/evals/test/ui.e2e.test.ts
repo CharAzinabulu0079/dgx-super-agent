@@ -41,8 +41,11 @@ test('UI: projects, goal, tasks with model selection, live loop, human gate, arc
   try {
     await page.goto(`${server.url}/?token=${server.humanToken}`)
     // Add the project through the UI.
-    await page.getByTestId('new-project-name').fill('Calc')
+    // Project wizard (opens by itself when there is no project): folder → scan → create.
     await page.getByTestId('new-project-root').fill(root)
+    await page.getByTestId('scan-project').click()
+    await page.getByTestId('proposed-gates').waitFor()
+    await page.getByTestId('new-project-name').fill('calc')
     await page.getByTestId('add-project').click()
     await page.getByTestId('project-calc').click()
     await page.getByTestId('project-title').filter({ hasText: 'Calc' }).waitFor()
@@ -141,8 +144,11 @@ test('UI one-box: describe a change → planned, built, checked, narrated', { ti
   page.on('pageerror', e => consoleErrors.push(String(e)))
   try {
     await page.goto(`${server.url}/?token=${server.humanToken}`)
-    await page.getByTestId('new-project-name').fill('Calc')
+    // Project wizard (opens by itself when there is no project): folder → scan → create.
     await page.getByTestId('new-project-root').fill(root)
+    await page.getByTestId('scan-project').click()
+    await page.getByTestId('proposed-gates').waitFor()
+    await page.getByTestId('new-project-name').fill('calc')
     await page.getByTestId('add-project').click()
     await page.getByTestId('project-calc').click()
     await page.getByTestId('ask').getByText('checks: unit, architecture').waitFor()

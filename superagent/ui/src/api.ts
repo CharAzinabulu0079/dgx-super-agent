@@ -95,3 +95,17 @@ export function activityStream(project: string | undefined, onLine: (a: Activity
   es.addEventListener('activity', m => onLine(JSON.parse((m as MessageEvent).data)))
   return () => es.close()
 }
+
+export interface HealthCheck { id: string; group: string; status: 'ok' | 'warn' | 'fail'; title: string; detail: string; fix?: string }
+export interface HealthReport { overall: 'green' | 'yellow' | 'red'; checkedAt: string; deep: boolean; checks: HealthCheck[] }
+export interface ProviderView { name: string; api?: string; baseURL?: string; models: string[]; hasKey: boolean; isLocalDefault: boolean }
+export interface PresetView { id: string; name: string; description: string; models: Record<string, string>; available: boolean; problems: string[]; active: boolean }
+export interface BackupInfo { id: string; size: number; url: string; manifest: { label: string; createdAt: string; appVersion?: string; commit?: string; includes: { secrets: boolean; sessions: boolean } } }
+export interface ProposedGate { spec: { id: string; kind: string; command?: string }; reason: string; recommended: boolean }
+export interface ProjectScan {
+  root: string; name: string; registeredAs?: string; files: number; truncated: boolean; packageManager?: string
+  git: { isRepo: boolean; branch?: string; dirty?: number; hasCommits?: boolean; remote?: string }
+  languages: Array<{ name: string; files: number }>; gates: ProposedGate[]; browser: { needed: boolean; reason?: string }
+  architecture: { declared: boolean; graph: boolean }; warnings: string[]
+}
+export interface CleanupItem { kind: string; label: string; count: number; bytes: number; detail: string }
