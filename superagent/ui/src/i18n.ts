@@ -60,6 +60,9 @@ const PATTERNS: Array<[RegExp, string]> = [
   [/^required gates not passing: (.*)$/, '必需的检查没有通过：$1'],
   [/^all (\d+) required gates passed$/, '全部 $1 个必需检查都通过了'],
   [/^not ready: (.*)$/s, '还没准备好：$1'],
+  [/^(.+) GB free$/, '剩余 $1 GB'],
+  [/^listening on (.+); token required for every request$/, '监听 $1；每个请求都要令牌'],
+  [/^(\d+) wake\(s\) could not be delivered$/, '$1 次唤醒没能送达'],
 ]
 
 /** Task / goal / worker / candidate states. */
@@ -158,6 +161,20 @@ const ZH: Record<string, string> = {
   'Models → add a provider and mark it "local default"': '模型 → 添加一个模型服务器，并设为“本地默认”', 're-register the project with its new path': '用新路径重新登记这个项目',
   'System → Cleanup': '系统 → 清理',
 
+  'Local access only': '仅本机访问', 'Remote access on': '已开启远程访问', 'listening on 127.0.0.1': '只监听 127.0.0.1',
+  'set SUPERAGENT_HUMAN_TOKEN so the phone link survives restarts': '设置 SUPERAGENT_HUMAN_TOKEN，让手机链接重启后仍有效',
+  'chat, planner, reviewer and auto-wake available': '聊天、规划、审查和自动唤醒都可用', 'E2E gates and browser Workers will fail': '端到端检查和浏览器 Worker 会失败',
+  'no Chief chat, planning (falls back to one task), reviewer or auto-wake': '没有 Chief 聊天、规划（退回为单个任务）、审查和自动唤醒',
+  'no failed deliveries': '没有投递失败', 'no orphaned Workers or stale leases': '没有孤儿 Worker 或失效的锁', 'owner-only': '仅所有者可读',
+  'required for verification snapshots': '验证快照需要它', 'source is newer than the build': '源码比构建产物新', 'the API works, the UI does not': 'API 能用，界面不能用',
+  'superagent-worker (SuperAgent guard + tools)': 'superagent-worker（SuperAgent 防护 + 工具）', 'tasks are only checked for architecture drift': '任务只检查了架构偏离（没有测试命令）',
+  'using built-in defaults': '使用内置默认值', 'verification integrity needs git snapshots': '验证完整性需要 git 快照',
+  'Workers would run without the SuperAgent pre-tool guard': 'Worker 会在没有 SuperAgent 执行前防护的情况下运行',
+  'disabled (SUPERAGENT_SANDBOX=off)': '已关闭（SUPERAGENT_SANDBOX=off）',
+  'bubblewrap hides secrets, held-out tests, backups and ~/.config/superagent from Workers': '已用 bubblewrap 对 Worker 隐藏密钥、隐藏测试、备份和 ~/.config/superagent',
+  'bubblewrap (bwrap) not usable: Workers can read secrets and held-out tests as the server user': 'bubblewrap（bwrap）不可用：Worker 能以服务器用户身份读取密钥和隐藏测试',
+  'sudo apt install bubblewrap (or run Workers as a separate OS user, NEXT_STEPS P0 #2)': 'sudo apt install bubblewrap（或让 Worker 以单独的系统用户运行）',
+  'npx playwright install chromium (or set SUPERAGENT_CHROMIUM)': 'npx playwright install chromium（或设置 SUPERAGENT_CHROMIUM）',
   // panels
   'Model policy': '模型策略', 'Defaults ← global ← project ← task pin. Un-pinned tasks pick up changes on their next attempt — no model call needed.': '优先级：默认 ← 全局 ← 项目 ← 任务固定。没固定模型的任务下次尝试时自动用新设置，不需要调用模型。',
   'All projects': '所有项目', 'This project': '本项目', 'Global default': '全局默认', 'Project override': '项目覆盖', 'Effective here': '实际生效',

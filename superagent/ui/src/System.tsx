@@ -55,7 +55,7 @@ function Health({ onError, go }: { onError: (e: string) => void; go: (t: SystemT
           <ul className="checks">{r!.checks.filter(c => c.group === g).map(c => (
             <li key={c.id} className={`check ${c.status}`} data-testid={`check-${c.id}`}>
               <span className="check-icon">{ICON[c.status]}</span>
-              <div className="grow"><strong>{tx(c.title)}</strong> <span className="muted">{c.detail}</span>
+              <div className="grow"><strong>{tx(c.title)}</strong> <span className="muted">{tx(c.detail)}</span>
                 {c.fix && c.status !== 'ok' && (/^(sa |pnpm |npx |git |chmod )/.test(c.fix)
                   ? <CodeBlock lang="bash" code={c.fix.replace(/^sa /, 'pnpm sa ')} />
                   : <div className="fix">→ {tx(c.fix)}{/Cleanup/.test(c.fix) && <button className="small" onClick={() => go('cleanup')}>{t('Open Cleanup')}</button>}{/Models/.test(c.fix) && <button className="small" onClick={() => go('models')}>{t('Open Models')}</button>}</div>)}
