@@ -58,6 +58,8 @@ export interface PlanGoalOptions {
   readonly review?: boolean
   readonly architecture?: string
   readonly signal?: AbortSignal
+  /** Policy fragment for every planned task (e.g. a per-request model override); pinned on the tasks. */
+  readonly policy?: unknown
 }
 
 export interface PlannedGoal {
@@ -122,7 +124,7 @@ export class Chief {
     this.store.updateGoal(projectId, goal.id, { request })
     this.store.emitTyped('request/submitted', projectId, { request: request.slice(0, 2_000), planner: plan.planner, note: plan.note, tasks: plan.tasks.map(t => t.title) }, { goalId: goal.id })
     const tasks = plan.tasks.map(t => this.addTask(projectId, goal.id, {
-      title: t.title, instructions: t.instructions, scope: { paths: [...t.paths], modules: [...t.modules] }, gates: [...t.gates], review: options.review || t.review,
+      title: t.title, instructions: t.instructions, scope: { paths: [...t.paths], modules: [...t.modules] }, gates: [...t.gates], review: options.review || t.review, policy: options.policy,
     }, 'agent'))
     return { goal: this.store.getGoal(projectId, goal.id)!, tasks, plan }
   }

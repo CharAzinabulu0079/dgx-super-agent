@@ -371,6 +371,12 @@ export class StateStore {
     }
   }
 
+  /** Task ids with a lease file in the project (live or stale). */
+  listLeases(pid: ProjectId): TaskId[] {
+    const dir = join(this.projectDir(pid), 'leases')
+    return existsSync(dir) ? readdirSync(dir).filter(f => f.endsWith('.lock')).map(f => f.slice(0, -5)) : []
+  }
+
   releaseLease(pid: ProjectId, taskId: TaskId): void {
     const holder = this.readLease(pid, taskId)
     if (holder?.pid !== process.pid) return

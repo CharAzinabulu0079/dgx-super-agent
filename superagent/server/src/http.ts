@@ -21,6 +21,10 @@ import { ShareError, mimeOf as mimeOfName, resolveProjectFile, shareFile, shared
 import type { ChiefMessage, SharedFile } from '@superagent/contracts'
 import { workerTranscript } from './transcript.ts'
 import { CommandError, CommandRunner } from './commands.ts'
+import { registerSystemRoutes } from './system-routes.ts'
+import { preflightChecks, type HealthContext } from './ops/health.ts'
+import { REPO_ROOT } from '@superagent/testkit'
+import { presetViews } from './ops/presets.ts'
 import { AppearanceError, GRADIENT_PRESETS, MAX_BACKGROUND_BYTES, deleteBackground, findBackground, listBackgrounds, loadAppearance, saveAppearance, saveBackground } from './appearance.ts'
 import { ChiefDriver, DshChiefChannel, GateRegistryError, WakeMonitor, type ChiefChannel } from '@superagent/chief-worker'
 
@@ -60,6 +64,8 @@ export interface ServerOptions {
   readonly watchDebounceMs?: number
   /** Recover interrupted tasks and resume requested goal runs on start (`sa serve`). */
   readonly resumeGoals?: boolean
+  /** The human token is stable across restarts (SUPERAGENT_HUMAN_TOKEN) — shown by the health check. */
+  readonly stableToken?: boolean
 }
 
 export interface RunningServer {
@@ -70,11 +76,14 @@ export interface RunningServer {
   close(): Promise<void>
 }
 
-class HttpError extends Error {
+export class HttpError extends Error {
   readonly status: number
-  constructor(status: number, message: string) {
+  /** Extra JSON fields for the error response (e.g. failing health checks). */
+  readonly data?: Record<string, unknown>
+  constructor(status: number, message: string, data?: Record<string, unknown>) {
     super(message)
     this.status = status
+    this.data = data
   }
 }
 
@@ -127,6 +136,16 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     return p
   }
   const goals = runtime.goals
+  const healthCtx = (): HealthContext => ({
+    store, repoRoot: REPO_ROOT, dshHome: join(store.home, 'dsh-home'), usesDsh: engine.executor.name === 'dsh-headless',
+    isTaskRunning: id => engine.isRunning(id), host: options.host ?? '127.0.0.1', stableToken: options.stableToken,
+  })
+  /** Refuse to start work while something is red (e.g. no DSH Worker profile); `force` overrides. */
+  const preflight = (pid: string, force: unknown): void => {
+    if (force === true) return
+    const failing = preflightChecks(healthCtx(), pid).filter(c => c.status === 'fail')
+    if (failing.length) throw new HttpError(412, `not ready: ${failing.map(c => `${c.title}${c.fix ? ` (fix: ${c.fix})` : ''}`).join('; ')}`, { checks: failing })
+  }
   const links = new LinkSigner()
   const commands = new CommandRunner(store)
   let chiefDriver: ChiefDriver | undefined
@@ -177,8 +196,9 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
       throw error
     }
   })
-  route('POST', '/api/projects/:pid/goals/:gid/run', ({ params }) => {
+  route('POST', '/api/projects/:pid/goals/:gid/run', ({ params, body }) => {
     const p = project(params.pid!)
+    preflight(p.id, body?.force)
     // One goal per project tree at a time (concurrent Workers would mix their changes);
     // a second request is queued durably and starts when the current goal ends.
     const r = goals.start(p.id, params.gid!)
@@ -191,7 +211,20 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     const p = project(params.pid!)
     if (typeof body?.request !== 'string' || !body.request.trim()) throw new HttpError(400, 'request is required')
     if (body.request.length > 20_000) throw new HttpError(413, 'request too long')
-    const planned = await chief.planGoal(p.id, body.request.trim(), { planner: runtime.planner, review: body.review === true, architecture: runtime.architectureSummary(p) })
+    if (body.run !== false) preflight(p.id, body.force)
+    // Quick model override for this request: a preset id or a role → model map; pinned on its tasks.
+    let policy: unknown
+    if (typeof body.preset === 'string' || (body.models && typeof body.models === 'object')) {
+      const models = typeof body.preset === 'string' ? presetViews(store.home).find(x => x.id === body.preset)?.models : body.models
+      if (!models) throw new HttpError(400, `unknown preset ${body.preset}`)
+      const parsed: Record<string, unknown> = {}
+      for (const role of ['worker', 'reviewer', 'escalation', 'planner'] as const) {
+        const spec = (models as Record<string, unknown>)[role]
+        if (typeof spec === 'string' && spec) parsed[role] = parseModelSpec(spec) ?? (() => { throw new HttpError(400, `invalid model for ${role}: ${spec}`) })()
+      }
+      policy = { model: parsed }
+    }
+    const planned = await chief.planGoal(p.id, body.request.trim(), { planner: runtime.planner, review: body.review === true, architecture: runtime.architectureSummary(p), policy })
     const run = body.run === false ? { started: false, queued: false } : goals.start(p.id, planned.goal.id)
     return { ...planned, run }
   })
@@ -336,6 +369,8 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
     deleteBackground(store.home, params.id!)
     return appearanceView()
   }), 'human')
+
+  registerSystemRoutes(route, { store, healthCtx })
 
   // ---------------------------------------------------------------- human-run commands (▷ on code blocks)
   const commandErrors = <T>(fn: () => T): T => {
@@ -516,7 +551,7 @@ export async function startServer(input: ServerOptions): Promise<RunningServer> 
       throw new HttpError(404, 'not found')
     } catch (error) {
       const status = error instanceof HttpError ? error.status : /not found/.test(String(error)) ? 404 : 500
-      sendJson(res, status, { error: (error as Error).message ?? String(error) })
+      sendJson(res, status, { error: (error as Error).message ?? String(error), ...(error instanceof HttpError ? error.data : {}) })
     }
   }
 
