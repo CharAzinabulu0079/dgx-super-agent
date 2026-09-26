@@ -108,36 +108,87 @@ function Models({ onError }: { onError: (e: string) => void }) {
   )
 }
 
+/** Common providers: one click fills protocol, address and a name (models are suggestions; edit freely). */
+const TEMPLATES: Array<{ id: string; label: string; api: string; baseURL: string; models: string[]; keyUrl?: string }> = [
+  { id: 'local', label: 'Local server (vLLM / llama.cpp / Ollama)', api: 'openai-completions', baseURL: 'http://127.0.0.1:8000/v1', models: [] },
+  { id: 'deepseek-api', label: 'DeepSeek', api: 'openai-completions', baseURL: 'https://api.deepseek.com/v1', models: ['deepseek-chat', 'deepseek-reasoner'], keyUrl: 'https://platform.deepseek.com/api_keys' },
+  { id: 'openai', label: 'OpenAI', api: 'openai-completions', baseURL: 'https://api.openai.com/v1', models: [], keyUrl: 'https://platform.openai.com/api-keys' },
+  { id: 'anthropic', label: 'Anthropic (Claude)', api: 'anthropic-messages', baseURL: 'https://api.anthropic.com/v1', models: ['claude-opus-5-5', 'claude-sonnet-5', 'claude-haiku-4-5'], keyUrl: 'https://console.anthropic.com/settings/keys' },
+  { id: 'openrouter', label: 'OpenRouter', api: 'openai-completions', baseURL: 'https://openrouter.ai/api/v1', models: [], keyUrl: 'https://openrouter.ai/keys' },
+  { id: 'bailian', label: 'Alibaba Bailian (Qwen)', api: 'openai-completions', baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: ['qwen-max', 'qwen-plus', 'qwen3-coder-plus'] },
+  { id: 'moonshot', label: 'Moonshot (Kimi)', api: 'openai-completions', baseURL: 'https://api.moonshot.cn/v1', models: [] },
+  { id: 'zhipu', label: 'Zhipu (GLM)', api: 'openai-completions', baseURL: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-4.6', 'glm-4.5-air'] },
+  { id: 'siliconflow', label: 'SiliconFlow', api: 'openai-completions', baseURL: 'https://api.siliconflow.cn/v1', models: [] },
+  { id: 'volcengine', label: 'Volcengine Ark (Doubao)', api: 'openai-completions', baseURL: 'https://ark.cn-beijing.volces.com/api/v3', models: [] },
+]
+/** Names the server keeps for DSH's own routes. */
+const RESERVED = ['local-default', 'deepseek', 'deepseek-official']
+/** Any typed name → a valid provider id (lowercase, digits, dashes; never a reserved one). */
+export function providerId(raw: string): string {
+  const id = raw.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'provider'
+  return RESERVED.includes(id) ? `${id}-api` : /^[a-z0-9]/.test(id) ? id : `p-${id}`
+}
+
 function ProviderWizard({ onDone, onError }: { onDone: () => void; onError: (e: string) => void }) {
+  const [tpl, setTpl] = useState('local')
   const [f, setF] = useState({ name: 'dgx-local', api: 'openai-completions', baseURL: 'http://127.0.0.1:8000/v1', apiKey: '' })
   const [probe, setProbe] = useState<{ ok: boolean; kind: string; detail: string; models: string[]; latencyMs: number } | null>(null)
   const [picked, setPicked] = useState<string[]>([])
+  const [filter, setFilter] = useState('')
+  const [manual, setManual] = useState('')
   const [tests, setTests] = useState<Record<string, string>>({})
   const [local, setLocal] = useState(true)
   const [busy, setBusy] = useState(false)
+  // Errors are shown here, inside the wizard, not only in the page banner.
+  const [err, setErr] = useState<string | null>(null)
+  const fail = (e: unknown) => { const m = tx(String((e as Error)?.message ?? e).replace(/^Error: /, '')); setErr(m); onError(m) }
   const conn = { api: f.api, baseURL: f.baseURL, apiKey: f.apiKey || undefined }
-  const doProbe = () => { setBusy(true); api<NonNullable<typeof probe>>('POST', '/api/system/providers/probe', conn).then(p => { setProbe(p); setPicked(p.models.slice(0, 1)) }, e => onError(String(e))).finally(() => setBusy(false)) }
-  const test = (m: string) => api<{ ok: boolean; detail: string }>('POST', '/api/system/providers/test', { ...conn, model: m }).then(t => setTests(x => ({ ...x, [m]: `${t.ok ? '✓' : '✕'} ${t.detail}` })), e => onError(String(e)))
-  const save = () => { setBusy(true); api('POST', '/api/system/providers', { ...conn, name: f.name, apiKey: f.apiKey, models: picked, makeLocalDefault: local }).then(onDone, e => onError(String(e))).finally(() => setBusy(false)) }
+  const pickTemplate = (id: string) => {
+    const x = TEMPLATES.find(y => y.id === id)!
+    setTpl(id); setProbe(null); setErr(null); setTests({})
+    setF({ ...f, name: id === 'local' ? 'dgx-local' : x.id, api: x.api, baseURL: x.baseURL })
+    setPicked(x.models.slice(0, 1)); setLocal(id === 'local')
+  }
+  const doProbe = () => {
+    setBusy(true); setErr(null)
+    api<NonNullable<typeof probe>>('POST', '/api/system/providers/probe', conn).then(p => { setProbe(p); if (p.ok && !picked.length) setPicked(p.models.slice(0, 1)) }, fail).finally(() => setBusy(false))
+  }
+  const test = (m: string) => api<{ ok: boolean; detail: string }>('POST', '/api/system/providers/test', { ...conn, model: m }).then(r => setTests(x => ({ ...x, [m]: `${r.ok ? '✓' : '✕'} ${tx(r.detail)}` })), fail)
+  const addManual = () => { const m = manual.trim(); if (m && !picked.includes(m)) setPicked(p => [...p, m]); setManual('') }
+  const save = () => {
+    setBusy(true); setErr(null)
+    api('POST', '/api/system/providers', { ...conn, name: providerId(f.name), apiKey: f.apiKey, models: picked, makeLocalDefault: local }).then(onDone, fail).finally(() => setBusy(false))
+  }
+  const listed = probe?.ok ? probe.models : []
+  const shown = listed.filter(m => m.toLowerCase().includes(filter.toLowerCase())).slice(0, 200)
+  const suggestions = TEMPLATES.find(x => x.id === tpl)?.models ?? []
+  const choices = [...new Set([...picked, ...shown, ...(listed.length ? [] : suggestions)])]
+  const keyUrl = TEMPLATES.find(x => x.id === tpl)?.keyUrl
   return (
     <div className="card wizard" data-testid="provider-wizard">
-      <div className="field"><div className="field-label">{t('Name')}</div><input value={f.name} onChange={e => setF({ ...f, name: e.target.value.toLowerCase() })} data-testid="prov-name" /></div>
+      <div className="provider-templates">{TEMPLATES.map(x => <button key={x.id} className={`small ${tpl === x.id ? 'on' : ''}`} onClick={() => pickTemplate(x.id)} data-testid={`tpl-${x.id}`}>{t(x.label)}</button>)}</div>
+      <div className="field"><div className="field-label">{t('Name')}</div><input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} data-testid="prov-name" />
+        {providerId(f.name) !== f.name && <div className="muted">{t('saved as {id}', { id: providerId(f.name) })}</div>}</div>
       <div className="field"><div className="field-label">{t('Protocol')}</div>
         <select value={f.api} onChange={e => setF({ ...f, api: e.target.value })}><option value="openai-completions">{t('OpenAI-compatible')}</option><option value="anthropic-messages">{t('Anthropic-compatible')}</option></select></div>
       <div className="field"><div className="field-label">{t('Base URL')}</div><input className="mono" value={f.baseURL} onChange={e => { setF({ ...f, baseURL: e.target.value }); setProbe(null) }} data-testid="prov-url" /></div>
-      <div className="field"><div className="field-label">{t('API key')}</div><input type="password" autoComplete="off" placeholder={t('(none for most local servers)')} value={f.apiKey} onChange={e => { setF({ ...f, apiKey: e.target.value }); setProbe(null) }} data-testid="prov-key" /></div>
+      <div className="field"><div className="field-label">{t('API key')}</div><div>
+        <input type="password" autoComplete="off" placeholder={t('(none for most local servers)')} value={f.apiKey} onChange={e => { setF({ ...f, apiKey: e.target.value }); setProbe(null) }} data-testid="prov-key" />
+        {keyUrl && <div className="muted">{t('Get a key: ')}<a href={keyUrl} target="_blank" rel="noreferrer">{keyUrl}</a></div>}</div></div>
       <div className="row"><button className="primary" disabled={busy} onClick={doProbe} data-testid="prov-probe">{busy ? t('Connecting…') : t('Connect')}</button>
-        {probe && <span className={probe.ok ? 'ok-text' : 'error-text'} data-testid="prov-result">{probe.ok ? '✓' : '✕'} {probe.detail}{probe.ok ? ` (${probe.latencyMs} ms)` : ''}</span>}</div>
-      {probe?.ok && <>
-        <div className="field"><div className="field-label">{t('Models to use')}</div>
-          <ul className="gate-list">{probe.models.slice(0, 50).map(m => (
-            <li key={m}><label><input type="checkbox" checked={picked.includes(m)} onChange={() => setPicked(p => p.includes(m) ? p.filter(x => x !== m) : [...p, m])} data-testid={`prov-model-${m}`} /> <code>{m}</code></label>
-              <button className="small" onClick={() => test(m)}>{t('Test (1 token)')}</button> <span className="muted">{tests[m]}</span></li>
-          ))}</ul>
-        </div>
-        <label><input type="checkbox" checked={local} onChange={e => setLocal(e.target.checked)} /> {t('Make it the <local default> (used by the “All local” preset)').split(/[<>]/).map((x, i) => (i === 1 ? <strong key={i}>{x}</strong> : x))}</label>
-        <div className="row-end"><button onClick={onDone}>{t('Cancel')}</button><button className="primary" disabled={busy || !picked.length} onClick={save} data-testid="prov-save">{t('Save')}</button></div>
-      </>}
+        {probe && <span className={probe.ok ? 'ok-text' : 'error-text'} data-testid="prov-result">{probe.ok ? '✓' : '✕'} {tx(probe.detail)}{probe.ok ? ` (${probe.latencyMs} ms)` : ''}</span>}</div>
+      {probe && !probe.ok && probe.kind !== 'unauthorized' && <p className="muted">{t('No model list from this address — you can still type the model name below, test it and save.')}</p>}
+      <div className="field"><div className="field-label">{t('Models to use')}</div><div>
+        {listed.length > 12 && <input placeholder={t('search {n} models…', { n: listed.length })} value={filter} onChange={e => setFilter(e.target.value)} data-testid="prov-filter" />}
+        <ul className="gate-list model-pick">{choices.map(m => (
+          <li key={m}><label><input type="checkbox" checked={picked.includes(m)} onChange={() => setPicked(p => p.includes(m) ? p.filter(x => x !== m) : [...p, m])} data-testid={`prov-model-${m}`} /> <code>{m}</code></label>
+            <button className="small" onClick={() => test(m)}>{t('Test (1 token)')}</button> <span className="muted">{tests[m]}</span></li>
+        ))}</ul>
+        <div className="row"><input className="grow mono" placeholder={t('or type a model name, e.g. deepseek-chat')} value={manual} onChange={e => setManual(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addManual() }} data-testid="prov-manual" /><button className="small" onClick={addManual} disabled={!manual.trim()}>{t('Add')}</button></div>
+      </div></div>
+      <label><input type="checkbox" checked={local} onChange={e => setLocal(e.target.checked)} /> {t('Make it the <local default> (used by the “All local” preset)').split(/[<>]/).map((x, i) => (i === 1 ? <strong key={i}>{x}</strong> : x))}</label>
+      {err && <div className="warn-box" data-testid="prov-error">{err}</div>}
+      <div className="row-end"><button onClick={onDone}>{t('Cancel')}</button><button className="primary" disabled={busy || !picked.length} title={picked.length ? '' : t('pick or type at least one model')} onClick={save} data-testid="prov-save">{t('Save')}</button></div>
     </div>
   )
 }

@@ -282,3 +282,12 @@ textarea.mono { width: 100%; font-family: var(--mono); background: var(--code-bg
 a.button { display: inline-block; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--fg); text-decoration: none; }
 .upload-inline { font-size: 13px; color: var(--accent); cursor: pointer; } .upload-inline input { display: none; }
 @media (max-width: 760px) { .preset-cards { grid-template-columns: 1fr; } .modal-body header .seg { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; } }
+
+/* errors float above modals (System page, wizards), tap to dismiss */
+.error.toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 100; width: min(720px, calc(100% - 32px)); margin: 0; box-shadow: 0 8px 30px rgb(0 0 0 / .25); display: flex; gap: 10px; align-items: flex-start; white-space: pre-wrap; }
+.error.toast .toast-close { margin-left: auto; opacity: .7; }
+.provider-templates { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.provider-templates button.on { outline: 2px solid var(--accent); }
+.model-pick { max-height: 280px; overflow: auto; }
+.guide ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 8px; }
+.guide li button { margin-left: 6px; }

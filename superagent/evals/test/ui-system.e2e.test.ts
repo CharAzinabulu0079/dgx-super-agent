@@ -71,6 +71,27 @@ test('System page: models, presets, backup/restore, update, cleanup, health; ask
     await page.getByTestId('prov-model-qwen-max').check()
     await page.getByTestId('prov-save').click()
     await page.getByTestId('provider-dgx').getByText('local default').waitFor()
+    // A cloud API the way people add one (found on DGX): template, the name "deepseek" (reserved
+    // for DSH's own route), a model typed by hand, no successful probe needed → saved as deepseek-api.
+    await page.getByTestId('add-provider').click()
+    await page.getByTestId('tpl-deepseek-api').click()
+    await page.getByTestId('prov-name').fill('deepseek')
+    await page.getByTestId('prov-url').fill(provUrl)
+    await page.getByTestId('prov-key').fill('sk-dgx')
+    await page.getByTestId('prov-manual').fill('qwen-coder')
+    await page.getByTestId('prov-manual').press('Enter')
+    await page.getByTestId('prov-model-deepseek-chat').uncheck()
+    await page.getByTestId('prov-save').click()
+    await page.getByTestId('provider-deepseek-api').waitFor()
+    // A save error is shown inside the wizard, not hidden behind the System page.
+    await page.getByTestId('add-provider').click()
+    await page.getByTestId('prov-url').fill('ftp://nope')
+    await page.getByTestId('prov-manual').fill('m')
+    await page.getByTestId('prov-manual').press('Enter')
+    await page.getByTestId('prov-save').click()
+    await page.getByTestId('prov-error').filter({ hasText: 'http(s)' }).waitFor()
+    await page.getByTestId('error').click()
+    await page.getByTestId('provider-wizard').getByRole('button', { name: 'Cancel' }).click()
     // Presets: fill Budget, apply it.
     await page.getByTestId('edit-presets').click()
     for (const role of ['chief', 'planner', 'reviewer', 'escalation']) await page.getByTestId(`pe-budget-${role}`).selectOption('dgx/qwen-max')

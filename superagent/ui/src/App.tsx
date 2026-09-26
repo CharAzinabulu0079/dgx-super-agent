@@ -91,6 +91,8 @@ export function App() {
     <BackgroundLayer a={look.effective} url={bgUrl} theme={look.resolvedTheme}
       feed={{ activity, chief: chiefFeed, project: detail ? { id: detail.project.id, name: detail.project.name } : null }}
       onChat={chatAsHuman} onNotice={setError} />
+    {/* Above every modal: an error raised inside the System page or a wizard must be visible there. */}
+    {error && <div className="error toast" role="alert" onClick={() => setError(null)} data-testid="error">{tx(error.replace(/^Error: /, ""))}<span className="toast-close">✕</span></div>}
     {system && <SystemPanel initial={system} onClose={() => { setSystem(null); void loadHealth() }} onError={setError} />}
     {(wizard || (projectsLoaded && projects.length === 0)) && !system && <ProjectWizard onClose={() => setWizard(false)} onCreated={id => { setWizard(false); setCurrent(id); void loadProjects() }} onError={setError} />}
     {showAppearance && <AppearancePanel view={look.view} current={look.effective} isLocal={look.isLocal} onSave={look.save} onReload={look.reload} onClose={() => setShowAppearance(false)} onError={setError} />}
@@ -114,8 +116,7 @@ export function App() {
         <button className="add-project-btn" onClick={() => setWizard(true)} data-testid="add-project-toggle">{t('＋ Add project')}</button>
       </aside>
       <main>
-        {error && <div className="error" onClick={() => setError(null)} data-testid="error">{error}</div>}
-        {!detail ? <p className="muted">{t('Add or select a project.')}</p> : (
+        {!detail ? <><Guide onModels={() => setSystem('models')} onAdd={() => setWizard(true)} always /><p className="muted">{t('Add or select a project.')}</p></> : (
           <>
             <header className="project-header">
               <h2 data-testid="project-title">{detail.project.name}</h2>
@@ -139,7 +140,7 @@ export function App() {
                 </div>
               )}
             </nav>
-            {tab === 'overview' && <><Ask detail={detail} act={act} onHealth={() => setSystem('health')} /><Activity projectId={detail.project.id} refreshKey={events.length} /><HealthPanel projectId={detail.project.id} refreshKey={archKey} /><Overview detail={detail} act={act} /></>}
+            {tab === 'overview' && <>{!detail.goal && <Guide onModels={() => setSystem('models')} onAdd={() => setWizard(true)} gates={detail.project.defaultGates ?? []} />}<Ask detail={detail} act={act} onHealth={() => setSystem('health')} /><Activity projectId={detail.project.id} refreshKey={events.length} /><HealthPanel projectId={detail.project.id} refreshKey={archKey} /><Overview detail={detail} act={act} /></>}
             {tab === 'learning' && <LearningPanel projectId={detail.project.id} onError={setError} refreshKey={events.length} />}
             {tab === 'policy' && <PolicyPanel projectId={detail.project.id} onError={setError} />}
             {tab === 'chat' && <ChiefChat projectId={detail.project.id} refreshKey={chatKey} onError={setError} />}
@@ -153,6 +154,26 @@ export function App() {
       </main>
     </div>
     </>
+  )
+}
+
+/** First-run guide: the whole loop in four steps, each with the button that does it. */
+function Guide({ onModels, onAdd, gates, always }: { onModels: () => void; onAdd: () => void; gates?: Array<{ id: string; kind?: string }>; always?: boolean }) {
+  const [hidden, setHidden] = useState(() => { try { return !always && localStorage.getItem('superagent-guide-done') === '1' } catch (noStorage) { void noStorage; return false } })
+  if (hidden) return null
+  const onlyArch = gates && gates.length > 0 && gates.every(g => g.id === 'architecture')
+  return (
+    <section className="card guide" data-testid="guide">
+      <h3>{t('How SuperAgent works')}</h3>
+      <ol>
+        <li><strong>{t('Connect a model.')}</strong> {t('System → Models: add your local server or a cloud API (DeepSeek, OpenAI, Claude…), then press “Use” on a preset.')} <button className="small" onClick={onModels}>{t('Open Models')}</button></li>
+        <li><strong>{t('Add a project.')}</strong> {t('Pick a folder on this machine. SuperAgent scans it and proposes the checks (tests) that decide when a change is “done”.')} <button className="small" onClick={onAdd}>{t('＋ Add project')}</button></li>
+        <li><strong>{t('Say what you want.')}</strong> {t('Type it in “What do you want?” and press Go. The Chief plans it into tasks, Workers (AI) do them, and the checks — not the AI — decide whether each task passed.')}</li>
+        <li><strong>{t('Watch and decide.')}</strong> {t('Activity shows progress in plain words. When something needs you (a risky command, repeated failures), it appears under “Needs your decision”: approve or reject.')}</li>
+      </ol>
+      {onlyArch && <p className="warn-text">{t('This project has no test command yet, so “checks passed” only means nothing broke structurally — add a test command to the project for real checking.')}</p>}
+      {!always && <div className="row-end"><button className="small" onClick={() => { try { localStorage.setItem('superagent-guide-done', '1') } catch (noStorage) { void noStorage } setHidden(true) }} data-testid="guide-close">{t('Got it')}</button></div>}
+    </section>
   )
 }
 
