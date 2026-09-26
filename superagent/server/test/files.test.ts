@@ -52,7 +52,7 @@ test('links: signed, expiring, tamper-proof', () => {
   const [body, mac] = token.split('.')
   const forged = Buffer.from(JSON.stringify({ p: 'calc', path: '../../etc/passwd', d: 0, e: Date.now() + 1e6 })).toString('base64url')
   assert.equal(s.verify(`${forged}.${mac}`), undefined)
-  assert.equal(s.verify(`${body}.x${mac!.slice(1)}`), undefined)
+  assert.equal(s.verify(`${body}.${mac![0] === 'x' ? 'y' : 'x'}${mac!.slice(1)}`), undefined)
   assert.equal(s.verify(s.sign({ p: 'calc', d: 0 }, -1).token), undefined, 'expired')
   assert.equal(new LinkSigner().verify(token), undefined, 'a restarted server invalidates old links')
 })

@@ -335,9 +335,13 @@ export class UpdateManager {
   }
 }
 
-/** True when a supervisor (systemd) will start us again after we exit. */
+/**
+ * True when a supervisor (systemd) will start us again after we exit. Only our own unit
+ * sets this: INVOCATION_ID is inherited by anything started from some other systemd unit
+ * (e.g. a terminal inside a desktop app), where exiting would just stop the server.
+ */
 export function isSupervised(): boolean {
-  return process.env.SUPERAGENT_SUPERVISED === '1' || !!process.env.INVOCATION_ID
+  return process.env.SUPERAGENT_SUPERVISED === '1'
 }
 
 /** Exit so the supervisor restarts the service (after the HTTP response is flushed). */
