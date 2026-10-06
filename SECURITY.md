@@ -5,7 +5,7 @@
 Please do **not** open a public issue for a security problem.
 
 Report it privately through
-[GitHub Security Advisories](https://github.com/CharAzinabulu0079/DGX-Super-Agent/security/advisories/new)
+[GitHub Security Advisories](https://github.com/CharAzinabulu0079/dgx-super-agent/security/advisories/new)
 (→ *Report a vulnerability*). Include the affected component, a reproduction, and what you think the
 impact is. If the form is unavailable, use the contact options on the repository owner's GitHub
 profile and mention "security" in the subject.

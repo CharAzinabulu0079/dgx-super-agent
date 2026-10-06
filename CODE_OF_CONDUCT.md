@@ -28,7 +28,7 @@ Behaviour that is not acceptable:
 ## Enforcement
 
 Report unacceptable behaviour through
-[GitHub Security Advisories](https://github.com/CharAzinabulu0079/DGX-Super-Agent/security/advisories/new)
+[GitHub Security Advisories](https://github.com/CharAzinabulu0079/dgx-super-agent/security/advisories/new)
 if it involves a security or privacy concern, otherwise through the contact options on the
 repository owner's GitHub profile. All reports are reviewed promptly and treated confidentially.
 

@@ -6,12 +6,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CharAzinabulu0079/DGX-Super-Agent.git"
+    "url": "git+https://github.com/CharAzinabulu0079/dgx-super-agent.git"
   },
   "bugs": {
-    "url": "https://github.com/CharAzinabulu0079/DGX-Super-Agent/issues"
+    "url": "https://github.com/CharAzinabulu0079/dgx-super-agent/issues"
   },
-  "homepage": "https://github.com/CharAzinabulu0079/DGX-Super-Agent#readme",
+  "homepage": "https://github.com/CharAzinabulu0079/dgx-super-agent#readme",
   "keywords": [
     "ai-agents",
     "agent-harness",

@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522.19-brightgreen.svg)](package.json)
 [![pnpm](https://img.shields.io/badge/pnpm-11.7-orange.svg)](https://pnpm.io)
-[![CI](https://github.com/CharAzinabulu0079/DGX-Super-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/CharAzinabulu0079/DGX-Super-Agent/actions/workflows/ci.yml)
+[![CI](https://github.com/CharAzinabulu0079/dgx-super-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/CharAzinabulu0079/dgx-super-agent/actions/workflows/ci.yml)
 
 ---
 
@@ -44,8 +44,8 @@ An agent that grades its own homework cannot be trusted with a repository. This 
 ## Quick start
 
 ```bash
-git clone https://github.com/CharAzinabulu0079/DGX-Super-Agent.git
-cd DGX-Super-Agent
+git clone https://github.com/CharAzinabulu0079/dgx-super-agent.git
+cd dgx-super-agent
 
 pnpm install     # frozen lockfile, pins @deepseek-ai/dsh 0.1.7-rc.2
 pnpm build       # UI (superagent/ui) + DSH bundle (superagent/dsh-bundle)
@@ -139,7 +139,7 @@ Issues and PRs are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Please 
 [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 Report vulnerabilities privately through
-[GitHub Security Advisories](https://github.com/CharAzinabulu0079/DGX-Super-Agent/security/advisories/new)
+[GitHub Security Advisories](https://github.com/CharAzinabulu0079/dgx-super-agent/security/advisories/new)
 instead of a public issue. See [`SECURITY.md`](SECURITY.md).
 
 ## License
