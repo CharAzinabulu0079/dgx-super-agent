@@ -54,7 +54,7 @@ The goal is that nothing routine costs model tokens: buttons for everything that
 
 ## cloud-v1.1 — 2026-09-26
 
-The features below were added after cloud-v1.0. The release audit then reviewed all of it independently (Chief chat, transcripts, file sharing/downloads, WireGuard remote access, the phone UI, ▷ Run / Terminal, Appearance/background upload and the Digital Human bridge). It fixed the confirmed defects listed next, each with a regression test that fails on the pre-fix code. Full report: `docs/RELEASE_AUDIT_cloud-v1.1.md`.
+The features below were added after cloud-v1.0. The release audit then reviewed all of it independently (Chief chat, transcripts, file sharing/downloads, WireGuard remote access, the phone UI, ▷ Run / Terminal, Appearance/background upload and the Digital Human bridge). It fixed the confirmed defects listed next, each with a regression test that fails on the pre-fix code.
 
 ### Release audit (fixes)
 - **P0: human token leaked to the Chief.** With `SUPERAGENT_HUMAN_TOKEN` exported (the new stable-link option), the Chief's DSH process inherited it and could act as the human (resolve Human Gates, run commands). Child processes now never inherit SuperAgent credentials. The Chief receives only the agent token passed explicitly, and `sa serve` removes the variable from its own environment after reading it.
@@ -97,11 +97,11 @@ The features below were added after cloud-v1.0. The release audit then reviewed 
 - **Verification:**
   - New red-team scenarios: RT-20 (file-sharing abuse) and RT-21 (UI remote-control abuse).
   - New evals for Chief chat, file sharing and transcripts (real DSH), the phone-viewport UI (incl. ▷ Run, Terminal, Appearance) and appearance/Digital Human embed.
-  - Totals before the release audit: `pnpm check` 97/97, evals 13/13, red-team 21/21 (87 tests). For the release numbers see `CURRENT_STATE.md`.
+  - Totals before the release audit: `pnpm check` 97/97, evals 13/13, red-team 21/21 (87 tests).
 
 ## cloud-v1.0 — 2026-09-25
 
-The last release built in Claude Cloud. Everything that can be implemented and verified without DGX hardware, a real model endpoint, OS-level Worker isolation or the Digital Human runtime is done; the rest is listed in `NEXT_STEPS.md`. DSH core modifications: **0** (pinned `@deepseek-ai/dsh@0.1.7-rc.2` = `477b4f4`).
+The last release built in Claude Cloud. Everything that can be implemented and verified without DGX hardware, a real model endpoint, OS-level Worker isolation or the Digital Human runtime is done; the rest is tracked in the issue tracker. DSH core modifications: **0** (pinned `@deepseek-ai/dsh@0.1.7-rc.2` = `477b4f4`).
 
 ### Vibe-coding UX
 - **One box.** In the UI, "What do you want?" takes a plain-language request. `POST /api/projects/:p/requests` and `sa do <project|path> "<request>" [--review]` do the same from the API and the CLI; `sa do` registers a directory as a project on first use.
@@ -133,7 +133,7 @@ The last release built in Claude Cloud. Everything that can be implemented and v
 - `pnpm smoke:dsh`: 6/6.
 - `pnpm test:evals`: 10/10 (new: DSH planner + reviewer, UI one-box).
 - `pnpm redteam`: 19/19 scenarios fail closed (new: RT-18 held-out, RT-19 planner/reviewer abuse).
-- Fresh-clone verification of `5da45d5` (empty directory, empty `SUPERAGENT_HOME`): all of the above green; recorded in `CURRENT_STATE.md`.
+- Fresh-clone verification of `5da45d5` (empty directory, empty `SUPERAGENT_HOME`): all of the above green.
 
 ## terminal-harness (untagged) — Directive M1–M6
 - Changes:

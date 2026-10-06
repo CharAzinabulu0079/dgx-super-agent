@@ -1,10 +1,26 @@
 {
   "name": "dgx-super-agent",
   "version": "1.3.0",
-  "private": true,
   "type": "module",
-  "description": "DGX Super Agent v0.1 — SuperAgent plugins over DeepSeek Harness (single core)",
-  "license": "UNLICENSED",
+  "description": "A single-agent-core harness: a Chief plans your goal into verifiable tasks, Workers run until independent gates pass, and nothing ships on a model's word alone.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CharAzinabulu0079/DGX-Super-Agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CharAzinabulu0079/DGX-Super-Agent/issues"
+  },
+  "homepage": "https://github.com/CharAzinabulu0079/DGX-Super-Agent#readme",
+  "keywords": [
+    "ai-agents",
+    "agent-harness",
+    "multi-agent",
+    "verification",
+    "human-in-the-loop",
+    "llm",
+    "typescript"
+  ],
   "packageManager": "pnpm@11.7.0",
   "engines": {
     "node": ">=22.19.0"

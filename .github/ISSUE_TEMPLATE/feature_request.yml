@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose a change to the loop, verification, UI or policy
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation you are in today and why the current behaviour falls short.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What should the harness do differently?
+    validations:
+      required: true
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Which layer does it touch?
+      options:
+        - Loop / verification / gates
+        - Held-out tests
+        - Human Gates or policy
+        - Server / API
+        - UI
+        - Docs only
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: How would we know it works?
+      description: The test or gate that would fail before this change and pass after it.
+    validations:
+      required: true
+  - type: checkboxes
+    id: core
+    attributes:
+      label: Core impact
+      options:
+        - label: This does **not** require patching `@deepseek-ai/dsh` (a core patch needs an ADR first)

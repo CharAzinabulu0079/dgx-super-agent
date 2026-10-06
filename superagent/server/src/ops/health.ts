@@ -177,8 +177,8 @@ function bwrapFix(): string {
   let restricted = false
   try { restricted = readFileSync('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 'utf8').trim() === '1' } catch (absent) { void absent }
   return restricted && existsSync('/usr/bin/bwrap')
-    ? 'allow bubblewrap in AppArmor (Ubuntu 24.04 blocks it for services): see SETUP_DGX.md §6b, then restart SuperAgent'
-    : 'sudo apt install bubblewrap (or run Workers as a separate OS user, NEXT_STEPS P0 #2)'
+    ? 'allow bubblewrap in AppArmor (Ubuntu 24.04 blocks it for services), then restart SuperAgent'
+    : 'sudo apt install bubblewrap (or run Workers as a separate OS user)'
 }
 
 export async function runHealthCheck(ctx: HealthContext): Promise<HealthReport> {

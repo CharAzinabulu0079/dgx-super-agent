@@ -1,31 +1,148 @@
-# DGX Super Agent (Cloud v1.1)
+# DGX Super Agent
 
-A private Super Agent harness built as **plugins around one Agent Core — DeepSeek Harness 0.1.7-rc.2 (unmodified)**. Describe what you want in one box; the Chief plans it into verifiable tasks; Workers loop until independent, tamper-resistant gates pass — including **held-out tests Workers never see** — with an optional **reviewer** on the diff; dangerous tool calls stop at Human Gates inside DSH; the Chief wakes only when needed; learning must prove itself in fresh replays; every project gets a live architecture map; real-browser testing; layered model policy.
+> Describe what you want in one box. A **Chief** plans it into verifiable tasks, **Workers** loop until independent gates pass, and nothing counts as done until a deterministic check says so — never because the model claims it is.
 
-```bash
-pnpm sa do /path/to/repo "the signup form should reject emails without an @" --review
-```
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522.19-brightgreen.svg)](package.json)
+[![pnpm](https://img.shields.io/badge/pnpm-11.7-orange.svg)](https://pnpm.io)
+[![CI](https://github.com/CharAzinabulu0079/DGX-Super-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/CharAzinabulu0079/DGX-Super-Agent/actions/workflows/ci.yml)
 
-Authoritative specs: [`DGX_SUPER_AGENT_FOUNDATION_FREEZE_v1.md`](DGX_SUPER_AGENT_FOUNDATION_FREEZE_v1.md) and [`SUPER_AGENT_TERMINAL_HARNESS_COMPLETION_DIRECTIVE.md`](SUPER_AGENT_TERMINAL_HARNESS_COMPLETION_DIRECTIVE.md).
+---
 
-| Read | For |
+## Why this exists
+
+An agent that grades its own homework cannot be trusted with a repository. This harness makes verification a **separate, non-model layer**:
+
+- gates are **commands** (`node --test`, `npm test`, `arch`), not opinions;
+- **held-out tests** live outside the worktree and are invisible to the Worker;
+- a Worker's claim of success is recorded and **overruled** whenever a gate fails;
+- genuinely risky or preference-dependent calls stop at a **Human Gate** and wait for you.
+
+## Highlights
+
+| | |
 |---|---|
-| [`CURRENT_STATE.md`](CURRENT_STATE.md) | what is done / partial / not started, known issues, last green checks |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | how it works (loop, verifier, observatory, DSH integration) |
-| [`SETUP_DGX.md`](SETUP_DGX.md) | install, configure the local model, run on Linux ARM64 |
-| [`NEXT_STEPS.md`](NEXT_STEPS.md) | prioritized follow-up work |
-| [`DECISIONS.md`](DECISIONS.md) | ADRs |
-| [`REDTEAM_REPORT.md`](REDTEAM_REPORT.md) | adversarial scenarios and their evidence |
-| [`CHANGELOG.md`](CHANGELOG.md) | release notes (cloud-v1.1, cloud-v1.0) |
-| [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | licenses |
-| `.architecture/` | this repo's own machine-generated architecture map |
+| **Verifiable-by-default loop** | Plan → Execute → Verify → Retry → Report, with failure-signature breaking so a Worker cannot retry the same broken thing forever |
+| **Held-out gates** | Acceptance tests the model never sees, mounted into a throwaway tree at verification time |
+| **Human Gates** | Dangerous tool calls stop at an explicit human decision inside the agent core |
+| **One core, plugins only** | DeepSeek Harness (MIT) consumed unmodified from npm — **zero core patches** |
+| **Architecture Observatory** | Any repo gets a machine-generated map (`.architecture/`) plus declared-vs-detected drift checks |
+| **Real-browser checks** | Playwright-driven E2E as a first-class verification gate |
+| **Model policy per role** | Chief / planner / reviewer / Worker each get their own model — cloud or local OpenAI-compatible |
+| **Web + phone UI** | One-box request UI, live Worker transcripts, file sharing, terminal |
+| **Red-team suite** | 22 adversarial scenarios that must all fail closed (`pnpm redteam`) |
+
+## Requirements
+
+- **Node ≥ 22.19** (22.x LTS or newer) — the harness runs TypeScript natively
+- **pnpm 11.7.0** — `corepack enable && corepack prepare pnpm@11.7.0 --activate`
+- **git** (architecture + change detection)
+- **Chromium** — only for browser Workers and E2E gates: `npx playwright install chromium`
+- Linux or macOS. Build tools (`python3`, `make`, `g++`) are the fallback if a native addon
+  (`node-pty`, `koffi`, `sharp`) has no prebuilt binary for your platform.
+
+## Quick start
 
 ```bash
-pnpm install && pnpm build
-pnpm check            # typecheck + tests + architecture drift + repo hygiene
-pnpm smoke:dsh        # DSH core boots and runs tools (keyless)
-pnpm test:evals       # real-browser / real-DSH end-to-end scenarios
-pnpm redteam          # adversarial suite → REDTEAM_REPORT.md
-pnpm sa dsh setup && pnpm sa serve --browser   # API + UI on http://127.0.0.1:7788 (open the printed human link, type what you want)
-pnpm sa serve --host <wireguard-ip>            # same UI on your phone over WireGuard (chat with the Chief, receive/preview/download files)
+git clone https://github.com/CharAzinabulu0079/DGX-Super-Agent.git
+cd DGX-Super-Agent
+
+pnpm install     # frozen lockfile, pins @deepseek-ai/dsh 0.1.7-rc.2
+pnpm build       # UI (superagent/ui) + DSH bundle (superagent/dsh-bundle)
+pnpm check       # typecheck + tests + architecture drift + repo hygiene
+pnpm smoke:dsh   # the core boots and runs a session with File + Shell tools (keyless mock)
 ```
+
+Then start it:
+
+```bash
+pnpm sa dsh setup        # create the Worker / Chief DSH profiles under $SUPERAGENT_HOME
+pnpm sa serve --browser  # API + UI on http://127.0.0.1:7788, prints a one-time human link
+```
+
+Open the printed link, **Add project** (an absolute path — test / E2E / architecture checks are
+detected automatically), type what you want, press **Go**.
+
+The same thing from the CLI:
+
+```bash
+pnpm sa do /abs/path/to/myapp "the signup form should reject emails without an @" --review
+```
+
+### Point it at a model
+
+Create `$SUPERAGENT_HOME/model-routes.json` with an OpenAI-compatible or Anthropic route, then assign
+per-role policies:
+
+```bash
+pnpm sa policy set worker    local-default
+pnpm sa policy set chief     anthropic/claude-sonnet-4-5
+pnpm sa policy set reviewer  local-default --project myapp
+pnpm sa policy show
+```
+
+Local servers need nothing more than a `baseURL` (`http://127.0.0.1:8000/v1`) and whatever key the
+server expects. The mechanism is covered by
+`superagent/evals/test/model-route.integration.test.ts`.
+
+### Expose it to a phone (optionally)
+
+```bash
+pnpm sa serve --host <your-vpn-ip>
+```
+
+Beyond localhost **every** request requires the human token, which is generated at start-up and
+printed once. Keep it inside a VPN or behind TLS — the transport is plain HTTP by default.
+
+## Testing
+
+```bash
+pnpm test        # unit + integration (node --test)
+pnpm test:evals  # real-browser / real-DSH end-to-end scenarios (needs Chromium)
+pnpm redteam     # adversarial suite; every scenario must fail closed
+pnpm arch        # architecture drift for this repository
+pnpm check       # all of the static gates in one command
+```
+
+## Repository layout
+
+| Path | What it is |
+|---|---|
+| `superagent/contracts` | Goal / Task / Receipt / Gate / Policy schemas |
+| `superagent/plugins` | deterministic plugins: loop, verifier, chief-worker, observatory, hygiene |
+| `superagent/server` | HTTP + SSE API, state store, model policy, health |
+| `superagent/ui` | React PWA (desktop and phone) |
+| `superagent/dsh-bundle` | the DSH bundle that mounts the plugins as tools |
+| `superagent/evals` | E2E and adversarial suites |
+| `superagent/testkit` | mock LLM and test harness |
+| `docs/` | assistant API, local models, background docs |
+| `examples/` | a sample web app with its own E2E gate |
+| `.architecture/` | machine-generated architecture map (regenerate with `pnpm arch`) |
+
+## Documentation
+
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — how the loop, verifier, observatory and core integration fit together
+- [`CHANGELOG.md`](CHANGELOG.md) — release notes
+- [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) — dependencies and their licenses
+- [`docs/`](docs/) — assistant API, local models, background page
+
+## Status and known limits
+
+- The core integration is pinned to **`@deepseek-ai/dsh@0.1.7-rc.2`** with **zero core patches**; all
+  extension goes through documented seams (profiles, bundle, `--patch`, tool registration).
+- **Security posture and the residual gaps are documented in [`SECURITY.md`](SECURITY.md)** — read it
+  before exposing the API beyond localhost.
+
+## Contributing
+
+Issues and PRs are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Please read
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+Report vulnerabilities privately through
+[GitHub Security Advisories](https://github.com/CharAzinabulu0079/DGX-Super-Agent/security/advisories/new)
+instead of a public issue. See [`SECURITY.md`](SECURITY.md).
+
+## License
+
+[MIT](LICENSE). Third-party dependency licenses are listed in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

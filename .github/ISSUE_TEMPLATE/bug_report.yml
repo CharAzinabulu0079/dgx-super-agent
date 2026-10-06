@@ -1,0 +1,51 @@
+name: Bug report
+description: Something does not behave as documented
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: The exact command you ran and what you observed.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Relevant output, `events.jsonl` lines, or a failing test. Redact any token.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: git SHA, tag, or `pnpm sa --version`
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "OS / arch / node / pnpm, e.g. Ubuntu 24.04 x64, node 22.19, pnpm 11.7.0"
+    validations:
+      required: true
+  - type: textarea
+    id: model
+    attributes:
+      label: Model setup (if relevant)
+      description: Local server, cloud provider, role policies — enough to reproduce, no keys.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for this
+        - label: This is not a security vulnerability (those go to SECURITY.md)
