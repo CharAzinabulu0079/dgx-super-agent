@@ -1,6 +1,16 @@
 # DGX Super Agent
 
-> Describe what you want in one box. A **Chief** plans it into verifiable tasks, **Workers** loop until independent gates pass, and nothing counts as done until a deterministic check says so — never because the model claims it is.
+**A modular autonomous agent harness for long-running work, loop engineering, architecture
+observability and digital human integration.**
+
+Deploy it on your own machine — a DGX Spark is its intended home — and it becomes the **hands of
+your digital human or assistant**: say what you want in one sentence, and it plans the work, runs it,
+verifies it and reports back. It keeps going for hours without you babysitting it, and stops to ask
+only when the decision is genuinely yours.
+
+It is not a chat agent that grades its own homework. A **Chief** plans your request into verifiable
+tasks, **Workers** loop until independent gates pass, and nothing counts as done until a
+deterministic check says so — never because the model claims it is.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522.19-brightgreen.svg)](package.json)
@@ -9,9 +19,9 @@
 
 ---
 
-## Why this exists
+## How verification works
 
-An agent that grades its own homework cannot be trusted with a repository. This harness makes verification a **separate, non-model layer**:
+Verification here is a **separate, non-model layer**:
 
 - gates are **commands** (`node --test`, `npm test`, `arch`), not opinions;
 - **held-out tests** live outside the worktree and are invisible to the Worker;
@@ -26,6 +36,7 @@ An agent that grades its own homework cannot be trusted with a repository. This 
 | **Held-out gates** | Acceptance tests the model never sees, mounted into a throwaway tree at verification time |
 | **Human Gates** | Dangerous tool calls stop at an explicit human decision inside the agent core |
 | **One core, plugins only** | DeepSeek Harness (MIT) consumed unmodified from npm — **zero core patches** |
+| **Client-agnostic core** | Headless: the Web/PWA and phone UI are only clients — a digital human page can already be embedded as its background (`docs/DIGITAL_HUMAN_BACKGROUND.md`) |
 | **Architecture Observatory** | Any repo gets a machine-generated map (`.architecture/`) plus declared-vs-detected drift checks |
 | **Real-browser checks** | Playwright-driven E2E as a first-class verification gate |
 | **Model policy per role** | Chief / planner / reviewer / Worker each get their own model — cloud or local OpenAI-compatible |
@@ -38,7 +49,7 @@ An agent that grades its own homework cannot be trusted with a repository. This 
 - **pnpm 11.7.0** — `corepack enable && corepack prepare pnpm@11.7.0 --activate`
 - **git** (architecture + change detection)
 - **Chromium** — only for browser Workers and E2E gates: `npx playwright install chromium`
-- Linux or macOS. Build tools (`python3`, `make`, `g++`) are the fallback if a native addon
+- Linux (**x86_64 or aarch64** — a DGX Spark is the intended home) or macOS. Build tools (`python3`, `make`, `g++`) are the fallback if a native addon
   (`node-pty`, `koffi`, `sharp`) has no prebuilt binary for your platform.
 
 ## Quick start
